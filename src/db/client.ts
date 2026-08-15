@@ -1,0 +1,53 @@
+import * as SQLite from 'expo-sqlite';
+
+import { CREATE_TABLES } from './schema';
+
+/**
+ * Thin wrapper over expo-sqlite.
+ *
+ * The whole app shares one connection. Repositories call `getDb()` rather than
+ * holding a reference, so tests can swap in an in-memory database via
+ * `setDbForTesting`.
+ */
+
+export type Db = SQLite.SQLiteDatabase;
+
+const DB_NAME = 'waypoint.db';
+
+let dbPromise: Promise<Db> | null = null;
+
+async function open(name: string): Promise<Db> {
+  const db = await SQLite.openDatabaseAsync(name);
+  // execAsync runs multiple statements; foreign_keys is per-connection so it
+  // has to be set here rather than only in the schema file.
+  await db.execAsync(CREATE_TABLES);
+  await db.execAsync('PRAGMA foreign_keys = ON;');
+  return db;
+}
+
+export function getDb(): Promise<Db> {
+  if (!dbPromise) {
+    dbPromise = open(DB_NAME);
+  }
+  return dbPromise;
+}
+
+/** Opens a fresh in-memory database. Used by repository tests. */
+export async function openTestDb(): Promise<Db> {
+  return open(':memory:');
+}
+
+/** Points every repository at `db`. Pass null to restore the real database. */
+export function setDbForTesting(db: Db | null): void {
+  dbPromise = db ? Promise.resolve(db) : null;
+}
+
+/** Runs `fn` inside a transaction, rolling back if it throws. */
+export async function withTransaction<T>(fn: (db: Db) => Promise<T>): Promise<T> {
+  const db = await getDb();
+  let result: T;
+  await db.withExclusiveTransactionAsync(async (tx) => {
+    result = await fn(tx as unknown as Db);
+  });
+  return result!;
+}

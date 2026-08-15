@@ -1,0 +1,59 @@
+{
+  "expo": {
+    "name": "Waypoint",
+    "slug": "waypoint",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "waypoint",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.waypoint.app",
+      "config": {
+        "googleMapsApiKey": "$EXPO_PUBLIC_GOOGLE_MAPS_KEY"
+      }
+    },
+    "android": {
+      "package": "com.waypoint.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "config": {
+        "googleMaps": {
+          "apiKey": "$EXPO_PUBLIC_GOOGLE_MAPS_KEY"
+        }
+      }
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      [
+        "react-native-maps",
+        {
+          "androidGoogleMapsApiKey": "$EXPO_PUBLIC_GOOGLE_MAPS_KEY",
+          "iosGoogleMapsApiKey": "$EXPO_PUBLIC_GOOGLE_MAPS_KEY"
+        }
+      ],
+      [
+        "react-native-reanimated",
+        {
+          "experimentalWorklets": true
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
