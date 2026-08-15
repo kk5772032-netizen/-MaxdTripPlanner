@@ -1,0 +1,391 @@
+import * as Crypto from 'expo-crypto';
+
+import type { NearbyRestaurant, PlaceDetails, PlaceSuggestion } from '../types';
+import * as cache from './placesCache';
+
+/**
+ * Thin client over the Google Places API (New) REST endpoints.
+ *
+ * Cost is the design constraint here, not latency:
+ *
+ * - Field masks are as narrow as the screen that consumes them. The API bills
+ *   by SKU tier and the tier is chosen by the fields you ask for, so requesting
+ *   a field you don't render is a direct waste of money.
+ * - Autocomplete runs under a session token, which bills the whole
+ *   type-then-select flow at the session rate instead of per keystroke.
+ * - Details and Nearby responses go through a 30-day SQLite cache
+ *   (`placesCache.ts`). Nearby in particular is only ever called on the first
+ *   visit to a stop's food tab or on an explicit refresh — never on render.
+ */
+
+const BASE = 'https://places.googleapis.com/v1';
+
+/** Radius for "restaurants near this stop", in metres. */
+const NEARBY_RADIUS_M = 1500;
+const NEARBY_MAX_RESULTS = 15;
+
+/** Thrown for anything the caller might want to show the user. */
+export class PlacesError extends Error {
+  constructor(
+    message: string,
+    readonly kind: 'no-key' | 'network' | 'http' | 'parse',
+    readonly status?: number,
+  ) {
+    super(message);
+    this.name = 'PlacesError';
+  }
+}
+
+function apiKey(): string {
+  const key = process.env.EXPO_PUBLIC_GOOGLE_PLACES_KEY;
+  if (!key) {
+    throw new PlacesError(
+      'No Places API key. Copy .env.example to .env and set EXPO_PUBLIC_GOOGLE_PLACES_KEY.',
+      'no-key',
+    );
+  }
+  return key;
+}
+
+export function hasApiKey(): boolean {
+  return !!process.env.EXPO_PUBLIC_GOOGLE_PLACES_KEY;
+}
+
+async function request<T>(
+  path: string,
+  {
+    method = 'GET',
+    fieldMask,
+    body,
+    signal,
+  }: {
+    method?: 'GET' | 'POST';
+    fieldMask: string;
+    body?: unknown;
+    signal?: AbortSignal;
+  },
+): Promise<T> {
+  const headers: Record<string, string> = {
+    'X-Goog-Api-Key': apiKey(),
+    'X-Goog-FieldMask': fieldMask,
+  };
+  if (body) headers['Content-Type'] = 'application/json';
+
+  let response: Response;
+  try {
+    response = await fetch(`${BASE}${path}`, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+      signal,
+    });
+  } catch (e) {
+    if (e instanceof Error && e.name === 'AbortError') throw e;
+    throw new PlacesError(
+      'Could not reach Google Places. Check your connection.',
+      'network',
+    );
+  }
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => '');
+    throw new PlacesError(
+      `Places API returned ${response.status}. ${extractApiMessage(detail)}`.trim(),
+      'http',
+      response.status,
+    );
+  }
+
+  try {
+    return (await response.json()) as T;
+  } catch {
+    throw new PlacesError('Places API returned a response we could not read.', 'parse');
+  }
+}
+
+function extractApiMessage(body: string): string {
+  try {
+    const parsed = JSON.parse(body) as { error?: { message?: string } };
+    return parsed.error?.message ?? '';
+  } catch {
+    return '';
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Session tokens                                                             */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * One token covers a whole "type, then pick a result" flow. Google bills those
+ * keystrokes as a single session as long as the token is reused for the
+ * autocomplete calls and then passed to the Details call that follows.
+ *
+ * Call `newSessionToken()` when a search screen mounts and again after each
+ * selection — a token must not be reused across two selections.
+ */
+export function newSessionToken(): string {
+  return Crypto.randomUUID();
+}
+
+/* -------------------------------------------------------------------------- */
+/* Autocomplete                                                               */
+/* -------------------------------------------------------------------------- */
+
+interface AutocompleteResponse {
+  suggestions?: {
+    placePrediction?: {
+      placeId: string;
+      structuredFormat?: {
+        mainText?: { text?: string };
+        secondaryText?: { text?: string };
+      };
+      text?: { text?: string };
+    };
+  }[];
+}
+
+/**
+ * Autocomplete is not cached: the whole point is that it reflects what the user
+ * is typing right now, and it's already the cheapest call in the API when run
+ * under a session token.
+ */
+export async function autocomplete(
+  input: string,
+  {
+    sessionToken,
+    signal,
+    origin,
+  }: { sessionToken: string; signal?: AbortSignal; origin?: { lat: number; lng: number } },
+): Promise<PlaceSuggestion[]> {
+  const trimmed = input.trim();
+  if (trimmed.length < 2) return [];
+
+  const data = await request<AutocompleteResponse>('/places:autocomplete', {
+    method: 'POST',
+    // Autocomplete ignores X-Goog-FieldMask, but sending it keeps every call in
+    // this file consistent about declaring what it uses.
+    fieldMask: 'suggestions.placePrediction',
+    body: {
+      input: trimmed,
+      sessionToken,
+      ...(origin
+        ? {
+            locationBias: {
+              circle: {
+                center: { latitude: origin.lat, longitude: origin.lng },
+                radius: 50_000,
+              },
+            },
+          }
+        : {}),
+    },
+    signal,
+  });
+
+  return (data.suggestions ?? [])
+    .map((s) => s.placePrediction)
+    .filter((p): p is NonNullable<typeof p> => !!p?.placeId)
+    .map((p) => ({
+      placeId: p.placeId,
+      primaryText: p.structuredFormat?.mainText?.text ?? p.text?.text ?? 'Unknown place',
+      secondaryText: p.structuredFormat?.secondaryText?.text ?? '',
+    }));
+}
+
+/* -------------------------------------------------------------------------- */
+/* Place Details                                                              */
+/* -------------------------------------------------------------------------- */
+
+/** Exactly the fields a StopCard renders — nothing more. */
+const DETAILS_FIELD_MASK = 'id,displayName,formattedAddress,location,rating,photos';
+
+interface RawPlace {
+  id?: string;
+  displayName?: { text?: string };
+  formattedAddress?: string;
+  location?: { latitude?: number; longitude?: number };
+  rating?: number;
+  photos?: { name?: string }[];
+  priceLevel?: string;
+  primaryTypeDisplayName?: { text?: string };
+  primaryType?: string;
+}
+
+function toPlaceDetails(raw: RawPlace, fallbackId: string): PlaceDetails {
+  return {
+    placeId: raw.id ?? fallbackId,
+    name: raw.displayName?.text ?? 'Unknown place',
+    address: raw.formattedAddress ?? null,
+    lat: raw.location?.latitude ?? null,
+    lng: raw.location?.longitude ?? null,
+    rating: raw.rating ?? null,
+    photoRef: raw.photos?.[0]?.name ?? null,
+  };
+}
+
+/**
+ * Cached for 30 days. On a network failure a stale cache entry is returned
+ * rather than throwing — a slightly old address beats no stop at all.
+ */
+export async function placeDetails(
+  placeId: string,
+  { sessionToken, forceRefresh = false }: { sessionToken?: string; forceRefresh?: boolean } = {},
+): Promise<PlaceDetails> {
+  if (!forceRefresh) {
+    const hit = await cache.read<PlaceDetails>('details', placeId);
+    if (hit) return hit.value;
+  }
+
+  try {
+    const raw = await request<RawPlace>(
+      `/places/${encodeURIComponent(placeId)}${
+        sessionToken ? `?sessionToken=${encodeURIComponent(sessionToken)}` : ''
+      }`,
+      { fieldMask: DETAILS_FIELD_MASK },
+    );
+    const details = toPlaceDetails(raw, placeId);
+    await cache.write('details', placeId, details);
+    return details;
+  } catch (e) {
+    const stale = await cache.read<PlaceDetails>('details', placeId, { allowStale: true });
+    if (stale) return stale.value;
+    throw e;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Nearby Search                                                              */
+/* -------------------------------------------------------------------------- */
+
+const NEARBY_FIELD_MASK = [
+  'places.id',
+  'places.displayName',
+  'places.formattedAddress',
+  'places.location',
+  'places.rating',
+  'places.priceLevel',
+  'places.primaryTypeDisplayName',
+  'places.photos',
+].join(',');
+
+interface NearbyResponse {
+  places?: RawPlace[];
+}
+
+/** 'PRICE_LEVEL_MODERATE' -> 2. Null when Google didn't supply one. */
+function toPriceLevel(value: string | undefined): number | null {
+  switch (value) {
+    case 'PRICE_LEVEL_FREE':
+      return 0;
+    case 'PRICE_LEVEL_INEXPENSIVE':
+      return 1;
+    case 'PRICE_LEVEL_MODERATE':
+      return 2;
+    case 'PRICE_LEVEL_EXPENSIVE':
+      return 3;
+    case 'PRICE_LEVEL_VERY_EXPENSIVE':
+      return 4;
+    default:
+      return null;
+  }
+}
+
+/** 'indian_restaurant' -> 'Indian'. */
+function toCuisine(raw: RawPlace): string | null {
+  const display = raw.primaryTypeDisplayName?.text;
+  if (display) return display;
+  const type = raw.primaryType;
+  if (!type) return null;
+  const words = type.replace(/_restaurant$/, '').split('_');
+  return words.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') || null;
+}
+
+export interface NearbyResult {
+  restaurants: NearbyRestaurant[];
+  /** Epoch ms of the underlying fetch — shown as "updated 3 days ago". */
+  fetchedAt: number;
+  fromCache: boolean;
+  /** True when the cache entry is past its TTL and the network was unavailable. */
+  stale: boolean;
+}
+
+/**
+ * Restaurants near a stop.
+ *
+ * Keyed on the *stop's* place id, so this is only ever called on the first
+ * visit to a stop's food tab or an explicit refresh — never on render. That is
+ * the single biggest lever on this app's Places bill.
+ */
+export async function nearbyRestaurants(
+  stopPlaceId: string,
+  location: { lat: number; lng: number },
+  { forceRefresh = false }: { forceRefresh?: boolean } = {},
+): Promise<NearbyResult> {
+  if (forceRefresh) {
+    await cache.invalidate('nearby', stopPlaceId);
+  } else {
+    const hit = await cache.read<NearbyRestaurant[]>('nearby', stopPlaceId);
+    if (hit) {
+      return { restaurants: hit.value, fetchedAt: hit.fetchedAt, fromCache: true, stale: false };
+    }
+  }
+
+  try {
+    const data = await request<NearbyResponse>('/places:searchNearby', {
+      method: 'POST',
+      fieldMask: NEARBY_FIELD_MASK,
+      body: {
+        includedTypes: ['restaurant'],
+        maxResultCount: NEARBY_MAX_RESULTS,
+        rankPreference: 'POPULARITY',
+        locationRestriction: {
+          circle: {
+            center: { latitude: location.lat, longitude: location.lng },
+            radius: NEARBY_RADIUS_M,
+          },
+        },
+      },
+    });
+
+    const restaurants: NearbyRestaurant[] = (data.places ?? []).map((raw) => ({
+      ...toPlaceDetails(raw, raw.id ?? ''),
+      cuisine: toCuisine(raw),
+      priceLevel: toPriceLevel(raw.priceLevel),
+    }));
+
+    await cache.write('nearby', stopPlaceId, restaurants);
+    return { restaurants, fetchedAt: Date.now(), fromCache: false, stale: false };
+  } catch (e) {
+    const stale = await cache.read<NearbyRestaurant[]>('nearby', stopPlaceId, {
+      allowStale: true,
+    });
+    if (stale) {
+      return {
+        restaurants: stale.value,
+        fetchedAt: stale.fetchedAt,
+        fromCache: true,
+        stale: true,
+      };
+    }
+    throw e;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Photos                                                                     */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Builds a photo URL from a photo resource name. This is a plain <Image> src —
+ * the API key rides in the query string, which is why the Places key must be
+ * restricted to Places API (New) in Cloud Console.
+ *
+ * Returns null when there's no photo or no key, so callers can fall back to a
+ * placeholder rather than rendering a broken image.
+ */
+export function photoUrl(photoRef: string | null, maxWidthPx = 400): string | null {
+  if (!photoRef || !hasApiKey()) return null;
+  const key = process.env.EXPO_PUBLIC_GOOGLE_PLACES_KEY as string;
+  return `${BASE}/${photoRef}/media?maxWidthPx=${maxWidthPx}&key=${encodeURIComponent(key)}`;
+}
