@@ -14,6 +14,7 @@ import { stopSummary } from '../../../../src/budget/engine';
 import { formatMoney, parseMoney, toDecimalString } from '../../../../src/budget/money';
 import { ActivitiesTab } from '../../../../src/components/stop/ActivitiesTab';
 import { FoodTab } from '../../../../src/components/stop/FoodTab';
+import { StopNotes } from '../../../../src/components/stop/StopNotes';
 import { BudgetBar } from '../../../../src/components/BudgetBar';
 import { AmountInput } from '../../../../src/components/AmountInput';
 import { Button, Card, Field, Loading, SegmentedControl } from '../../../../src/components/ui';
@@ -88,6 +89,8 @@ export default function StopDetailScreen() {
       <Stack.Screen options={{ title: stop.name }} />
 
       <View style={styles.tabBar}>
+        <StopNotes stop={stop} />
+
         <SegmentedControl<Tab>
           value={tab}
           onChange={setTab}
@@ -226,7 +229,7 @@ function Row({
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.bg },
-  tabBar: { padding: spacing.lg, paddingBottom: spacing.md },
+  tabBar: { padding: spacing.lg, paddingBottom: spacing.md, gap: spacing.md },
   content: { padding: spacing.lg, paddingTop: 0, gap: spacing.lg, paddingBottom: spacing.xxl },
   gapped: { gap: spacing.md },
   rows: { gap: spacing.sm },

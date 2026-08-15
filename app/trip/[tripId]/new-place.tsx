@@ -38,6 +38,7 @@ export default function NewPlaceScreen() {
   const [manualOpen, setManualOpen] = useState(false);
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
+  const [notes, setNotes] = useState('');
 
   const pickSuggestion = async (
     suggestion: { placeId: string; primaryText: string; secondaryText: string },
@@ -98,7 +99,7 @@ export default function NewPlaceScreen() {
         rating: null,
         photoRef: null,
         plannedBudgetMinor: null,
-        notes: null,
+        notes: notes.trim() || null,
       });
       router.back();
     } finally {
@@ -173,6 +174,15 @@ export default function NewPlaceScreen() {
                     placeholder="Kartavya Path, New Delhi"
                   />
                 </Field>
+                <Field label="Notes" hint="Optional. Anything worth remembering about this stop.">
+                  <Input
+                    value={notes}
+                    onChangeText={setNotes}
+                    placeholder="Best at sunset"
+                    multiline
+                    style={styles.notes}
+                  />
+                </Field>
                 <Button
                   title="Add stop"
                   onPress={saveManual}
@@ -209,4 +219,5 @@ const styles = StyleSheet.create({
   manualToggle: { alignSelf: 'flex-start' },
   manualToggleText: { color: colors.primary, fontSize: 14, fontWeight: '600' },
   manual: { gap: 0 },
+  notes: { minHeight: 72, textAlignVertical: 'top' },
 });

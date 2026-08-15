@@ -213,7 +213,11 @@ function PlanRow({
         <Text style={styles.itemTitle} numberOfLines={1}>
           {plan.name}
         </Text>
-        {plan.cuisine ? <Text style={styles.itemMeta}>{plan.cuisine}</Text> : null}
+        {plan.cuisine || plan.notes ? (
+          <Text style={styles.itemMeta} numberOfLines={1}>
+            {[plan.cuisine, plan.notes].filter(Boolean).join(' · ')}
+          </Text>
+        ) : null}
       </View>
 
       <AmountInput
@@ -285,6 +289,7 @@ function ManualFoodForm({
   const [name, setName] = useState('');
   const [cuisine, setCuisine] = useState('');
   const [costText, setCostText] = useState('');
+  const [notes, setNotes] = useState('');
 
   const save = async () => {
     if (!name.trim()) return;
@@ -294,11 +299,12 @@ function ManualFoodForm({
       name: name.trim(),
       cuisine: cuisine.trim() || null,
       estimatedCostMinor: parseMoney(costText, currency),
-      notes: null,
+      notes: notes.trim() || null,
     });
     setName('');
     setCuisine('');
     setCostText('');
+    setNotes('');
     onDone();
   };
 
@@ -306,6 +312,7 @@ function ManualFoodForm({
     <Card style={styles.form}>
       <Input value={name} onChangeText={setName} placeholder="Karim's" />
       <Input value={cuisine} onChangeText={setCuisine} placeholder="Cuisine (optional)" />
+      <Input value={notes} onChangeText={setNotes} placeholder="Note (optional)" />
       <View style={styles.formRow}>
         <AmountInput
           value={costText}
