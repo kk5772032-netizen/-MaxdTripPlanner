@@ -365,7 +365,15 @@ function FilterRow({
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.bg },
   content: { padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xxl },
-  headerAction: { color: colors.primary, fontSize: 15, fontWeight: '600' },
+  // native-stack renders headerRight flush with the screen edge, so the inset
+  // has to live on the element itself.
+  headerAction: {
+    color: colors.primary,
+    fontSize: 15,
+    fontWeight: '600',
+    paddingRight: spacing.lg,
+    paddingVertical: spacing.xs,
+  },
   form: { gap: 0 },
   formActions: { flexDirection: 'row', gap: spacing.md },
   flexButton: { flex: 1 },

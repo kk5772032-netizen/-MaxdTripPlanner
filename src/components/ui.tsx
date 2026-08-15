@@ -160,13 +160,26 @@ export function SegmentedControl<T extends string>({
   );
 }
 
-export function Fab({ onPress, label }: { onPress: () => void; label: string }) {
+export function Fab({
+  onPress,
+  label,
+  /** Lifts the button clear of a sticky footer. */
+  offsetBottom = spacing.xl,
+}: {
+  onPress: () => void;
+  label: string;
+  offsetBottom?: number;
+}) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
       onPress={onPress}
-      style={({ pressed }) => [styles.fab, pressed && styles.buttonPressed]}
+      style={({ pressed }) => [
+        styles.fab,
+        { bottom: offsetBottom },
+        pressed && styles.buttonPressed,
+      ]}
     >
       <Text style={styles.fabText}>+</Text>
     </Pressable>
@@ -241,7 +254,6 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     right: spacing.lg,
-    bottom: spacing.xl,
     width: 56,
     height: 56,
     borderRadius: 28,

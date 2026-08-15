@@ -86,20 +86,14 @@ export default function TripDetailScreen() {
         options={{
           title: trip.name,
           headerRight: () => (
-            <View style={styles.headerActions}>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => router.push(`/trip/${tripId}/dashboard`)}
-              >
-                <Text style={styles.headerAction}>Charts</Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => router.push(`/new-trip?tripId=${trip.id}`)}
-              >
-                <Text style={styles.headerAction}>Edit</Text>
-              </Pressable>
-            </View>
+            // One action only: two of these clipped the title on a narrow
+            // phone. The dashboard is reached from the footer instead.
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push(`/new-trip?tripId=${trip.id}`)}
+            >
+              <Text style={styles.headerAction}>Edit</Text>
+            </Pressable>
           ),
         }}
       />
@@ -154,13 +148,19 @@ export default function TripDetailScreen() {
       )}
 
       <View style={styles.footer}>
-        <BudgetBar
-          label="Trip total"
-          actual={totals.totalActual}
-          cap={totals.totalBudget}
-          planned={totals.totalPlanned}
-          currency={trip.currency}
-        />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Open budget dashboard"
+          onPress={() => router.push(`/trip/${tripId}/dashboard`)}
+        >
+          <BudgetBar
+            label="Trip total"
+            actual={totals.totalActual}
+            cap={totals.totalBudget}
+            planned={totals.totalPlanned}
+            currency={trip.currency}
+          />
+        </Pressable>
         <View style={styles.footerRow}>
           <Pressable
             accessibilityRole="button"
@@ -174,16 +174,27 @@ export default function TripDetailScreen() {
                   : `${expenses.length} expenses`}
             </Text>
           </Pressable>
-          <Text style={styles.footerRemaining}>
-            {totals.remainingBudget === null
-              ? `Planned ${formatMoney(totals.totalPlanned, trip.currency, { compact: true })}`
-              : `${formatMoney(totals.remainingBudget, trip.currency, { compact: true })} left`}
-          </Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push(`/trip/${tripId}/dashboard`)}
+          >
+            <Text style={styles.footerRemaining}>
+              {totals.remainingBudget === null
+                ? `Planned ${formatMoney(totals.totalPlanned, trip.currency, { compact: true })}`
+                : `${formatMoney(totals.remainingBudget, trip.currency, { compact: true })} left`}
+              <Text style={styles.footerChevron}>  Charts ›</Text>
+            </Text>
+          </Pressable>
         </View>
       </View>
 
       {stops.length > 0 && mode === 'list' ? (
-        <Fab label="Add stop" onPress={() => router.push(`/trip/${tripId}/new-place`)} />
+        <Fab
+          label="Add stop"
+          onPress={() => router.push(`/trip/${tripId}/new-place`)}
+          // Clear of the sticky footer, which is about 100pt tall.
+          offsetBottom={116}
+        />
       ) : null}
     </View>
   );
@@ -204,8 +215,15 @@ const styles = StyleSheet.create({
   mapMode: { flex: 1, paddingBottom: 140 },
   mapHeader: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg },
   map: { flex: 1, marginHorizontal: spacing.lg, borderRadius: 14 },
-  headerActions: { flexDirection: 'row', gap: spacing.lg },
-  headerAction: { color: colors.primary, fontSize: 15, fontWeight: '600' },
+  // native-stack renders headerRight flush with the screen edge, so the inset
+  // has to live on the element itself rather than a container style.
+  headerAction: {
+    color: colors.primary,
+    fontSize: 15,
+    fontWeight: '600',
+    paddingRight: spacing.lg,
+    paddingVertical: spacing.xs,
+  },
   footer: {
     position: 'absolute',
     left: 0,
@@ -222,6 +240,7 @@ const styles = StyleSheet.create({
   footerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   footerLink: { color: colors.primary, fontSize: 13, fontWeight: '600' },
   footerRemaining: { fontSize: 13, color: colors.textMuted, fontWeight: '600' },
+  footerChevron: { color: colors.primary },
   missing: {
     flex: 1,
     alignItems: 'center',
