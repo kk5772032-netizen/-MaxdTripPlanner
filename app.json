@@ -44,12 +44,6 @@
           "androidGoogleMapsApiKey": "$EXPO_PUBLIC_GOOGLE_MAPS_KEY",
           "iosGoogleMapsApiKey": "$EXPO_PUBLIC_GOOGLE_MAPS_KEY"
         }
-      ],
-      [
-        "react-native-reanimated",
-        {
-          "experimentalWorklets": true
-        }
       ]
     ],
     "experiments": {

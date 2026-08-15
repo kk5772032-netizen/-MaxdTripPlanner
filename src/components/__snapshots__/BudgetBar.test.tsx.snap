@@ -1,0 +1,396 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`BudgetBar renders amber from 80% to the cap 1`] = `
+<View
+  accessibilityLabel="Trip total"
+  accessibilityRole="progressbar"
+  accessibilityValue={
+    {
+      "max": 100,
+      "min": 0,
+      "now": 80,
+    }
+  }
+  accessible={true}
+>
+  <View
+    style={
+      {
+        "alignItems": "baseline",
+        "flexDirection": "row",
+        "justifyContent": "space-between",
+        "marginBottom": 4,
+      }
+    }
+  >
+    <Text
+      style={
+        {
+          "color": "#667085",
+          "fontSize": 13,
+          "fontWeight": "600",
+        }
+      }
+    >
+      Trip total
+    </Text>
+    <Text
+      style={
+        [
+          {
+            "color": "#101828",
+            "fontSize": 13,
+            "fontWeight": "600",
+          },
+          false,
+        ]
+      }
+    >
+      ₹800 of ₹1,000
+    </Text>
+  </View>
+  <View
+    style={
+      [
+        {
+          "backgroundColor": "#E4E7EC",
+          "borderRadius": 999,
+          "height": 10,
+          "justifyContent": "center",
+          "overflow": "hidden",
+        },
+        false,
+      ]
+    }
+  >
+    <View
+      style={
+        [
+          {
+            "borderRadius": 999,
+            "height": "100%",
+          },
+          {
+            "backgroundColor": "#F79009",
+            "width": "80%",
+          },
+        ]
+      }
+    />
+  </View>
+</View>
+`;
+
+exports[`BudgetBar renders compact without the explanatory note 1`] = `
+<View
+  accessibilityRole="progressbar"
+  accessibilityValue={
+    {
+      "max": 100,
+      "min": 0,
+      "now": 50,
+    }
+  }
+  accessible={true}
+>
+  <View
+    style={
+      [
+        {
+          "backgroundColor": "#E4E7EC",
+          "borderRadius": 999,
+          "height": 10,
+          "justifyContent": "center",
+          "overflow": "hidden",
+        },
+        {
+          "height": 6,
+        },
+      ]
+    }
+  >
+    <View
+      style={
+        [
+          {
+            "borderRadius": 999,
+            "height": "100%",
+          },
+          {
+            "backgroundColor": "#12B76A",
+            "width": "50%",
+          },
+        ]
+      }
+    />
+  </View>
+</View>
+`;
+
+exports[`BudgetBar renders green under 80% 1`] = `
+<View
+  accessibilityLabel="Trip total"
+  accessibilityRole="progressbar"
+  accessibilityValue={
+    {
+      "max": 100,
+      "min": 0,
+      "now": 50,
+    }
+  }
+  accessible={true}
+>
+  <View
+    style={
+      {
+        "alignItems": "baseline",
+        "flexDirection": "row",
+        "justifyContent": "space-between",
+        "marginBottom": 4,
+      }
+    }
+  >
+    <Text
+      style={
+        {
+          "color": "#667085",
+          "fontSize": 13,
+          "fontWeight": "600",
+        }
+      }
+    >
+      Trip total
+    </Text>
+    <Text
+      style={
+        [
+          {
+            "color": "#101828",
+            "fontSize": 13,
+            "fontWeight": "600",
+          },
+          false,
+        ]
+      }
+    >
+      ₹500 of ₹1,000
+    </Text>
+  </View>
+  <View
+    style={
+      [
+        {
+          "backgroundColor": "#E4E7EC",
+          "borderRadius": 999,
+          "height": 10,
+          "justifyContent": "center",
+          "overflow": "hidden",
+        },
+        false,
+      ]
+    }
+  >
+    <View
+      style={
+        [
+          {
+            "borderRadius": 999,
+            "height": "100%",
+          },
+          {
+            "backgroundColor": "#12B76A",
+            "width": "50%",
+          },
+        ]
+      }
+    />
+  </View>
+</View>
+`;
+
+exports[`BudgetBar renders red over the cap, with the overage spelled out 1`] = `
+<View
+  accessibilityLabel="Trip total"
+  accessibilityRole="progressbar"
+  accessibilityValue={
+    {
+      "max": 100,
+      "min": 0,
+      "now": 100,
+    }
+  }
+  accessible={true}
+>
+  <View
+    style={
+      {
+        "alignItems": "baseline",
+        "flexDirection": "row",
+        "justifyContent": "space-between",
+        "marginBottom": 4,
+      }
+    }
+  >
+    <Text
+      style={
+        {
+          "color": "#667085",
+          "fontSize": 13,
+          "fontWeight": "600",
+        }
+      }
+    >
+      Trip total
+    </Text>
+    <Text
+      style={
+        [
+          {
+            "color": "#101828",
+            "fontSize": 13,
+            "fontWeight": "600",
+          },
+          false,
+        ]
+      }
+    >
+      ₹1,500 of ₹1,000
+    </Text>
+  </View>
+  <View
+    style={
+      [
+        {
+          "backgroundColor": "#E4E7EC",
+          "borderRadius": 999,
+          "height": 10,
+          "justifyContent": "center",
+          "overflow": "hidden",
+        },
+        false,
+      ]
+    }
+  >
+    <View
+      style={
+        [
+          {
+            "borderRadius": 999,
+            "height": "100%",
+          },
+          {
+            "backgroundColor": "#F04438",
+            "width": "100%",
+          },
+        ]
+      }
+    />
+  </View>
+  <Text
+    style={
+      [
+        {
+          "color": "#98A2B3",
+          "fontSize": 12,
+          "marginTop": 4,
+        },
+        {
+          "color": "#F04438",
+          "fontWeight": "600",
+        },
+      ]
+    }
+  >
+    ₹500
+     over budget
+  </Text>
+</View>
+`;
+
+exports[`BudgetBar renders the no-budget variant when there is no cap 1`] = `
+<View
+  accessibilityLabel="Stop"
+  accessibilityRole="progressbar"
+  accessibilityValue={
+    {
+      "max": 100,
+      "min": 0,
+      "now": 0,
+    }
+  }
+  accessible={true}
+>
+  <View
+    style={
+      {
+        "alignItems": "baseline",
+        "flexDirection": "row",
+        "justifyContent": "space-between",
+        "marginBottom": 4,
+      }
+    }
+  >
+    <Text
+      style={
+        {
+          "color": "#667085",
+          "fontSize": 13,
+          "fontWeight": "600",
+        }
+      }
+    >
+      Stop
+    </Text>
+    <Text
+      style={
+        [
+          {
+            "color": "#101828",
+            "fontSize": 13,
+            "fontWeight": "600",
+          },
+          false,
+        ]
+      }
+    >
+      ₹250 spent
+    </Text>
+  </View>
+  <View
+    style={
+      [
+        {
+          "backgroundColor": "#E4E7EC",
+          "borderRadius": 999,
+          "height": 10,
+          "justifyContent": "center",
+          "overflow": "hidden",
+        },
+        false,
+      ]
+    }
+  >
+    <View
+      style={
+        {
+          "backgroundColor": "#E4E7EC",
+          "height": "100%",
+          "opacity": 0.6,
+          "width": "100%",
+        }
+      }
+    />
+  </View>
+  <Text
+    style={
+      {
+        "color": "#98A2B3",
+        "fontSize": 12,
+        "marginTop": 4,
+      }
+    }
+  >
+    No budget set for this stop.
+  </Text>
+</View>
+`;

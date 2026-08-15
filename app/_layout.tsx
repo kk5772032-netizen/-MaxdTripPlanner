@@ -5,6 +5,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { prune } from '../src/api/placesCache';
 import { getDb } from '../src/db/client';
 import { colors, spacing } from '../src/theme';
 
@@ -19,6 +20,9 @@ export default function RootLayout() {
     getDb()
       .then(() => {
         if (!cancelled) setDbState('ready');
+        // Housekeeping, not correctness — `read` already treats expired rows as
+        // misses. Fire and forget so it never delays the first screen.
+        void prune().catch(() => {});
       })
       .catch((e: unknown) => {
         if (cancelled) return;

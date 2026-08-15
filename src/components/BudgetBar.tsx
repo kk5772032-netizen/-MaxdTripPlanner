@@ -42,7 +42,15 @@ export function BudgetBar({
   const over = cap !== null && actual > cap;
 
   return (
-    <View style={style} accessibilityRole="progressbar" accessibilityValue={{ now: Math.round(ratio * 100), min: 0, max: 100 }}>
+    <View
+      style={style}
+      // Screen readers should announce the whole bar as one progress control,
+      // not read the label and the amounts as two unrelated pieces of text.
+      accessible
+      accessibilityRole="progressbar"
+      accessibilityLabel={label}
+      accessibilityValue={{ now: Math.round(ratio * 100), min: 0, max: 100 }}
+    >
       {label || !compact ? (
         <View style={styles.header}>
           {label ? <Text style={styles.label}>{label}</Text> : <View />}
