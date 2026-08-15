@@ -1,8 +1,10 @@
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { stopSummary, tripTotals, tripWarning } from '../../../src/budget/engine';
 import { formatMoney } from '../../../src/budget/money';
+import { BudgetBar } from '../../../src/components/BudgetBar';
 import { StopList } from '../../../src/components/StopList';
 import { Button, EmptyState, Fab, Loading } from '../../../src/components/ui';
 import { formatDateRange } from '../../../src/dates';
@@ -15,7 +17,8 @@ export default function TripDetailScreen() {
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   const removeTrip = useTripsStore((s) => s.remove);
 
-  const { trip, stops, loading, open, reorderStops } = useTripStore();
+  const { trip, stops, activities, foodPlans, expenses, loading, open, reorderStops } =
+    useTripStore();
   const [ready, setReady] = useState(false);
 
   useFocusEffect(
@@ -23,6 +26,17 @@ export default function TripDetailScreen() {
       void open(tripId).then(() => setReady(true));
     }, [tripId, open]),
   );
+
+  const totals = useMemo(
+    () => (trip ? tripTotals(trip, stops, activities, foodPlans, expenses) : null),
+    [trip, stops, activities, foodPlans, expenses],
+  );
+
+  const summaryByStop = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof stopSummary>>();
+    for (const summary of totals?.stops ?? []) map.set(summary.stop.id, summary);
+    return map;
+  }, [totals]);
 
   const confirmDeleteTrip = () => {
     if (!trip) return;
@@ -41,7 +55,7 @@ export default function TripDetailScreen() {
 
   if (loading || !ready) return <Loading />;
 
-  if (!trip) {
+  if (!trip || !totals) {
     return (
       <View style={styles.missing}>
         <Text style={styles.missingText}>This trip no longer exists.</Text>
@@ -50,16 +64,20 @@ export default function TripDetailScreen() {
     );
   }
 
+  const warning = tripWarning(totals);
+
   const header = (
     <View style={styles.header}>
       <Text style={styles.dates}>{formatDateRange(trip.startDate, trip.endDate)}</Text>
-      <Text style={styles.budget}>
-        {trip.totalBudgetMinor === null
-          ? 'No overall budget set'
-          : `Budget ${formatMoney(trip.totalBudgetMinor, trip.currency, { compact: true })}`}
-      </Text>
+
+      {warning ? (
+        <View style={styles.warning}>
+          <Text style={styles.warningText}>{warning}</Text>
+        </View>
+      ) : null}
+
       {stops.length > 1 ? (
-        <Text style={styles.hint}>Drag the handle to reorder stops.</Text>
+        <Text style={styles.hint}>Drag a handle to reorder stops.</Text>
       ) : null}
     </View>
   );
@@ -102,12 +120,46 @@ export default function TripDetailScreen() {
         }
         onPressStop={(stop) => router.push(`/trip/${tripId}/place/${stop.id}`)}
         onReorder={(ids) => void reorderStops(ids)}
-        renderSubtitle={(stop) =>
-          stop.plannedBudgetMinor !== null
-            ? `Cap ${formatMoney(stop.plannedBudgetMinor, trip.currency, { compact: true })}`
-            : undefined
-        }
+        renderSubtitle={(stop) => {
+          const activityCount = activities.filter((a) => a.stopId === stop.id).length;
+          const foodCount = foodPlans.filter((f) => f.stopId === stop.id).length;
+          return `${activityCount} ${activityCount === 1 ? 'activity' : 'activities'} · ${foodCount} food ${foodCount === 1 ? 'spot' : 'spots'}`;
+        }}
+        renderFooter={(stop) => {
+          const summary = summaryByStop.get(stop.id);
+          if (!summary) return null;
+          return (
+            <BudgetBar
+              actual={summary.actual}
+              cap={summary.budget}
+              planned={summary.planned}
+              currency={trip.currency}
+              compact
+            />
+          );
+        }}
+        contentContainerStyle={styles.listContent}
       />
+
+      <View style={styles.footer}>
+        <BudgetBar
+          label="Trip total"
+          actual={totals.totalActual}
+          cap={totals.totalBudget}
+          planned={totals.totalPlanned}
+          currency={trip.currency}
+        />
+        <View style={styles.footerRow}>
+          <Text style={styles.footerLink}>
+            {expenses.length === 1 ? '1 expense' : `${expenses.length} expenses`}
+          </Text>
+          <Text style={styles.footerRemaining}>
+            {totals.remainingBudget === null
+              ? `Planned ${formatMoney(totals.totalPlanned, trip.currency, { compact: true })}`
+              : `${formatMoney(totals.remainingBudget, trip.currency, { compact: true })} left`}
+          </Text>
+        </View>
+      </View>
 
       {stops.length > 0 ? (
         <Fab label="Add stop" onPress={() => router.push(`/trip/${tripId}/new-place`)} />
@@ -118,13 +170,35 @@ export default function TripDetailScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
-  header: { paddingBottom: spacing.lg, gap: 2 },
+  header: { paddingBottom: spacing.lg, gap: spacing.md },
   dates: { fontSize: 14, color: colors.textMuted },
-  budget: { fontSize: 14, color: colors.text, fontWeight: '600' },
-  hint: { fontSize: 12, color: colors.textFaint, marginTop: spacing.sm },
+  warning: {
+    backgroundColor: '#FEF3F2',
+    borderRadius: 8,
+    padding: spacing.md,
+  },
+  warningText: { color: colors.over, fontSize: 13, fontWeight: '600' },
+  hint: { fontSize: 12, color: colors.textFaint },
+  listContent: { paddingBottom: 150 },
   headerActions: { flexDirection: 'row', gap: spacing.lg },
   headerAction: { color: colors.primary, fontSize: 15, fontWeight: '600' },
   headerDanger: { color: colors.over },
+  footer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: colors.surface,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xl,
+    gap: spacing.sm,
+  },
+  footerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  footerLink: { color: colors.textMuted, fontSize: 13, fontWeight: '600' },
+  footerRemaining: { fontSize: 13, color: colors.textMuted, fontWeight: '600' },
   missing: {
     flex: 1,
     alignItems: 'center',
