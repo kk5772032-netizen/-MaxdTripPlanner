@@ -5,12 +5,15 @@ import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { stopSummary, tripTotals, tripWarning } from '../../../src/budget/engine';
 import { formatMoney } from '../../../src/budget/money';
 import { BudgetBar } from '../../../src/components/BudgetBar';
+import { MapWithRoute } from '../../../src/components/MapWithRoute';
 import { StopList } from '../../../src/components/StopList';
-import { Button, EmptyState, Fab, Loading } from '../../../src/components/ui';
+import { Button, EmptyState, Fab, Loading, SegmentedControl } from '../../../src/components/ui';
 import { formatDateRange } from '../../../src/dates';
 import { useTripStore } from '../../../src/state/tripStore';
 import { useTripsStore } from '../../../src/state/tripsStore';
 import { colors, spacing } from '../../../src/theme';
+
+type ViewMode = 'list' | 'map';
 
 export default function TripDetailScreen() {
   const router = useRouter();
@@ -20,6 +23,7 @@ export default function TripDetailScreen() {
   const { trip, stops, activities, foodPlans, expenses, loading, open, reorderStops } =
     useTripStore();
   const [ready, setReady] = useState(false);
+  const [mode, setMode] = useState<ViewMode>('list');
 
   useFocusEffect(
     useCallback(() => {
@@ -70,14 +74,26 @@ export default function TripDetailScreen() {
     <View style={styles.header}>
       <Text style={styles.dates}>{formatDateRange(trip.startDate, trip.endDate)}</Text>
 
+      <SegmentedControl<ViewMode>
+        value={mode}
+        onChange={setMode}
+        options={[
+          { value: 'list', label: 'Itinerary' },
+          { value: 'map', label: 'Map' },
+        ]}
+      />
+
       {warning ? (
         <View style={styles.warning}>
           <Text style={styles.warningText}>{warning}</Text>
         </View>
       ) : null}
 
-      {stops.length > 1 ? (
+      {mode === 'list' && stops.length > 1 ? (
         <Text style={styles.hint}>Drag a handle to reorder stops.</Text>
+      ) : null}
+      {mode === 'map' && stops.length > 0 ? (
+        <Text style={styles.hint}>Tap a pin, then its label, to open that stop.</Text>
       ) : null}
     </View>
   );
@@ -103,43 +119,54 @@ export default function TripDetailScreen() {
         }}
       />
 
-      <StopList
-        stops={stops}
-        ListHeaderComponent={header}
-        ListEmptyComponent={
-          <EmptyState
-            title="No stops yet"
-            body="Add the places this trip passes through — each one gets its own activities, food plan and budget."
-            action={
-              <Button
-                title="Add a stop"
-                onPress={() => router.push(`/trip/${tripId}/new-place`)}
-              />
-            }
+      {mode === 'map' ? (
+        <View style={styles.mapMode}>
+          <View style={styles.mapHeader}>{header}</View>
+          <MapWithRoute
+            stops={stops}
+            onPressStop={(stop) => router.push(`/trip/${tripId}/place/${stop.id}`)}
+            style={styles.map}
           />
-        }
-        onPressStop={(stop) => router.push(`/trip/${tripId}/place/${stop.id}`)}
-        onReorder={(ids) => void reorderStops(ids)}
-        renderSubtitle={(stop) => {
-          const activityCount = activities.filter((a) => a.stopId === stop.id).length;
-          const foodCount = foodPlans.filter((f) => f.stopId === stop.id).length;
-          return `${activityCount} ${activityCount === 1 ? 'activity' : 'activities'} · ${foodCount} food ${foodCount === 1 ? 'spot' : 'spots'}`;
-        }}
-        renderFooter={(stop) => {
-          const summary = summaryByStop.get(stop.id);
-          if (!summary) return null;
-          return (
-            <BudgetBar
-              actual={summary.actual}
-              cap={summary.budget}
-              planned={summary.planned}
-              currency={trip.currency}
-              compact
+        </View>
+      ) : (
+        <StopList
+          stops={stops}
+          ListHeaderComponent={header}
+          ListEmptyComponent={
+            <EmptyState
+              title="No stops yet"
+              body="Add the places this trip passes through — each one gets its own activities, food plan and budget."
+              action={
+                <Button
+                  title="Add a stop"
+                  onPress={() => router.push(`/trip/${tripId}/new-place`)}
+                />
+              }
             />
-          );
-        }}
-        contentContainerStyle={styles.listContent}
-      />
+          }
+          onPressStop={(stop) => router.push(`/trip/${tripId}/place/${stop.id}`)}
+          onReorder={(ids) => void reorderStops(ids)}
+          renderSubtitle={(stop) => {
+            const activityCount = activities.filter((a) => a.stopId === stop.id).length;
+            const foodCount = foodPlans.filter((f) => f.stopId === stop.id).length;
+            return `${activityCount} ${activityCount === 1 ? 'activity' : 'activities'} · ${foodCount} food ${foodCount === 1 ? 'spot' : 'spots'}`;
+          }}
+          renderFooter={(stop) => {
+            const summary = summaryByStop.get(stop.id);
+            if (!summary) return null;
+            return (
+              <BudgetBar
+                actual={summary.actual}
+                cap={summary.budget}
+                planned={summary.planned}
+                currency={trip.currency}
+                compact
+              />
+            );
+          }}
+          contentContainerStyle={styles.listContent}
+        />
+      )}
 
       <View style={styles.footer}>
         <BudgetBar
@@ -170,7 +197,7 @@ export default function TripDetailScreen() {
         </View>
       </View>
 
-      {stops.length > 0 ? (
+      {stops.length > 0 && mode === 'list' ? (
         <Fab label="Add stop" onPress={() => router.push(`/trip/${tripId}/new-place`)} />
       ) : null}
     </View>
@@ -189,6 +216,9 @@ const styles = StyleSheet.create({
   warningText: { color: colors.over, fontSize: 13, fontWeight: '600' },
   hint: { fontSize: 12, color: colors.textFaint },
   listContent: { paddingBottom: 150 },
+  mapMode: { flex: 1, paddingBottom: 140 },
+  mapHeader: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg },
+  map: { flex: 1, marginHorizontal: spacing.lg, borderRadius: 14 },
   headerActions: { flexDirection: 'row', gap: spacing.lg },
   headerAction: { color: colors.primary, fontSize: 15, fontWeight: '600' },
   headerDanger: { color: colors.over },
