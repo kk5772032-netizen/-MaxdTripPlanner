@@ -150,9 +150,18 @@ export default function TripDetailScreen() {
           currency={trip.currency}
         />
         <View style={styles.footerRow}>
-          <Text style={styles.footerLink}>
-            {expenses.length === 1 ? '1 expense' : `${expenses.length} expenses`}
-          </Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push(`/trip/${tripId}/expenses`)}
+          >
+            <Text style={styles.footerLink}>
+              {expenses.length === 0
+                ? 'Log an expense'
+                : expenses.length === 1
+                  ? '1 expense'
+                  : `${expenses.length} expenses`}
+            </Text>
+          </Pressable>
           <Text style={styles.footerRemaining}>
             {totals.remainingBudget === null
               ? `Planned ${formatMoney(totals.totalPlanned, trip.currency, { compact: true })}`
@@ -197,7 +206,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   footerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  footerLink: { color: colors.textMuted, fontSize: 13, fontWeight: '600' },
+  footerLink: { color: colors.primary, fontSize: 13, fontWeight: '600' },
   footerRemaining: { fontSize: 13, color: colors.textMuted, fontWeight: '600' },
   missing: {
     flex: 1,

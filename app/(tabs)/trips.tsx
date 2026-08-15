@@ -3,6 +3,7 @@ import { useCallback } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { formatMoney } from '../../src/budget/money';
+import { BudgetRing } from '../../src/components/BudgetRing';
 import { Button, EmptyState, Fab, Loading } from '../../src/components/ui';
 import { formatDateRange } from '../../src/dates';
 import { useTripsStore } from '../../src/state/tripsStore';
@@ -11,7 +12,7 @@ import type { Trip } from '../../src/types';
 
 export default function TripsScreen() {
   const router = useRouter();
-  const { trips, loading, error, load, remove } = useTripsStore();
+  const { trips, actualByTrip, loading, error, load, remove } = useTripsStore();
 
   // Reload on focus: coming back from trip detail, budgets and stop counts may
   // have changed.
@@ -43,6 +44,7 @@ export default function TripsScreen() {
         renderItem={({ item }) => (
           <TripCard
             trip={item}
+            actual={actualByTrip[item.id] ?? 0}
             onPress={() => router.push(`/trip/${item.id}`)}
             onLongPress={() => confirmDelete(item)}
           />
@@ -67,10 +69,12 @@ export default function TripsScreen() {
 
 function TripCard({
   trip,
+  actual,
   onPress,
   onLongPress,
 }: {
   trip: Trip;
+  actual: number;
   onPress: () => void;
   onLongPress: () => void;
 }) {
@@ -88,10 +92,11 @@ function TripCard({
         <Text style={styles.cardMeta}>{formatDateRange(trip.startDate, trip.endDate)}</Text>
         <Text style={styles.cardBudget}>
           {trip.totalBudgetMinor === null
-            ? 'No budget set'
-            : `Budget ${formatMoney(trip.totalBudgetMinor, trip.currency, { compact: true })}`}
+            ? `${formatMoney(actual, trip.currency, { compact: true })} spent`
+            : `${formatMoney(actual, trip.currency, { compact: true })} of ${formatMoney(trip.totalBudgetMinor, trip.currency, { compact: true })}`}
         </Text>
       </View>
+      <BudgetRing actual={actual} cap={trip.totalBudgetMinor} />
       <Text style={styles.chevron}>›</Text>
     </Pressable>
   );

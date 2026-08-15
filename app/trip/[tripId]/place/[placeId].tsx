@@ -108,7 +108,13 @@ export default function StopDetailScreen() {
       ) : null}
 
       {tab === 'budget' ? (
-        <BudgetTab currency={trip.currency} summary={summary} onRemoveStop={confirmRemove} />
+        <BudgetTab
+          currency={trip.currency}
+          summary={summary}
+          onRemoveStop={confirmRemove}
+          expenseCount={expenses.length}
+          onOpenExpenses={() => router.push(`/trip/${tripId}/expenses?stopId=${stop.id}`)}
+        />
       ) : null}
     </KeyboardAvoidingView>
   );
@@ -118,10 +124,14 @@ function BudgetTab({
   currency,
   summary,
   onRemoveStop,
+  expenseCount,
+  onOpenExpenses,
 }: {
   currency: string;
   summary: ReturnType<typeof stopSummary>;
   onRemoveStop: () => void;
+  expenseCount: number;
+  onOpenExpenses: () => void;
 }) {
   const updateStop = useTripStore((s) => s.updateStop);
   const [capText, setCapText] = useState(
@@ -181,6 +191,16 @@ function BudgetTab({
           against your cap.
         </Text>
       </Card>
+
+      <Button
+        title={
+          expenseCount
+            ? `View ${expenseCount} expense${expenseCount === 1 ? '' : 's'}`
+            : 'Log an expense'
+        }
+        variant="secondary"
+        onPress={onOpenExpenses}
+      />
 
       <Button title="Remove stop" variant="danger" onPress={onRemoveStop} />
     </ScrollView>

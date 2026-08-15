@@ -61,6 +61,23 @@ export async function listExpensesForStop(stopId: string): Promise<Expense[]> {
   return rows.map(toExpense);
 }
 
+/**
+ * Total logged spend per trip, keyed by trip id.
+ *
+ * Summed in SQLite rather than by loading every expense — the trip list only
+ * needs the number, and a trip with a long log shouldn't cost anything extra
+ * to render there.
+ */
+export async function totalsByTrip(): Promise<Record<string, number>> {
+  const db = await getDb();
+  const rows = await db.getAllAsync<{ trip_id: string; total: number }>(
+    `SELECT trip_id, SUM(amount) AS total FROM expenses GROUP BY trip_id`,
+  );
+  const totals: Record<string, number> = {};
+  for (const row of rows) totals[row.trip_id] = row.total ?? 0;
+  return totals;
+}
+
 export async function getExpense(id: string): Promise<Expense | null> {
   const db = await getDb();
   const row = await db.getFirstAsync<ExpenseRow>(`SELECT * FROM expenses WHERE id = ?`, id);
