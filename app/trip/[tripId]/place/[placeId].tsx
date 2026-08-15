@@ -18,12 +18,7 @@ import { StopNotes } from '../../../../src/components/stop/StopNotes';
 import { BudgetBar } from '../../../../src/components/BudgetBar';
 import { AmountInput } from '../../../../src/components/AmountInput';
 import { Button, Card, Field, Loading, SegmentedControl } from '../../../../src/components/ui';
-import {
-  selectActivities,
-  selectExpenses,
-  selectFoodPlans,
-  useTripStore,
-} from '../../../../src/state/tripStore';
+import { useTripStore } from '../../../../src/state/tripStore';
 import { colors, spacing } from '../../../../src/theme';
 
 type Tab = 'activities' | 'food' | 'budget';
@@ -41,10 +36,27 @@ export default function StopDetailScreen() {
     }, [tripId, open]),
   );
 
+  // Subscribe to the whole arrays and narrow with useMemo. A selector that
+  // filters inside the subscription returns a new array on every call, which
+  // makes useSyncExternalStore see a changed snapshot every render and spin
+  // forever — `.find` below is safe because it returns an existing element.
   const stop = useTripStore((s) => s.stops.find((x) => x.id === placeId));
-  const activities = useTripStore(useCallback((s) => selectActivities(s, placeId), [placeId]));
-  const foodPlans = useTripStore(useCallback((s) => selectFoodPlans(s, placeId), [placeId]));
-  const expenses = useTripStore(useCallback((s) => selectExpenses(s, placeId), [placeId]));
+  const allActivities = useTripStore((s) => s.activities);
+  const allFoodPlans = useTripStore((s) => s.foodPlans);
+  const allExpenses = useTripStore((s) => s.expenses);
+
+  const activities = useMemo(
+    () => allActivities.filter((a) => a.stopId === placeId),
+    [allActivities, placeId],
+  );
+  const foodPlans = useMemo(
+    () => allFoodPlans.filter((f) => f.stopId === placeId),
+    [allFoodPlans, placeId],
+  );
+  const expenses = useMemo(
+    () => allExpenses.filter((e) => e.stopId === placeId),
+    [allExpenses, placeId],
+  );
 
   const summary = useMemo(
     () => (stop ? stopSummary(stop, activities, foodPlans, expenses) : null),

@@ -217,21 +217,25 @@ export const useTripStore = create<TripState>((set, get) => ({
 }));
 
 /* -------------------------------------------------------------------------- */
-/* Selectors                                                                  */
+/* Narrowing helpers                                                          */
 /* -------------------------------------------------------------------------- */
 
-export function selectStop(state: TripState, stopId: string): Stop | undefined {
-  return state.stops.find((s) => s.id === stopId);
+/**
+ * These take plain arrays, not the store state, and that is deliberate.
+ *
+ * Passing a filtering function to `useTripStore` looks natural and is a trap:
+ * `filter` builds a new array every call, so useSyncExternalStore compares a
+ * fresh reference each render, decides the snapshot changed, and re-renders
+ * forever. Subscribe to `s.activities` and narrow the result inside a useMemo.
+ */
+export function activitiesForStop(activities: Activity[], stopId: string): Activity[] {
+  return activities.filter((a) => a.stopId === stopId);
 }
 
-export function selectActivities(state: TripState, stopId: string): Activity[] {
-  return state.activities.filter((a) => a.stopId === stopId);
+export function foodPlansForStop(foodPlans: FoodPlan[], stopId: string): FoodPlan[] {
+  return foodPlans.filter((f) => f.stopId === stopId);
 }
 
-export function selectFoodPlans(state: TripState, stopId: string): FoodPlan[] {
-  return state.foodPlans.filter((f) => f.stopId === stopId);
-}
-
-export function selectExpenses(state: TripState, stopId: string): Expense[] {
-  return state.expenses.filter((e) => e.stopId === stopId);
+export function expensesForStop(expenses: Expense[], stopId: string): Expense[] {
+  return expenses.filter((e) => e.stopId === stopId);
 }
