@@ -1,38 +1,30 @@
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { formatMoney } from '../../../src/budget/money';
-import { Button, Card, Loading } from '../../../src/components/ui';
-import { dayCount, formatDateRange } from '../../../src/dates';
-import * as tripsRepo from '../../../src/db/repositories/trips';
+import { StopList } from '../../../src/components/StopList';
+import { Button, EmptyState, Fab, Loading } from '../../../src/components/ui';
+import { formatDateRange } from '../../../src/dates';
+import { useTripStore } from '../../../src/state/tripStore';
 import { useTripsStore } from '../../../src/state/tripsStore';
 import { colors, spacing } from '../../../src/theme';
-import type { Trip } from '../../../src/types';
 
 export default function TripDetailScreen() {
   const router = useRouter();
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
-  const remove = useTripsStore((s) => s.remove);
+  const removeTrip = useTripsStore((s) => s.remove);
 
-  const [trip, setTrip] = useState<Trip | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { trip, stops, loading, open, reorderStops } = useTripStore();
+  const [ready, setReady] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
-      let cancelled = false;
-      void tripsRepo.getTrip(tripId).then((t) => {
-        if (cancelled) return;
-        setTrip(t);
-        setLoading(false);
-      });
-      return () => {
-        cancelled = true;
-      };
-    }, [tripId]),
+      void open(tripId).then(() => setReady(true));
+    }, [tripId, open]),
   );
 
-  const confirmDelete = () => {
+  const confirmDeleteTrip = () => {
     if (!trip) return;
     Alert.alert('Delete trip?', `"${trip.name}" and everything in it will be removed.`, [
       { text: 'Cancel', style: 'cancel' },
@@ -40,14 +32,14 @@ export default function TripDetailScreen() {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          await remove(trip.id);
+          await removeTrip(trip.id);
           router.replace('/trips');
         },
       },
     ]);
   };
 
-  if (loading) return <Loading />;
+  if (loading || !ready) return <Loading />;
 
   if (!trip) {
     return (
@@ -58,56 +50,87 @@ export default function TripDetailScreen() {
     );
   }
 
-  const days = dayCount(trip.startDate, trip.endDate);
+  const header = (
+    <View style={styles.header}>
+      <Text style={styles.dates}>{formatDateRange(trip.startDate, trip.endDate)}</Text>
+      <Text style={styles.budget}>
+        {trip.totalBudgetMinor === null
+          ? 'No overall budget set'
+          : `Budget ${formatMoney(trip.totalBudgetMinor, trip.currency, { compact: true })}`}
+      </Text>
+      {stops.length > 1 ? (
+        <Text style={styles.hint}>Drag the handle to reorder stops.</Text>
+      ) : null}
+    </View>
+  );
 
   return (
-    <ScrollView contentContainerStyle={styles.content}>
+    <View style={styles.screen}>
       <Stack.Screen
         options={{
           title: trip.name,
           headerRight: () => (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push(`/new-trip?tripId=${trip.id}`)}
-            >
-              <Text style={styles.headerAction}>Edit</Text>
-            </Pressable>
+            <View style={styles.headerActions}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => router.push(`/new-trip?tripId=${trip.id}`)}
+              >
+                <Text style={styles.headerAction}>Edit</Text>
+              </Pressable>
+              <Pressable accessibilityRole="button" onPress={confirmDeleteTrip}>
+                <Text style={[styles.headerAction, styles.headerDanger]}>Delete</Text>
+              </Pressable>
+            </View>
           ),
         }}
       />
 
-      <Card>
-        <Text style={styles.label}>Dates</Text>
-        <Text style={styles.value}>
-          {formatDateRange(trip.startDate, trip.endDate)}
-          {days ? ` · ${days} day${days === 1 ? '' : 's'}` : ''}
-        </Text>
+      <StopList
+        stops={stops}
+        ListHeaderComponent={header}
+        ListEmptyComponent={
+          <EmptyState
+            title="No stops yet"
+            body="Add the places this trip passes through — each one gets its own activities, food plan and budget."
+            action={
+              <Button
+                title="Add a stop"
+                onPress={() => router.push(`/trip/${tripId}/new-place`)}
+              />
+            }
+          />
+        }
+        onPressStop={(stop) => router.push(`/trip/${tripId}/place/${stop.id}`)}
+        onReorder={(ids) => void reorderStops(ids)}
+        renderSubtitle={(stop) =>
+          stop.plannedBudgetMinor !== null
+            ? `Cap ${formatMoney(stop.plannedBudgetMinor, trip.currency, { compact: true })}`
+            : undefined
+        }
+      />
 
-        <View style={styles.divider} />
-
-        <Text style={styles.label}>Total budget</Text>
-        <Text style={styles.value}>
-          {trip.totalBudgetMinor === null
-            ? 'Not set'
-            : formatMoney(trip.totalBudgetMinor, trip.currency)}
-        </Text>
-      </Card>
-
-      <Button title="Delete trip" variant="danger" onPress={confirmDelete} />
-    </ScrollView>
+      {stops.length > 0 ? (
+        <Fab label="Add stop" onPress={() => router.push(`/trip/${tripId}/new-place`)} />
+      ) : null}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { padding: spacing.lg, gap: spacing.lg },
-  label: { fontSize: 12, fontWeight: '600', color: colors.textMuted, marginBottom: 2 },
-  value: { fontSize: 16, color: colors.text },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.border,
-    marginVertical: spacing.md,
+  screen: { flex: 1, backgroundColor: colors.bg },
+  header: { paddingBottom: spacing.lg, gap: 2 },
+  dates: { fontSize: 14, color: colors.textMuted },
+  budget: { fontSize: 14, color: colors.text, fontWeight: '600' },
+  hint: { fontSize: 12, color: colors.textFaint, marginTop: spacing.sm },
+  headerActions: { flexDirection: 'row', gap: spacing.lg },
+  headerAction: { color: colors.primary, fontSize: 15, fontWeight: '600' },
+  headerDanger: { color: colors.over },
+  missing: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.lg,
+    padding: spacing.xl,
   },
-  headerAction: { color: colors.primary, fontSize: 16, fontWeight: '600' },
-  missing: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.lg, padding: spacing.xl },
   missingText: { color: colors.textMuted },
 });
