@@ -1,6 +1,6 @@
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { stopSummary, tripTotals, tripWarning } from '../../../src/budget/engine';
 import { formatMoney } from '../../../src/budget/money';
@@ -10,7 +10,6 @@ import { StopList } from '../../../src/components/StopList';
 import { Button, EmptyState, Fab, Loading, SegmentedControl } from '../../../src/components/ui';
 import { formatDateRange } from '../../../src/dates';
 import { useTripStore } from '../../../src/state/tripStore';
-import { useTripsStore } from '../../../src/state/tripsStore';
 import { colors, spacing } from '../../../src/theme';
 
 type ViewMode = 'list' | 'map';
@@ -18,8 +17,6 @@ type ViewMode = 'list' | 'map';
 export default function TripDetailScreen() {
   const router = useRouter();
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
-  const removeTrip = useTripsStore((s) => s.remove);
-
   const { trip, stops, activities, foodPlans, expenses, loading, open, reorderStops } =
     useTripStore();
   const [ready, setReady] = useState(false);
@@ -41,21 +38,6 @@ export default function TripDetailScreen() {
     for (const summary of totals?.stops ?? []) map.set(summary.stop.id, summary);
     return map;
   }, [totals]);
-
-  const confirmDeleteTrip = () => {
-    if (!trip) return;
-    Alert.alert('Delete trip?', `"${trip.name}" and everything in it will be removed.`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          await removeTrip(trip.id);
-          router.replace('/trips');
-        },
-      },
-    ]);
-  };
 
   if (loading || !ready) return <Loading />;
 
@@ -107,12 +89,15 @@ export default function TripDetailScreen() {
             <View style={styles.headerActions}>
               <Pressable
                 accessibilityRole="button"
+                onPress={() => router.push(`/trip/${tripId}/dashboard`)}
+              >
+                <Text style={styles.headerAction}>Charts</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
                 onPress={() => router.push(`/new-trip?tripId=${trip.id}`)}
               >
                 <Text style={styles.headerAction}>Edit</Text>
-              </Pressable>
-              <Pressable accessibilityRole="button" onPress={confirmDeleteTrip}>
-                <Text style={[styles.headerAction, styles.headerDanger]}>Delete</Text>
               </Pressable>
             </View>
           ),
@@ -221,7 +206,6 @@ const styles = StyleSheet.create({
   map: { flex: 1, marginHorizontal: spacing.lg, borderRadius: 14 },
   headerActions: { flexDirection: 'row', gap: spacing.lg },
   headerAction: { color: colors.primary, fontSize: 15, fontWeight: '600' },
-  headerDanger: { color: colors.over },
   footer: {
     position: 'absolute',
     left: 0,

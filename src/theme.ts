@@ -39,13 +39,27 @@ export const radius = {
   pill: 999,
 } as const;
 
-/** Category colors used by the dashboard pie chart and expense rows. */
+/**
+ * Category colors — identity, used by the dashboard pie and the expense log.
+ *
+ * The four real categories are a validated categorical palette: every pair
+ * clears the colorblind-separation and normal-vision floors, each hue is above
+ * the chroma floor, and all four hit 3:1 against the card surface. Don't
+ * re-pick these by eye.
+ *
+ * `other` is deliberately the odd one out: a residual bucket should read as
+ * neutral rather than claim a fifth identity, and every chart that uses these
+ * carries a legend and direct labels, so nothing here is color-alone.
+ *
+ * These are kept clear of the budget status hues below — on the dashboard a red
+ * mark means "over budget", and no expense category may borrow that meaning.
+ */
 export const categoryColors: Record<string, string> = {
-  food: '#F79009',
-  activity: '#2563EB',
-  transport: '#7A5AF8',
-  lodging: '#12B76A',
-  other: '#98A2B3',
+  food: '#DC6803',
+  activity: '#2E90FA',
+  transport: '#9E33D6',
+  lodging: '#039855',
+  other: '#8D97A5',
 };
 
 export const categoryLabels: Record<string, string> = {

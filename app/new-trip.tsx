@@ -1,6 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -33,6 +34,7 @@ export default function NewTripScreen() {
 
   const create = useTripsStore((s) => s.create);
   const update = useTripsStore((s) => s.update);
+  const remove = useTripsStore((s) => s.remove);
 
   const [name, setName] = useState('');
   const [startDate, setStartDate] = useState<string | null>(null);
@@ -151,6 +153,31 @@ export default function NewTripScreen() {
           disabled={!canSave}
           loading={saving}
         />
+
+        {isEdit ? (
+          <Button
+            title="Delete trip"
+            variant="danger"
+            style={styles.delete}
+            onPress={() =>
+              Alert.alert(
+                'Delete trip?',
+                `"${name}" and everything in it — stops, activities, food plans and expenses — will be removed.`,
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: async () => {
+                      await remove(tripId!);
+                      router.replace('/trips');
+                    },
+                  },
+                ],
+              )
+            }
+          />
+        ) : null}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -174,4 +201,5 @@ const styles = StyleSheet.create({
   amountRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   amountSymbol: { fontSize: 17, color: colors.textMuted, minWidth: 20 },
   amountInput: { flex: 1 },
+  delete: { marginTop: spacing.md },
 });
