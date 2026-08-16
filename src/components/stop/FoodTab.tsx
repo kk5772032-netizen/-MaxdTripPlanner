@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { PlacesError, hasApiKey, nearbyRestaurants } from '../../api/places';
+import { confirmDestructive } from '../../confirm';
 import { formatMoney, parseMoney, sumMinor, toDecimalString } from '../../budget/money';
 import { useTripStore } from '../../state/tripStore';
 import { colors, elevation, radius, spacing, type } from '../../theme';
@@ -99,11 +100,13 @@ export function FoodTab({
     });
   };
 
-  const confirmRemove = (plan: FoodPlan) => {
-    Alert.alert('Remove from food plan?', `"${plan.name}" will be removed.`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Remove', style: 'destructive', onPress: () => void removeFoodPlan(plan.id) },
-    ]);
+  const confirmRemove = async (plan: FoodPlan) => {
+    const ok = await confirmDestructive({
+      title: 'Remove from food plan?',
+      message: `"${plan.name}" will be removed.`,
+      confirmLabel: 'Remove',
+    });
+    if (ok) await removeFoodPlan(plan.id);
   };
 
   return (
@@ -123,7 +126,7 @@ export function FoodTab({
                 key={plan.id}
                 plan={plan}
                 currency={currency}
-                onRemove={() => confirmRemove(plan)}
+                onRemove={() => void confirmRemove(plan)}
               />
             ))}
           </View>

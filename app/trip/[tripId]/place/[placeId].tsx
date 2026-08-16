@@ -1,7 +1,6 @@
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -11,6 +10,7 @@ import {
 } from 'react-native';
 
 import { stopSummary } from '../../../../src/budget/engine';
+import { confirmDestructive } from '../../../../src/confirm';
 import { formatMoney, parseMoney, toDecimalString } from '../../../../src/budget/money';
 import { ActivitiesTab } from '../../../../src/components/stop/ActivitiesTab';
 import { FoodTab } from '../../../../src/components/stop/FoodTab';
@@ -71,23 +71,16 @@ export default function StopDetailScreen() {
     [stop, activities, foodPlans, expenses],
   );
 
-  const confirmRemove = () => {
+  const confirmRemove = async () => {
     if (!stop) return;
-    Alert.alert(
-      'Remove stop?',
-      `"${stop.name}", its activities and its food plan will be removed. Expenses logged against it are kept as trip-level expenses.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            await removeStop(stop.id);
-            router.back();
-          },
-        },
-      ],
-    );
+    const ok = await confirmDestructive({
+      title: 'Remove stop?',
+      message: `"${stop.name}", its activities and its food plan will be removed. Expenses logged against it are kept as trip-level expenses.`,
+      confirmLabel: 'Remove',
+    });
+    if (!ok) return;
+    await removeStop(stop.id);
+    router.back();
   };
 
   if (loading && !stop) return <SkeletonList rows={2} />;
@@ -146,7 +139,7 @@ export default function StopDetailScreen() {
         <BudgetTab
           currency={trip.currency}
           summary={summary}
-          onRemoveStop={confirmRemove}
+          onRemoveStop={() => void confirmRemove()}
           expenseCount={expenses.length}
           onOpenExpenses={() => router.push(`/trip/${tripId}/expenses?stopId=${stop.id}`)}
         />

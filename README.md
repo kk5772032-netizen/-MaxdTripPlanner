@@ -9,11 +9,49 @@ no server, no sync.
 
 ---
 
-## Quick start
+## Get the app on your phone
+
+### Option A — build an APK in the cloud (no Android Studio)
+
+[EAS Build](https://docs.expo.dev/build/introduction/) compiles on Expo's
+servers and hands back a download link. A free Expo account is enough.
+
+```bash
+npm install -g eas-cli
+eas login                                  # free account: expo.dev/signup
+eas build --platform android --profile preview
+```
+
+`eas.json` already defines the `preview` profile as `buildType: apk`, so this
+produces an installable **.apk** (not an .aab). When it finishes, EAS prints a
+URL — open it on your phone, download, and install. Android will ask you to
+allow installing from an unknown source, which is expected for a
+non-Play-Store build.
+
+Nothing else needs configuring: the app runs without API keys, and you can add
+them later.
+
+### Option B — build the APK locally
+
+Needs the Android SDK (Android Studio, or just the command-line tools) and a
+JDK 17+.
 
 ```bash
 npm install
-cp .env.example .env      # then add your API keys — see below
+npx expo prebuild --platform android     # generates ./android
+cd android
+./gradlew assembleRelease
+# APK lands at: android/app/build/outputs/apk/release/app-release.apk
+```
+
+`assembleDebug` is faster and doesn't need a signing key, if you just want to
+try it.
+
+### Option C — run it live while you develop
+
+```bash
+npm install
+cp .env.example .env      # optional, see API keys below
 npm start
 ```
 
@@ -23,14 +61,20 @@ The app runs without any API keys — you just add stops by typing them instead
 of searching, and the map and nearby-restaurant features stay switched off with
 an explanation in place of each. Nothing crashes and nothing is hidden.
 
-> **Native modules.** `react-native-maps` and `@react-native-community/datetimepicker`
-> are not in the Expo Go binary. Expo Go is fine for everything else; for the map
-> you need a development build:
->
-> ```bash
-> npx expo prebuild
-> npx expo run:android   # or: npx expo run:ios
-> ```
+> **Expo Go limits.** `react-native-maps` and the date picker aren't in the Expo
+> Go binary, so the map won't render there. Everything else works. A dev build
+> (`npx expo prebuild && npx expo run:android`) or an APK from Option A has the
+> full feature set.
+
+### Running it in a browser
+
+```bash
+npm run web
+```
+
+Useful for quick checks — the whole app runs except the map, which is
+native-only and shows the stop list with coordinates instead
+(`MapWithRoute.web.tsx`).
 
 ### Other commands
 
@@ -187,6 +231,14 @@ npm test
 - `src/components/BudgetBar.test.tsx` — snapshots per status colour, plus
   explicit assertions on the colour and the label, since a snapshot alone would
   happily record a green bar at 150%.
+- `src/screens.smoke.test.tsx` — every screen mounted against a real in-memory
+  database with real rows, rendered with a 34pt bottom safe-area inset. Unit
+  tests over pure functions say nothing about whether a screen renders at all.
+
+Beyond Jest, the app is driven end to end in a real browser (`npm run web` plus
+Playwright): 23 checks covering trip CRUD, stops, reordering, activities, food
+plans, stop caps, expense add/edit/filter, the roll-ups, the dashboard, the map
+and the delete cascades.
 
 ### Deliberate choices worth knowing about
 
@@ -202,6 +254,10 @@ npm test
   app doesn't ask. If you add "use my current location", that's when
   `NSLocationWhenInUseUsageDescription` and `ACCESS_FINE_LOCATION` become
   necessary.
+- **Destructive actions go through `src/confirm.ts`, not `Alert.alert`.**
+  `Alert` is native-only — react-native-web ships it as a stub, so every delete
+  in the app was silently dead in a browser. That helper routes to
+  `window.confirm` on web and keeps the native dialog everywhere else.
 
 ---
 

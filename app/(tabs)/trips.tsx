@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { statusFor } from '../../src/budget/engine';
+import { confirmDestructive } from '../../src/confirm';
 import { formatMoney } from '../../src/budget/money';
 import { BudgetRing } from '../../src/components/BudgetRing';
 import {
@@ -41,11 +42,12 @@ export default function TripsScreen() {
     }, [load]),
   );
 
-  const confirmDelete = (trip: Trip) => {
-    Alert.alert('Delete trip?', `"${trip.name}" and everything in it will be removed.`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => void remove(trip.id) },
-    ]);
+  const confirmDelete = async (trip: Trip) => {
+    const ok = await confirmDestructive({
+      title: 'Delete trip?',
+      message: `"${trip.name}" and everything in it will be removed.`,
+    });
+    if (ok) await remove(trip.id);
   };
 
   if (loading && trips.length === 0) return <SkeletonList rows={3} />;
@@ -71,7 +73,7 @@ export default function TripsScreen() {
             actual={actualByTrip[item.id] ?? 0}
             stopCount={stopCountByTrip[item.id] ?? 0}
             onPress={() => router.push(`/trip/${item.id}`)}
-            onLongPress={() => confirmDelete(item)}
+            onLongPress={() => void confirmDelete(item)}
           />
         )}
         ListEmptyComponent={

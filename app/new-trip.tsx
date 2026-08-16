@@ -1,7 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -17,6 +16,7 @@ import {
   parseMoney,
   toDecimalString,
 } from '../src/budget/money';
+import { confirmDestructive } from '../src/confirm';
 import { DateRangeField } from '../src/components/DateRangeField';
 import { Button, Chip, Field, Input, notifySuccess } from '../src/components/ui';
 import * as tripsRepo from '../src/db/repositories/trips';
@@ -155,23 +155,15 @@ export default function NewTripScreen() {
             icon="trash-outline"
             variant="danger"
             style={styles.delete}
-            onPress={() =>
-              Alert.alert(
-                'Delete trip?',
-                `"${name}" and everything in it — stops, activities, food plans and expenses — will be removed.`,
-                [
-                  { text: 'Cancel', style: 'cancel' },
-                  {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: async () => {
-                      await remove(tripId!);
-                      router.replace('/trips');
-                    },
-                  },
-                ],
-              )
-            }
+            onPress={async () => {
+              const ok = await confirmDestructive({
+                title: 'Delete trip?',
+                message: `"${name}" and everything in it — stops, activities, food plans and expenses — will be removed.`,
+              });
+              if (!ok) return;
+              await remove(tripId!);
+              router.replace('/trips');
+            }}
           />
         ) : null}
       </ScrollView>

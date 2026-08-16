@@ -1,7 +1,6 @@
 import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -12,6 +11,7 @@ import {
 } from 'react-native';
 
 import { formatMoney, parseMoney, toDecimalString } from '../../../src/budget/money';
+import { confirmDestructive } from '../../../src/confirm';
 import { AmountInput } from '../../../src/components/AmountInput';
 import { DateField } from '../../../src/components/DateField';
 import { ExpenseRow } from '../../../src/components/ExpenseRow';
@@ -87,11 +87,12 @@ export default function ExpensesScreen() {
     [filtered],
   );
 
-  const confirmDelete = (expense: Expense) => {
-    Alert.alert('Delete expense?', 'This expense will be removed from the trip.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => void removeExpense(expense.id) },
-    ]);
+  const confirmDelete = async (expense: Expense) => {
+    const ok = await confirmDestructive({
+      title: 'Delete expense?',
+      message: 'This expense will be removed from the trip.',
+    });
+    if (ok) await removeExpense(expense.id);
   };
 
   if ((loading && !ready) || !trip) return <SkeletonList rows={3} />;
@@ -190,7 +191,7 @@ export default function ExpensesScreen() {
                   setFormOpen(false);
                   setEditing(expense);
                 }}
-                onLongPress={() => confirmDelete(expense)}
+                onLongPress={() => void confirmDelete(expense)}
               />
             ))}
           </View>

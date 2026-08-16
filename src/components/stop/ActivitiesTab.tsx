@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { formatMoney, parseMoney, sumMinor } from '../../budget/money';
+import { confirmDestructive } from '../../confirm';
 import { useTripStore } from '../../state/tripStore';
 import { colors, elevation, radius, spacing, type } from '../../theme';
 import type { Activity, Stop } from '../../types';
@@ -46,15 +47,13 @@ export function ActivitiesTab({
     }
   };
 
-  const confirmRemove = (activity: Activity) => {
-    Alert.alert('Remove activity?', `"${activity.title}" will be removed.`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Remove',
-        style: 'destructive',
-        onPress: () => void removeActivity(activity.id),
-      },
-    ]);
+  const confirmRemove = async (activity: Activity) => {
+    const ok = await confirmDestructive({
+      title: 'Remove activity?',
+      message: `"${activity.title}" will be removed.`,
+      confirmLabel: 'Remove',
+    });
+    if (ok) await removeActivity(activity.id);
   };
 
   return (
@@ -105,7 +104,7 @@ export function ActivitiesTab({
                 accessibilityState={{ checked: activity.done }}
                 accessibilityLabel={activity.title}
                 onPress={() => void updateActivity(activity.id, { done: !activity.done })}
-                onLongPress={() => confirmRemove(activity)}
+                onLongPress={() => void confirmRemove(activity)}
                 style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}
               >
                 <View style={[styles.checkbox, activity.done && styles.checkboxDone]}>
@@ -129,7 +128,7 @@ export function ActivitiesTab({
                   label={`Remove ${activity.title}`}
                   tone="danger"
                   size={30}
-                  onPress={() => confirmRemove(activity)}
+                  onPress={() => void confirmRemove(activity)}
                 />
               </Pressable>
             ))}
