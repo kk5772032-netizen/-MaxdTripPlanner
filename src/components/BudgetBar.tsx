@@ -1,8 +1,9 @@
+import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
 import { progressRatio, statusFor } from '../budget/engine';
 import { formatMoney } from '../budget/money';
-import { colors, radius, spacing, statusColor } from '../theme';
+import { colors, radius, spacing, statusColor, type } from '../theme';
 import type { BudgetStatus } from '../types';
 
 /**
@@ -84,9 +85,12 @@ export function BudgetBar({
         <Text style={styles.note}>No budget set for this stop.</Text>
       ) : null}
       {over ? (
-        <Text style={[styles.note, styles.noteOver]}>
-          {formatMoney(actual - cap!, currency, { compact: true })} over budget
-        </Text>
+        <View style={styles.overRow}>
+          <Ionicons name="alert-circle" size={13} color={colors.over} />
+          <Text style={[styles.note, styles.noteOver]}>
+            {formatMoney(actual - cap!, currency, { compact: true })} over budget
+          </Text>
+        </View>
       ) : null}
     </View>
   );
@@ -99,13 +103,13 @@ const styles = StyleSheet.create({
     alignItems: 'baseline',
     marginBottom: spacing.xs,
   },
-  label: { fontSize: 13, fontWeight: '600', color: colors.textMuted },
-  amounts: { fontSize: 13, fontWeight: '600', color: colors.text },
-  amountsCompact: { fontSize: 12, fontWeight: '500', color: colors.textMuted },
+  label: { ...type.label, color: colors.textMuted },
+  amounts: { ...type.label, color: colors.text },
+  amountsCompact: { ...type.caption, color: colors.textMuted },
   track: {
     height: 10,
     borderRadius: radius.pill,
-    backgroundColor: colors.border,
+    backgroundColor: colors.surfaceSunken,
     overflow: 'hidden',
     justifyContent: 'center',
   },
@@ -124,6 +128,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.text,
     opacity: 0.35,
   },
-  note: { fontSize: 12, color: colors.textFaint, marginTop: spacing.xs },
-  noteOver: { color: colors.over, fontWeight: '600' },
+  note: { ...type.caption, color: colors.textFaint, marginTop: spacing.xs },
+  overRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.xs },
+  noteOver: { color: colors.over, fontWeight: '600', marginTop: 0 },
 });

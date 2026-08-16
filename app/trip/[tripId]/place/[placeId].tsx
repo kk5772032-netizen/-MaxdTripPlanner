@@ -17,9 +17,17 @@ import { FoodTab } from '../../../../src/components/stop/FoodTab';
 import { StopNotes } from '../../../../src/components/stop/StopNotes';
 import { BudgetBar } from '../../../../src/components/BudgetBar';
 import { AmountInput } from '../../../../src/components/AmountInput';
-import { Button, Card, Field, Loading, SegmentedControl } from '../../../../src/components/ui';
+import {
+  Button,
+  Card,
+  EmptyState,
+  Field,
+  SegmentedControl,
+  SkeletonList,
+  notifySuccess,
+} from '../../../../src/components/ui';
 import { useTripStore } from '../../../../src/state/tripStore';
-import { colors, spacing } from '../../../../src/theme';
+import { colors, radius, spacing, type } from '../../../../src/theme';
 
 type Tab = 'activities' | 'food' | 'budget';
 
@@ -82,13 +90,17 @@ export default function StopDetailScreen() {
     );
   };
 
-  if (loading && !stop) return <Loading />;
+  if (loading && !stop) return <SkeletonList rows={2} />;
 
   if (!stop || !trip || !summary) {
     return (
       <View style={styles.missing}>
-        <Text style={styles.missingText}>This stop is no longer part of the trip.</Text>
-        <Button title="Back" variant="secondary" onPress={() => router.back()} />
+        <EmptyState
+          icon="alert-circle-outline"
+          title="Stop not found"
+          body="This stop is no longer part of the trip."
+          action={<Button title="Back" variant="secondary" onPress={() => router.back()} />}
+        />
       </View>
     );
   }
@@ -107,9 +119,17 @@ export default function StopDetailScreen() {
           value={tab}
           onChange={setTab}
           options={[
-            { value: 'activities', label: `Activities${activities.length ? ` (${activities.length})` : ''}` },
-            { value: 'food', label: `Food${foodPlans.length ? ` (${foodPlans.length})` : ''}` },
-            { value: 'budget', label: 'Budget' },
+            {
+              value: 'activities',
+              label: activities.length ? `To do ${activities.length}` : 'To do',
+              icon: 'checkbox-outline',
+            },
+            {
+              value: 'food',
+              label: foodPlans.length ? `Food ${foodPlans.length}` : 'Food',
+              icon: 'restaurant-outline',
+            },
+            { value: 'budget', label: 'Budget', icon: 'wallet-outline' },
           ]}
         />
       </View>
@@ -160,6 +180,7 @@ function BudgetTab({
       await updateStop(summary.stop.id, {
         plannedBudgetMinor: parseMoney(capText, currency),
       });
+      notifySuccess();
     } finally {
       setSaving(false);
     }
@@ -179,7 +200,7 @@ function BudgetTab({
             accessibilityLabel="Stop budget"
           />
         </Field>
-        <Button title="Save budget" onPress={saveCap} loading={saving} />
+        <Button title="Save budget" icon="checkmark" onPress={saveCap} loading={saving} />
       </Card>
 
       <Card style={styles.gapped}>
@@ -213,11 +234,17 @@ function BudgetTab({
             ? `View ${expenseCount} expense${expenseCount === 1 ? '' : 's'}`
             : 'Log an expense'
         }
+        icon="receipt-outline"
         variant="secondary"
         onPress={onOpenExpenses}
       />
 
-      <Button title="Remove stop" variant="danger" onPress={onRemoveStop} />
+      <Button
+        title="Remove stop"
+        icon="trash-outline"
+        variant="danger"
+        onPress={onRemoveStop}
+      />
     </ScrollView>
   );
 }
@@ -245,17 +272,10 @@ const styles = StyleSheet.create({
   content: { padding: spacing.lg, paddingTop: 0, gap: spacing.lg, paddingBottom: spacing.xxl },
   gapped: { gap: spacing.md },
   rows: { gap: spacing.sm },
-  row: { flexDirection: 'row', justifyContent: 'space-between' },
-  rowLabel: { fontSize: 14, color: colors.textMuted },
-  rowValue: { fontSize: 14, color: colors.text, fontWeight: '600' },
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  rowLabel: { ...type.body, color: colors.textMuted },
+  rowValue: { ...type.amount, color: colors.text },
   rowValueOver: { color: colors.over },
-  plannedNote: { fontSize: 12, color: colors.textFaint, lineHeight: 17 },
-  missing: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.lg,
-    padding: spacing.xl,
-  },
-  missingText: { color: colors.textMuted, textAlign: 'center' },
+  plannedNote: { ...type.caption, color: colors.textFaint },
+  missing: { flex: 1, justifyContent: 'center' },
 });

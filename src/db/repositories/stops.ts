@@ -73,6 +73,17 @@ export async function listStops(tripId: string): Promise<Stop[]> {
   return rows.map(toStop);
 }
 
+/** Stop count per trip, for the trip list. Counted in SQL, not by loading rows. */
+export async function countsByTrip(): Promise<Record<string, number>> {
+  const db = await getDb();
+  const rows = await db.getAllAsync<{ trip_id: string; count: number }>(
+    `SELECT trip_id, COUNT(*) AS count FROM stops GROUP BY trip_id`,
+  );
+  const counts: Record<string, number> = {};
+  for (const row of rows) counts[row.trip_id] = row.count;
+  return counts;
+}
+
 export async function getStop(id: string): Promise<Stop | null> {
   const db = await getDb();
   const row = await db.getFirstAsync<StopRow>(`SELECT * FROM stops WHERE id = ?`, id);

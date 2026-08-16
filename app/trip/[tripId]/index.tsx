@@ -1,22 +1,34 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { stopSummary, tripTotals, tripWarning } from '../../../src/budget/engine';
 import { formatMoney } from '../../../src/budget/money';
 import { BudgetBar } from '../../../src/components/BudgetBar';
 import { MapWithRoute } from '../../../src/components/MapWithRoute';
 import { StopList } from '../../../src/components/StopList';
-import { Button, EmptyState, Fab, Loading, SegmentedControl } from '../../../src/components/ui';
+import {
+  Button,
+  EmptyState,
+  Fab,
+  HeaderAction,
+  Notice,
+  SegmentedControl,
+  SkeletonList,
+} from '../../../src/components/ui';
 import { formatDateRange } from '../../../src/dates';
 import { useTripStore } from '../../../src/state/tripStore';
-import { colors, spacing } from '../../../src/theme';
+import { colors, elevation, radius, spacing, type } from '../../../src/theme';
 
 type ViewMode = 'list' | 'map';
 
 export default function TripDetailScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
+
   const { trip, stops, activities, foodPlans, expenses, loading, open, reorderStops } =
     useTripStore();
   const [ready, setReady] = useState(false);
@@ -39,43 +51,51 @@ export default function TripDetailScreen() {
     return map;
   }, [totals]);
 
-  if (loading || !ready) return <Loading />;
+  if (loading || !ready) return <SkeletonList rows={3} />;
 
   if (!trip || !totals) {
     return (
       <View style={styles.missing}>
-        <Text style={styles.missingText}>This trip no longer exists.</Text>
-        <Button title="Back to trips" variant="secondary" onPress={() => router.replace('/trips')} />
+        <EmptyState
+          icon="alert-circle-outline"
+          title="Trip not found"
+          body="This trip no longer exists."
+          action={
+            <Button
+              title="Back to trips"
+              variant="secondary"
+              onPress={() => router.replace('/trips')}
+            />
+          }
+        />
       </View>
     );
   }
 
   const warning = tripWarning(totals);
+  // The sticky footer's own height, so the list and FAB can clear it.
+  const footerHeight = 104 + insets.bottom;
 
   const header = (
     <View style={styles.header}>
-      <Text style={styles.dates}>{formatDateRange(trip.startDate, trip.endDate)}</Text>
+      <View style={styles.datesRow}>
+        <Ionicons name="calendar-outline" size={14} color={colors.textFaint} />
+        <Text style={styles.dates}>{formatDateRange(trip.startDate, trip.endDate)}</Text>
+      </View>
 
       <SegmentedControl<ViewMode>
         value={mode}
         onChange={setMode}
         options={[
-          { value: 'list', label: 'Itinerary' },
-          { value: 'map', label: 'Map' },
+          { value: 'list', label: 'Itinerary', icon: 'list' },
+          { value: 'map', label: 'Map', icon: 'map-outline' },
         ]}
       />
 
-      {warning ? (
-        <View style={styles.warning}>
-          <Text style={styles.warningText}>{warning}</Text>
-        </View>
-      ) : null}
+      {warning ? <Notice tone="warning" body={warning} /> : null}
 
       {mode === 'list' && stops.length > 1 ? (
         <Text style={styles.hint}>Drag a handle to reorder stops.</Text>
-      ) : null}
-      {mode === 'map' && stops.length > 0 ? (
-        <Text style={styles.hint}>Tap a pin, then its label, to open that stop.</Text>
       ) : null}
     </View>
   );
@@ -86,20 +106,17 @@ export default function TripDetailScreen() {
         options={{
           title: trip.name,
           headerRight: () => (
-            // One action only: two of these clipped the title on a narrow
-            // phone. The dashboard is reached from the footer instead.
-            <Pressable
-              accessibilityRole="button"
+            <HeaderAction
+              label="Edit"
+              icon="create-outline"
               onPress={() => router.push(`/new-trip?tripId=${trip.id}`)}
-            >
-              <Text style={styles.headerAction}>Edit</Text>
-            </Pressable>
+            />
           ),
         }}
       />
 
       {mode === 'map' ? (
-        <View style={styles.mapMode}>
+        <View style={[styles.mapMode, { paddingBottom: footerHeight }]}>
           <View style={styles.mapHeader}>{header}</View>
           <MapWithRoute
             stops={stops}
@@ -113,11 +130,13 @@ export default function TripDetailScreen() {
           ListHeaderComponent={header}
           ListEmptyComponent={
             <EmptyState
+              icon="location-outline"
               title="No stops yet"
               body="Add the places this trip passes through — each one gets its own activities, food plan and budget."
               action={
                 <Button
                   title="Add a stop"
+                  icon="add"
                   onPress={() => router.push(`/trip/${tripId}/new-place`)}
                 />
               }
@@ -143,11 +162,11 @@ export default function TripDetailScreen() {
               />
             );
           }}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={{ paddingBottom: footerHeight + spacing.xl }}
         />
       )}
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, elevation.lg, { paddingBottom: spacing.lg + insets.bottom }]}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Open budget dashboard"
@@ -161,12 +180,15 @@ export default function TripDetailScreen() {
             currency={trip.currency}
           />
         </Pressable>
+
         <View style={styles.footerRow}>
           <Pressable
             accessibilityRole="button"
             onPress={() => router.push(`/trip/${tripId}/expenses`)}
+            style={({ pressed }) => [styles.footerLink, pressed && styles.pressed]}
           >
-            <Text style={styles.footerLink}>
+            <Ionicons name="receipt-outline" size={15} color={colors.primary} />
+            <Text style={styles.footerLinkText}>
               {expenses.length === 0
                 ? 'Log an expense'
                 : expenses.length === 1
@@ -174,16 +196,18 @@ export default function TripDetailScreen() {
                   : `${expenses.length} expenses`}
             </Text>
           </Pressable>
+
           <Pressable
             accessibilityRole="button"
             onPress={() => router.push(`/trip/${tripId}/dashboard`)}
+            style={({ pressed }) => [styles.footerLink, pressed && styles.pressed]}
           >
             <Text style={styles.footerRemaining}>
               {totals.remainingBudget === null
                 ? `Planned ${formatMoney(totals.totalPlanned, trip.currency, { compact: true })}`
                 : `${formatMoney(totals.remainingBudget, trip.currency, { compact: true })} left`}
-              <Text style={styles.footerChevron}>  Charts ›</Text>
             </Text>
+            <Ionicons name="stats-chart" size={15} color={colors.primary} />
           </Pressable>
         </View>
       </View>
@@ -192,8 +216,7 @@ export default function TripDetailScreen() {
         <Fab
           label="Add stop"
           onPress={() => router.push(`/trip/${tripId}/new-place`)}
-          // Clear of the sticky footer, which is about 100pt tall.
-          offsetBottom={116}
+          offsetBottom={footerHeight + spacing.md}
         />
       ) : null}
     </View>
@@ -203,27 +226,12 @@ export default function TripDetailScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   header: { paddingBottom: spacing.lg, gap: spacing.md },
-  dates: { fontSize: 14, color: colors.textMuted },
-  warning: {
-    backgroundColor: '#FEF3F2',
-    borderRadius: 8,
-    padding: spacing.md,
-  },
-  warningText: { color: colors.over, fontSize: 13, fontWeight: '600' },
-  hint: { fontSize: 12, color: colors.textFaint },
-  listContent: { paddingBottom: 150 },
-  mapMode: { flex: 1, paddingBottom: 140 },
+  datesRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  dates: { ...type.caption, color: colors.textMuted },
+  hint: { ...type.caption, color: colors.textFaint },
+  mapMode: { flex: 1 },
   mapHeader: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg },
-  map: { flex: 1, marginHorizontal: spacing.lg, borderRadius: 14 },
-  // native-stack renders headerRight flush with the screen edge, so the inset
-  // has to live on the element itself rather than a container style.
-  headerAction: {
-    color: colors.primary,
-    fontSize: 15,
-    fontWeight: '600',
-    paddingRight: spacing.lg,
-    paddingVertical: spacing.xs,
-  },
+  map: { flex: 1, marginHorizontal: spacing.lg, borderRadius: radius.lg },
   footer: {
     position: 'absolute',
     left: 0,
@@ -234,19 +242,12 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
-    paddingBottom: spacing.xl,
     gap: spacing.sm,
   },
   footerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  footerLink: { color: colors.primary, fontSize: 13, fontWeight: '600' },
-  footerRemaining: { fontSize: 13, color: colors.textMuted, fontWeight: '600' },
-  footerChevron: { color: colors.primary },
-  missing: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.lg,
-    padding: spacing.xl,
-  },
-  missingText: { color: colors.textMuted },
+  footerLink: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingVertical: 2 },
+  footerLinkText: { ...type.label, color: colors.primary },
+  footerRemaining: { ...type.label, color: colors.primary },
+  pressed: { opacity: 0.6 },
+  missing: { flex: 1, justifyContent: 'center' },
 });

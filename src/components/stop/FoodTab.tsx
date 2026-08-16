@@ -4,10 +4,19 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { PlacesError, hasApiKey, nearbyRestaurants } from '../../api/places';
 import { formatMoney, parseMoney, sumMinor, toDecimalString } from '../../budget/money';
 import { useTripStore } from '../../state/tripStore';
-import { colors, radius, spacing } from '../../theme';
+import { colors, elevation, radius, spacing, type } from '../../theme';
 import type { FoodPlan, NearbyRestaurant, Stop } from '../../types';
 import { AmountInput } from '../AmountInput';
-import { Button, Card, EmptyState, Input, Loading } from '../ui';
+import {
+  Button,
+  Card,
+  EmptyState,
+  IconButton,
+  Input,
+  Loading,
+  Notice,
+  SectionHeader,
+} from '../ui';
 
 /**
  * Where to eat at this stop.
@@ -122,40 +131,42 @@ export function FoodTab({
       ) : null}
 
       <View style={styles.section}>
-        <View style={styles.sectionHead}>
-          <Text style={styles.sectionTitle}>Restaurants nearby</Text>
-          {canSearchNearby && nearbyState !== 'loading' ? (
-            <Pressable accessibilityRole="button" onPress={() => void loadNearby(true)}>
-              <Text style={styles.refresh}>Refresh</Text>
-            </Pressable>
-          ) : null}
-        </View>
+        <SectionHeader
+          title="Restaurants nearby"
+          action={
+            canSearchNearby && nearbyState !== 'loading'
+              ? { label: 'Refresh', icon: 'refresh', onPress: () => void loadNearby(true) }
+              : undefined
+          }
+        />
 
         {!canSearchNearby ? (
-          <Card>
-            <Text style={styles.noticeBody}>
-              {!hasApiKey()
+          <Notice
+            tone="info"
+            title={!hasApiKey() ? 'Place search is off' : 'No coordinates for this stop'}
+            body={
+              !hasApiKey()
                 ? 'Set EXPO_PUBLIC_GOOGLE_PLACES_KEY in .env to see restaurants near this stop.'
-                : 'This stop was added manually, so there are no coordinates to search around. Add places to eat by hand below.'}
-            </Text>
-          </Card>
+                : 'This stop was added by hand, so there is nothing to search around. Add places to eat below.'
+            }
+          />
         ) : nearbyState === 'loading' ? (
-          <Loading />
+          <Loading label="Finding restaurants nearby…" />
         ) : nearbyState === 'error' ? (
-          <Card>
-            <Text style={styles.error}>{nearbyError}</Text>
-          </Card>
+          <Notice tone="danger" title="Couldn't load restaurants" body={nearbyError ?? ''} />
         ) : nearby.length === 0 ? (
           <EmptyState
+            icon="restaurant-outline"
             title="No restaurants found"
             body="Nothing came back within 1.5km of this stop. Add somewhere by hand instead."
           />
         ) : (
           <>
             {stale ? (
-              <Text style={styles.staleNote}>
-                Showing a cached list — couldn&apos;t reach Google just now.
-              </Text>
+              <Notice
+                tone="warning"
+                body="Showing a cached list — couldn't reach Google just now."
+              />
             ) : null}
             <View style={styles.list}>
               {nearby.map((restaurant) => (
@@ -230,6 +241,14 @@ function PlanRow({
         placeholder="Est."
         style={styles.itemAmount}
         accessibilityLabel={`Estimated cost for ${plan.name}`}
+      />
+
+      <IconButton
+        icon="trash-outline"
+        label={`Remove ${plan.name}`}
+        tone="danger"
+        size={30}
+        onPress={onRemove}
       />
     </Pressable>
   );
@@ -332,15 +351,15 @@ const styles = StyleSheet.create({
   content: { padding: spacing.lg, paddingTop: 0, gap: spacing.xl, paddingBottom: spacing.xxl },
   section: { gap: spacing.md },
   sectionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sectionTitle: { fontSize: 15, fontWeight: '600', color: colors.text },
-  sectionMeta: { fontSize: 13, color: colors.textMuted, fontWeight: '600' },
-  refresh: { fontSize: 13, color: colors.primary, fontWeight: '600' },
+  sectionTitle: { ...type.heading, color: colors.text },
+  sectionMeta: { ...type.label, color: colors.textMuted },
   list: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
     overflow: 'hidden',
+    ...elevation.sm,
   },
   item: {
     flexDirection: 'row',
@@ -351,23 +370,22 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   itemMain: { flex: 1, gap: 1 },
-  itemTitle: { fontSize: 15, color: colors.text, fontWeight: '500' },
-  itemMeta: { fontSize: 12, color: colors.textMuted },
-  itemAmount: { width: 110 },
+  itemTitle: { ...type.bodyStrong, color: colors.text },
+  itemMeta: { ...type.caption, color: colors.textMuted },
+  itemAmount: { width: 104 },
   addButton: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
+    minHeight: 34,
+    justifyContent: 'center',
     borderRadius: radius.pill,
     backgroundColor: colors.primarySoft,
   },
-  addButtonDone: { backgroundColor: colors.bg },
-  addButtonText: { fontSize: 13, fontWeight: '600', color: colors.primary },
+  addButtonDone: { backgroundColor: colors.surfaceSunken },
+  addButtonText: { ...type.label, color: colors.primary },
   addButtonTextDone: { color: colors.textFaint },
-  error: { color: colors.over, fontSize: 13 },
-  noticeBody: { fontSize: 13, color: colors.textMuted, lineHeight: 18 },
-  staleNote: { fontSize: 12, color: colors.textFaint },
-  manualToggle: { alignSelf: 'flex-start' },
-  manualToggleText: { color: colors.primary, fontSize: 14, fontWeight: '600' },
+  manualToggle: { alignSelf: 'flex-start', paddingVertical: spacing.sm },
+  manualToggleText: { ...type.label, color: colors.primary },
   form: { gap: spacing.md },
   formRow: { flexDirection: 'row', gap: spacing.md, alignItems: 'center' },
   amount: { flex: 1 },

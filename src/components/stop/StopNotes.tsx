@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { useTripStore } from '../../state/tripStore';
-import { colors, radius, spacing } from '../../theme';
+import { colors, radius, spacing, type } from '../../theme';
 import type { Stop } from '../../types';
 import { Input } from '../ui';
 
@@ -67,7 +67,7 @@ export function StopNotes({ stop }: { stop: Stop }) {
 const styles = StyleSheet.create({
   wrap: { gap: spacing.xs },
   head: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
-  label: { fontSize: 12, fontWeight: '600', color: colors.textMuted },
-  saved: { fontSize: 12, color: colors.under, fontWeight: '600' },
+  label: { ...type.label, color: colors.textMuted },
+  saved: { ...type.captionStrong, color: colors.under },
   input: { minHeight: 60, textAlignVertical: 'top', borderRadius: radius.md },
 });

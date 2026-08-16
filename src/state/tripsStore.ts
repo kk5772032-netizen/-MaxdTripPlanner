@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 import * as expensesRepo from '../db/repositories/expenses';
+import * as stopsRepo from '../db/repositories/stops';
 import * as tripsRepo from '../db/repositories/trips';
 import type { Trip } from '../types';
 
@@ -16,6 +17,8 @@ interface TripsState {
   trips: Trip[];
   /** Logged spend per trip id, for the budget ring on each card. */
   actualByTrip: Record<string, number>;
+  /** Stop count per trip id, shown on each card. */
+  stopCountByTrip: Record<string, number>;
   loading: boolean;
   error: string | null;
   load: () => Promise<void>;
@@ -27,17 +30,19 @@ interface TripsState {
 export const useTripsStore = create<TripsState>((set, get) => ({
   trips: [],
   actualByTrip: {},
+  stopCountByTrip: {},
   loading: false,
   error: null,
 
   load: async () => {
     set({ loading: true, error: null });
     try {
-      const [trips, actualByTrip] = await Promise.all([
+      const [trips, actualByTrip, stopCountByTrip] = await Promise.all([
         tripsRepo.listTrips(),
         expensesRepo.totalsByTrip(),
+        stopsRepo.countsByTrip(),
       ]);
-      set({ trips, actualByTrip, loading: false });
+      set({ trips, actualByTrip, stopCountByTrip, loading: false });
     } catch (e) {
       set({ error: e instanceof Error ? e.message : String(e), loading: false });
     }
@@ -58,7 +63,8 @@ export const useTripsStore = create<TripsState>((set, get) => ({
 
   remove: async (id) => {
     await tripsRepo.deleteTrip(id);
-    const { [id]: _removed, ...actualByTrip } = get().actualByTrip;
-    set({ trips: get().trips.filter((t) => t.id !== id), actualByTrip });
+    const { [id]: _spend, ...actualByTrip } = get().actualByTrip;
+    const { [id]: _stops, ...stopCountByTrip } = get().stopCountByTrip;
+    set({ trips: get().trips.filter((t) => t.id !== id), actualByTrip, stopCountByTrip });
   },
 }));

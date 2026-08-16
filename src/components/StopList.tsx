@@ -1,5 +1,6 @@
+import { Ionicons } from '@expo/vector-icons';
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import ReorderableList, {
   useIsActive,
   useReorderableDrag,
@@ -95,7 +96,7 @@ function DraggableStop({
             hitSlop={8}
             style={styles.handle}
           >
-            <Text style={styles.handleGlyph}>⋮⋮</Text>
+            <Ionicons name="reorder-two" size={22} color={colors.textFaint} />
           </Pressable>
         }
       />
@@ -107,5 +108,4 @@ const styles = StyleSheet.create({
   content: { padding: spacing.lg, paddingBottom: 120 },
   item: { marginBottom: spacing.md },
   handle: { paddingHorizontal: spacing.xs, paddingVertical: spacing.sm },
-  handleGlyph: { fontSize: 15, color: colors.textFaint, letterSpacing: -3 },
 });

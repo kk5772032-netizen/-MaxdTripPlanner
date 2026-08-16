@@ -7,9 +7,9 @@ import { formatMoney } from '../../../src/budget/money';
 import { BudgetBar } from '../../../src/components/BudgetBar';
 import { CategoryPie } from '../../../src/components/charts/CategoryPie';
 import { PlannedVsActualChart } from '../../../src/components/charts/PlannedVsActualChart';
-import { Card, EmptyState, Loading } from '../../../src/components/ui';
+import { Card, EmptyState, Notice, SkeletonList } from '../../../src/components/ui';
 import { useTripStore } from '../../../src/state/tripStore';
-import { colors, spacing } from '../../../src/theme';
+import { colors, elevation, radius, spacing, type } from '../../../src/theme';
 
 export default function DashboardScreen() {
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
@@ -29,7 +29,7 @@ export default function DashboardScreen() {
 
   const byCategory = useMemo(() => actualByCategory(expenses), [expenses]);
 
-  if ((loading && !ready) || !trip || !totals) return <Loading />;
+  if ((loading && !ready) || !trip || !totals) return <SkeletonList rows={3} />;
 
   const warning = tripWarning(totals);
 
@@ -62,7 +62,7 @@ export default function DashboardScreen() {
           style={styles.heroBar}
         />
 
-        {warning ? <Text style={styles.warning}>{warning}</Text> : null}
+        {warning ? <Notice tone="warning" body={warning} /> : null}
       </Card>
 
       <View style={styles.statRow}>
@@ -74,7 +74,11 @@ export default function DashboardScreen() {
       <Card style={styles.section}>
         <Text style={styles.sectionTitle}>Planned vs actual per stop</Text>
         {totals.stops.length === 0 ? (
-          <EmptyState title="No stops yet" body="Add stops to see how each one is tracking." />
+          <EmptyState
+            icon="bar-chart-outline"
+            title="No stops yet"
+            body="Add stops to see how each one is tracking."
+          />
         ) : (
           <PlannedVsActualChart stops={totals.stops} currency={trip.currency} />
         )}
@@ -106,24 +110,24 @@ function Stat({ label, value }: { label: string; value: string }) {
 const styles = StyleSheet.create({
   content: { padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xxl },
   hero: { gap: spacing.sm },
-  heroLabel: { fontSize: 13, fontWeight: '600', color: colors.textMuted },
-  heroValue: { fontSize: 34, fontWeight: '700', color: colors.text },
+  heroLabel: { ...type.label, color: colors.textMuted },
+  heroValue: { ...type.display, fontSize: 34, lineHeight: 40, color: colors.text },
   heroValueOver: { color: colors.over },
   heroBar: { marginTop: spacing.sm },
-  warning: { fontSize: 13, color: colors.over, fontWeight: '600', marginTop: spacing.xs },
   statRow: { flexDirection: 'row', gap: spacing.md },
   stat: {
     flex: 1,
     backgroundColor: colors.surface,
-    borderRadius: 10,
+    borderRadius: radius.md,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
     padding: spacing.md,
     gap: 2,
+    ...elevation.sm,
   },
-  statLabel: { fontSize: 11, color: colors.textMuted, fontWeight: '600' },
-  statValue: { fontSize: 16, fontWeight: '700', color: colors.text },
+  statLabel: { ...type.captionStrong, color: colors.textMuted },
+  statValue: { ...type.heading, color: colors.text },
   section: { gap: spacing.lg },
-  sectionTitle: { fontSize: 15, fontWeight: '600', color: colors.text },
-  footnote: { fontSize: 12, color: colors.textFaint, lineHeight: 17 },
+  sectionTitle: { ...type.heading, color: colors.text },
+  footnote: { ...type.caption, color: colors.textFaint },
 });

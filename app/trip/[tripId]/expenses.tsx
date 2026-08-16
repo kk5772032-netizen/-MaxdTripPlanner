@@ -15,10 +15,29 @@ import { formatMoney, parseMoney, toDecimalString } from '../../../src/budget/mo
 import { AmountInput } from '../../../src/components/AmountInput';
 import { DateField } from '../../../src/components/DateField';
 import { ExpenseRow } from '../../../src/components/ExpenseRow';
-import { Button, Card, EmptyState, Field, Input, Loading } from '../../../src/components/ui';
+import {
+  Button,
+  Card,
+  Chip,
+  EmptyState,
+  Field,
+  HeaderAction,
+  Input,
+  SkeletonList,
+  notifySuccess,
+} from '../../../src/components/ui';
 import { todayIso } from '../../../src/dates';
 import { useTripStore } from '../../../src/state/tripStore';
-import { categoryColors, categoryLabels, colors, radius, spacing } from '../../../src/theme';
+import {
+  categoryColors,
+  categoryIcons,
+  categoryLabels,
+  colors,
+  elevation,
+  radius,
+  spacing,
+  type,
+} from '../../../src/theme';
 import { EXPENSE_CATEGORIES, type Expense, type ExpenseCategory } from '../../../src/types';
 
 /**
@@ -75,7 +94,7 @@ export default function ExpensesScreen() {
     ]);
   };
 
-  if ((loading && !ready) || !trip) return <Loading />;
+  if ((loading && !ready) || !trip) return <SkeletonList rows={3} />;
 
   return (
     <KeyboardAvoidingView
@@ -86,15 +105,14 @@ export default function ExpensesScreen() {
         options={{
           title: 'Expenses',
           headerRight: () => (
-            <Pressable
-              accessibilityRole="button"
+            <HeaderAction
+              label={formOpen ? 'Close' : 'Add'}
+              icon={formOpen ? 'close' : 'add'}
               onPress={() => {
                 setEditing(null);
                 setFormOpen((open) => !open);
               }}
-            >
-              <Text style={styles.headerAction}>{formOpen ? 'Close' : 'Add'}</Text>
-            </Pressable>
+            />
           ),
         }}
       />
@@ -147,6 +165,7 @@ export default function ExpensesScreen() {
 
         {filtered.length === 0 ? (
           <EmptyState
+            icon={expenses.length === 0 ? 'receipt-outline' : 'filter-outline'}
             title={expenses.length === 0 ? 'Nothing logged yet' : 'Nothing matches those filters'}
             body={
               expenses.length === 0
@@ -155,7 +174,7 @@ export default function ExpensesScreen() {
             }
             action={
               expenses.length === 0 ? (
-                <Button title="Add an expense" onPress={() => setFormOpen(true)} />
+                <Button title="Add an expense" icon="add" onPress={() => setFormOpen(true)} />
               ) : undefined
             }
           />
@@ -228,6 +247,7 @@ function ExpenseForm({
       } else {
         await addExpense(input);
       }
+      notifySuccess();
       onDone();
     } finally {
       setSaving(false);
@@ -248,59 +268,36 @@ function ExpenseForm({
 
       <Field label="Category">
         <View style={styles.chips}>
-          {EXPENSE_CATEGORIES.map((value) => {
-            const active = value === category;
-            return (
-              <Pressable
-                key={value}
-                accessibilityRole="button"
-                accessibilityState={{ selected: active }}
-                onPress={() => setCategory(value)}
-                style={[
-                  styles.chip,
-                  active && { backgroundColor: categoryColors[value], borderColor: categoryColors[value] },
-                ]}
-              >
-                <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                  {categoryLabels[value]}
-                </Text>
-              </Pressable>
-            );
-          })}
+          {EXPENSE_CATEGORIES.map((value) => (
+            <Chip
+              key={value}
+              label={categoryLabels[value]}
+              icon={categoryIcons[value] as never}
+              color={categoryColors[value]}
+              selected={value === category}
+              onPress={() => setCategory(value)}
+            />
+          ))}
         </View>
       </Field>
 
       <Field label="Stop" hint="Leave on “Whole trip” for flights, visas and anything not tied to one place.">
         <View style={styles.chips}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ selected: stopId === null }}
+          <Chip
+            label="Whole trip"
+            icon="globe-outline"
+            selected={stopId === null}
             onPress={() => setStopId(null)}
-            style={[styles.chip, stopId === null && styles.chipActive]}
-          >
-            <Text style={[styles.chipText, stopId === null && styles.chipTextPrimary]}>
-              Whole trip
-            </Text>
-          </Pressable>
-          {stops.map((stop) => {
-            const active = stop.id === stopId;
-            return (
-              <Pressable
-                key={stop.id}
-                accessibilityRole="button"
-                accessibilityState={{ selected: active }}
-                onPress={() => setStopId(stop.id)}
-                style={[styles.chip, active && styles.chipActive]}
-              >
-                <Text
-                  style={[styles.chipText, active && styles.chipTextPrimary]}
-                  numberOfLines={1}
-                >
-                  {stop.name}
-                </Text>
-              </Pressable>
-            );
-          })}
+          />
+          {stops.map((stop) => (
+            <Chip
+              key={stop.id}
+              label={stop.name}
+              icon="location-outline"
+              selected={stop.id === stopId}
+              onPress={() => setStopId(stop.id)}
+            />
+          ))}
         </View>
       </Field>
 
@@ -315,6 +312,7 @@ function ExpenseForm({
       <View style={styles.formActions}>
         <Button
           title={editing ? 'Save changes' : 'Add expense'}
+          icon="checkmark"
           onPress={save}
           disabled={!canSave}
           loading={saving}
@@ -341,22 +339,14 @@ function FilterRow({
     <View style={styles.filterRow}>
       <Text style={styles.filterLabel}>{label}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
-        {options.map((option) => {
-          const active = option.value === value;
-          return (
-            <Pressable
-              key={option.value}
-              accessibilityRole="button"
-              accessibilityState={{ selected: active }}
-              onPress={() => onChange(option.value)}
-              style={[styles.chip, active && styles.chipActive]}
-            >
-              <Text style={[styles.chipText, active && styles.chipTextPrimary]} numberOfLines={1}>
-                {option.label}
-              </Text>
-            </Pressable>
-          );
-        })}
+        {options.map((option) => (
+          <Chip
+            key={option.value}
+            label={option.label}
+            selected={option.value === value}
+            onPress={() => onChange(option.value)}
+          />
+        ))}
       </ScrollView>
     </View>
   );
@@ -367,42 +357,24 @@ const styles = StyleSheet.create({
   content: { padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xxl },
   // native-stack renders headerRight flush with the screen edge, so the inset
   // has to live on the element itself.
-  headerAction: {
-    color: colors.primary,
-    fontSize: 15,
-    fontWeight: '600',
-    paddingRight: spacing.lg,
-    paddingVertical: spacing.xs,
-  },
+
   form: { gap: 0 },
   formActions: { flexDirection: 'row', gap: spacing.md },
   flexButton: { flex: 1 },
   filters: { gap: spacing.md },
   filterRow: { gap: spacing.sm },
-  filterLabel: { fontSize: 12, fontWeight: '600', color: colors.textMuted },
+  filterLabel: { ...type.label, color: colors.textMuted },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  chip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    maxWidth: 180,
-  },
-  chipActive: { backgroundColor: colors.primarySoft, borderColor: colors.primary },
-  chipText: { fontSize: 13, fontWeight: '600', color: colors.textMuted },
-  chipTextActive: { color: '#fff' },
-  chipTextPrimary: { color: colors.primary },
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
-  totalLabel: { fontSize: 13, color: colors.textMuted },
-  totalValue: { fontSize: 17, fontWeight: '700', color: colors.text },
+  totalLabel: { ...type.label, color: colors.textMuted },
+  totalValue: { ...type.title, color: colors.text },
   list: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
     overflow: 'hidden',
+    ...elevation.sm,
   },
-  hint: { fontSize: 12, color: colors.textFaint, textAlign: 'center' },
+  hint: { ...type.caption, color: colors.textFaint, textAlign: 'center' },
 });

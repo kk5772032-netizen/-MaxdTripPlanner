@@ -1,18 +1,37 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { statusFor } from '../../src/budget/engine';
 import { formatMoney } from '../../src/budget/money';
 import { BudgetRing } from '../../src/components/BudgetRing';
-import { Button, EmptyState, Fab, Loading } from '../../src/components/ui';
-import { formatDateRange } from '../../src/dates';
+import {
+  Button,
+  EmptyState,
+  Fab,
+  Notice,
+  SkeletonList,
+} from '../../src/components/ui';
+import { dayCount, formatDateRange } from '../../src/dates';
 import { useTripsStore } from '../../src/state/tripsStore';
-import { colors, radius, spacing } from '../../src/theme';
+import {
+  colors,
+  elevation,
+  radius,
+  spacing,
+  statusColor,
+  statusSoftColor,
+  type,
+} from '../../src/theme';
 import type { Trip } from '../../src/types';
 
 export default function TripsScreen() {
   const router = useRouter();
-  const { trips, actualByTrip, loading, error, load, remove } = useTripsStore();
+  const insets = useSafeAreaInsets();
+  const { trips, actualByTrip, stopCountByTrip, loading, error, load, remove } =
+    useTripsStore();
 
   // Reload on focus: coming back from trip detail, budgets and stop counts may
   // have changed.
@@ -29,39 +48,54 @@ export default function TripsScreen() {
     ]);
   };
 
-  if (loading && trips.length === 0) return <Loading />;
+  if (loading && trips.length === 0) return <SkeletonList rows={3} />;
 
   return (
     <View style={styles.screen}>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-
       <FlatList
         data={trips}
         keyExtractor={(t) => t.id}
         contentContainerStyle={
-          trips.length === 0 ? styles.listEmpty : styles.listContent
+          trips.length === 0
+            ? styles.listEmpty
+            : [styles.listContent, { paddingBottom: 96 + insets.bottom }]
+        }
+        ListHeaderComponent={
+          error ? (
+            <Notice tone="danger" title="Couldn't load your trips" body={error} />
+          ) : null
         }
         renderItem={({ item }) => (
           <TripCard
             trip={item}
             actual={actualByTrip[item.id] ?? 0}
+            stopCount={stopCountByTrip[item.id] ?? 0}
             onPress={() => router.push(`/trip/${item.id}`)}
             onLongPress={() => confirmDelete(item)}
           />
         )}
         ListEmptyComponent={
           <EmptyState
+            icon="map-outline"
             title="No trips yet"
             body="Plan a trip as a sequence of stops — what to do, where to eat, and what it should cost."
             action={
-              <Button title="Create your first trip" onPress={() => router.push('/new-trip')} />
+              <Button
+                title="Create your first trip"
+                icon="add"
+                onPress={() => router.push('/new-trip')}
+              />
             }
           />
         }
       />
 
       {trips.length > 0 ? (
-        <Fab label="New trip" onPress={() => router.push('/new-trip')} />
+        <Fab
+          label="New trip"
+          onPress={() => router.push('/new-trip')}
+          offsetBottom={spacing.xl + insets.bottom}
+        />
       ) : null}
     </View>
   );
@@ -70,50 +104,78 @@ export default function TripsScreen() {
 function TripCard({
   trip,
   actual,
+  stopCount,
   onPress,
   onLongPress,
 }: {
   trip: Trip;
   actual: number;
+  stopCount: number;
   onPress: () => void;
   onLongPress: () => void;
 }) {
+  const status = statusFor(actual, trip.totalBudgetMinor);
+  const days = dayCount(trip.startDate, trip.endDate);
+
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={`${trip.name}, ${stopCount} stops`}
       onPress={onPress}
       onLongPress={onLongPress}
-      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+      style={({ pressed }) => [styles.card, elevation.sm, pressed && styles.cardPressed]}
     >
-      <View style={styles.cardBody}>
-        <Text style={styles.cardTitle} numberOfLines={1}>
-          {trip.name}
-        </Text>
-        <Text style={styles.cardMeta}>{formatDateRange(trip.startDate, trip.endDate)}</Text>
-        <Text style={styles.cardBudget}>
+      <View style={styles.cardTop}>
+        <View style={styles.cardBody}>
+          <Text style={styles.cardTitle} numberOfLines={1}>
+            {trip.name}
+          </Text>
+
+          <View style={styles.metaRow}>
+            <Ionicons name="calendar-outline" size={13} color={colors.textFaint} />
+            <Text style={styles.cardMeta} numberOfLines={1}>
+              {formatDateRange(trip.startDate, trip.endDate)}
+              {days ? ` · ${days}d` : ''}
+            </Text>
+          </View>
+
+          <View style={styles.metaRow}>
+            <Ionicons name="location-outline" size={13} color={colors.textFaint} />
+            <Text style={styles.cardMeta}>
+              {stopCount === 1 ? '1 stop' : `${stopCount} stops`}
+            </Text>
+          </View>
+        </View>
+
+        <BudgetRing actual={actual} cap={trip.totalBudgetMinor} />
+      </View>
+
+      <View style={styles.cardFooter}>
+        <Text style={styles.cardSpend}>
           {trip.totalBudgetMinor === null
             ? `${formatMoney(actual, trip.currency, { compact: true })} spent`
             : `${formatMoney(actual, trip.currency, { compact: true })} of ${formatMoney(trip.totalBudgetMinor, trip.currency, { compact: true })}`}
         </Text>
+
+        {status !== 'unset' ? (
+          <View style={[styles.badge, { backgroundColor: statusSoftColor[status] }]}>
+            <Text style={[styles.badgeText, { color: statusColor[status] }]}>
+              {status === 'over' ? 'Over budget' : status === 'near' ? 'Close to cap' : 'On track'}
+            </Text>
+          </View>
+        ) : (
+          <Text style={styles.noBudget}>No budget set</Text>
+        )}
       </View>
-      <BudgetRing actual={actual} cap={trip.totalBudgetMinor} />
-      <Text style={styles.chevron}>›</Text>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
-  listContent: { padding: spacing.lg, gap: spacing.md, paddingBottom: 96 },
+  listContent: { padding: spacing.lg, gap: spacing.md },
   listEmpty: { flexGrow: 1, justifyContent: 'center' },
-  error: {
-    color: colors.over,
-    padding: spacing.lg,
-    fontSize: 13,
-  },
   card: {
-    flexDirection: 'row',
-    alignItems: 'center',
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
@@ -121,10 +183,27 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     gap: spacing.md,
   },
-  cardPressed: { opacity: 0.9 },
-  cardBody: { flex: 1, gap: 2 },
-  cardTitle: { fontSize: 17, fontWeight: '600', color: colors.text },
-  cardMeta: { fontSize: 13, color: colors.textMuted },
-  cardBudget: { fontSize: 13, color: colors.textFaint },
-  chevron: { fontSize: 26, color: colors.textFaint, lineHeight: 28 },
+  cardPressed: { opacity: 0.92, transform: [{ scale: 0.995 }] },
+  cardTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  cardBody: { flex: 1, gap: spacing.xs },
+  cardTitle: { ...type.heading, color: colors.text },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  cardMeta: { ...type.caption, color: colors.textMuted, flexShrink: 1 },
+  cardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    paddingTop: spacing.md,
+  },
+  cardSpend: { ...type.label, color: colors.text },
+  badge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+  },
+  badgeText: { ...type.captionStrong },
+  noBudget: { ...type.caption, color: colors.textFaint },
 });

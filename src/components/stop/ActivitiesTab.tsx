@@ -1,12 +1,13 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { formatMoney, parseMoney, sumMinor } from '../../budget/money';
 import { useTripStore } from '../../state/tripStore';
-import { colors, radius, spacing } from '../../theme';
+import { colors, elevation, radius, spacing, type } from '../../theme';
 import type { Activity, Stop } from '../../types';
 import { AmountInput } from '../AmountInput';
-import { Button, Card, EmptyState, Input } from '../ui';
+import { Button, Card, EmptyState, IconButton, Input, notifySuccess } from '../ui';
 
 /** Checklist of things to do at a stop, each with an optional estimated cost. */
 export function ActivitiesTab({
@@ -39,6 +40,7 @@ export function ActivitiesTab({
       });
       setTitle('');
       setCostText('');
+      notifySuccess();
     } finally {
       setSaving(false);
     }
@@ -80,6 +82,7 @@ export function ActivitiesTab({
 
       {activities.length === 0 ? (
         <EmptyState
+          icon="checkbox-outline"
           title="Nothing planned here yet"
           body="Add the things you want to do at this stop. Estimated costs roll up into the stop's planned spend."
         />
@@ -106,7 +109,9 @@ export function ActivitiesTab({
                 style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}
               >
                 <View style={[styles.checkbox, activity.done && styles.checkboxDone]}>
-                  {activity.done ? <Text style={styles.checkmark}>✓</Text> : null}
+                  {activity.done ? (
+                    <Ionicons name="checkmark" size={14} color="#fff" />
+                  ) : null}
                 </View>
                 <Text
                   style={[styles.itemTitle, activity.done && styles.itemTitleDone]}
@@ -114,16 +119,23 @@ export function ActivitiesTab({
                 >
                   {activity.title}
                 </Text>
-                <Text style={styles.itemCost}>
-                  {activity.estimatedCostMinor === null
-                    ? ''
-                    : formatMoney(activity.estimatedCostMinor, currency, { compact: true })}
-                </Text>
+                {activity.estimatedCostMinor !== null ? (
+                  <Text style={styles.itemCost}>
+                    {formatMoney(activity.estimatedCostMinor, currency, { compact: true })}
+                  </Text>
+                ) : null}
+                <IconButton
+                  icon="trash-outline"
+                  label={`Remove ${activity.title}`}
+                  tone="danger"
+                  size={30}
+                  onPress={() => confirmRemove(activity)}
+                />
               </Pressable>
             ))}
           </View>
 
-          <Text style={styles.hint}>Tap to tick off, long-press to remove.</Text>
+          <Text style={styles.hint}>Tap a row to tick it off.</Text>
         </>
       )}
     </ScrollView>
@@ -136,36 +148,38 @@ const styles = StyleSheet.create({
   formRow: { flexDirection: 'row', gap: spacing.md, alignItems: 'center' },
   amount: { flex: 1 },
   summary: { flexDirection: 'row', justifyContent: 'space-between' },
-  summaryText: { fontSize: 13, color: colors.textMuted, fontWeight: '600' },
+  summaryText: { ...type.label, color: colors.textMuted },
   list: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
     overflow: 'hidden',
+    ...elevation.sm,
   },
   item: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    minHeight: 56,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
   itemPressed: { backgroundColor: colors.bg },
   checkbox: {
-    width: 22,
-    height: 22,
+    width: 24,
+    height: 24,
     borderRadius: radius.sm,
     borderWidth: 1.5,
-    borderColor: colors.border,
+    borderColor: colors.borderStrong,
     alignItems: 'center',
     justifyContent: 'center',
   },
   checkboxDone: { backgroundColor: colors.under, borderColor: colors.under },
-  checkmark: { color: '#fff', fontSize: 13, fontWeight: '700' },
-  itemTitle: { flex: 1, fontSize: 15, color: colors.text },
+  itemTitle: { flex: 1, ...type.body, color: colors.text },
   itemTitleDone: { color: colors.textFaint, textDecorationLine: 'line-through' },
-  itemCost: { fontSize: 13, color: colors.textMuted, fontWeight: '600' },
-  hint: { fontSize: 12, color: colors.textFaint, textAlign: 'center' },
+  itemCost: { ...type.label, color: colors.textMuted },
+  hint: { ...type.caption, color: colors.textFaint, textAlign: 'center' },
 });

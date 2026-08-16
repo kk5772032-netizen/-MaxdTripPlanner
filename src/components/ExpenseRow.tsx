@@ -1,8 +1,17 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { formatMoney } from '../budget/money';
 import { formatDate } from '../dates';
-import { categoryColors, categoryLabels, colors, radius, spacing } from '../theme';
+import {
+  categoryColors,
+  categoryIcons,
+  categoryLabels,
+  colors,
+  radius,
+  spacing,
+  type,
+} from '../theme';
 import type { Expense } from '../types';
 
 /** One line in the expense log. */
@@ -36,8 +45,14 @@ export function ExpenseRow({
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
     >
       <View
-        style={[styles.dot, { backgroundColor: categoryColors[expense.category] }]}
-      />
+        style={[styles.icon, { backgroundColor: `${categoryColors[expense.category]}18` }]}
+      >
+        <Ionicons
+          name={categoryIcons[expense.category] as never}
+          size={16}
+          color={categoryColors[expense.category]}
+        />
+      </View>
 
       <View style={styles.main}>
         <Text style={styles.title} numberOfLines={1}>
@@ -65,9 +80,15 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   pressed: { backgroundColor: colors.bg },
-  dot: { width: 8, height: 8, borderRadius: radius.pill },
+  icon: {
+    width: 34,
+    height: 34,
+    borderRadius: radius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   main: { flex: 1, gap: 1 },
-  title: { fontSize: 15, color: colors.text, fontWeight: '500' },
-  meta: { fontSize: 12, color: colors.textMuted },
-  amount: { fontSize: 15, fontWeight: '600', color: colors.text },
+  title: { ...type.bodyStrong, color: colors.text },
+  meta: { ...type.caption, color: colors.textMuted },
+  amount: { ...type.amount, color: colors.text },
 });

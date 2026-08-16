@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -9,7 +10,8 @@ import {
 } from 'react-native';
 
 import { PlacesError, autocomplete, hasApiKey, newSessionToken } from '../api/places';
-import { colors, radius, spacing } from '../theme';
+import { Notice } from './ui';
+import { colors, radius, spacing, type } from '../theme';
 import type { PlaceSuggestion } from '../types';
 
 const DEBOUNCE_MS = 300;
@@ -94,19 +96,19 @@ export function PlaceSearchInput({
 
   if (keyMissing) {
     return (
-      <View style={styles.noKey}>
-        <Text style={styles.noKeyTitle}>Place search is off</Text>
-        <Text style={styles.noKeyBody}>
-          Set EXPO_PUBLIC_GOOGLE_PLACES_KEY in .env to search real places. You can still add
-          stops by typing them below.
-        </Text>
-      </View>
+      <Notice
+        tone="info"
+        icon="search-outline"
+        title="Place search is off"
+        body="Set EXPO_PUBLIC_GOOGLE_PLACES_KEY in .env to search real places. You can still add stops by typing them below."
+      />
     );
   }
 
   return (
     <View>
       <View style={styles.inputRow}>
+        <Ionicons name="search" size={17} color={colors.textFaint} style={styles.searchIcon} />
         <TextInput
           value={query}
           onChangeText={setQuery}
@@ -158,14 +160,16 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
     borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
+    paddingLeft: 40,
     paddingRight: 40,
-    fontSize: 15,
+    minHeight: 48,
+    ...type.body,
     color: colors.text,
   },
+  searchIcon: { position: 'absolute', left: spacing.md, zIndex: 1 },
   spinner: { position: 'absolute', right: spacing.md },
-  error: { color: colors.over, fontSize: 13, marginTop: spacing.sm },
+  error: { ...type.caption, color: colors.over, marginTop: spacing.sm },
   dropdown: {
     marginTop: spacing.sm,
     backgroundColor: colors.surface,
@@ -174,16 +178,10 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     overflow: 'hidden',
   },
-  row: { paddingHorizontal: spacing.md, paddingVertical: spacing.md },
+  row: { paddingHorizontal: spacing.md, paddingVertical: spacing.md, minHeight: 56, justifyContent: 'center' },
   rowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
   rowPressed: { backgroundColor: colors.primarySoft },
-  rowPrimary: { fontSize: 15, fontWeight: '500', color: colors.text },
-  rowSecondary: { fontSize: 12, color: colors.textMuted, marginTop: 1 },
-  noKey: {
-    backgroundColor: colors.primarySoft,
-    borderRadius: radius.md,
-    padding: spacing.md,
-  },
-  noKeyTitle: { fontSize: 14, fontWeight: '600', color: colors.primary, marginBottom: 2 },
-  noKeyBody: { fontSize: 13, color: colors.textMuted, lineHeight: 18 },
+  rowPrimary: { ...type.bodyStrong, color: colors.text },
+  rowSecondary: { ...type.caption, color: colors.textMuted, marginTop: 1 },
+
 });

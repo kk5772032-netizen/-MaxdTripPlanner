@@ -13,12 +13,15 @@
       "bundleIdentifier": "com.waypoint.app",
       "config": {
         "googleMapsApiKey": "$EXPO_PUBLIC_GOOGLE_MAPS_KEY"
+      },
+      "infoPlist": {
+        "UIViewControllerBasedStatusBarAppearance": false
       }
     },
     "android": {
       "package": "com.waypoint.app",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#2563EB",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -44,10 +47,28 @@
           "androidGoogleMapsApiKey": "$EXPO_PUBLIC_GOOGLE_MAPS_KEY",
           "iosGoogleMapsApiKey": "$EXPO_PUBLIC_GOOGLE_MAPS_KEY"
         }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 180,
+          "resizeMode": "contain",
+          "backgroundColor": "#2563EB"
+        }
+      ],
+      [
+        "expo-status-bar",
+        {
+          "style": "dark"
+        }
       ]
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "description": "Plan a trip as a sequence of stops — what to do, where to eat, and what it should cost — then track real spending against the plan.",
+    "primaryColor": "#2563EB",
+    "backgroundColor": "#F6F7F9"
   }
 }

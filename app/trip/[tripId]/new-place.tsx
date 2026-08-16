@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -13,9 +14,17 @@ import {
 
 import { PlacesError, photoUrl, placeDetails } from '../../../src/api/places';
 import { PlaceSearchInput } from '../../../src/components/PlaceSearchInput';
-import { Button, Card, Field, Input } from '../../../src/components/ui';
+import {
+  Button,
+  Card,
+  Field,
+  Input,
+  Loading,
+  Notice,
+  notifySuccess,
+} from '../../../src/components/ui';
 import { useTripStore } from '../../../src/state/tripStore';
-import { colors, radius, spacing } from '../../../src/theme';
+import { colors, radius, spacing, type } from '../../../src/theme';
 import type { PlaceDetails } from '../../../src/types';
 
 /**
@@ -80,6 +89,7 @@ export default function NewPlaceScreen() {
         plannedBudgetMinor: null,
         notes: null,
       });
+      notifySuccess();
       router.back();
     } finally {
       setSaving(false);
@@ -101,6 +111,7 @@ export default function NewPlaceScreen() {
         plannedBudgetMinor: null,
         notes: notes.trim() || null,
       });
+      notifySuccess();
       router.back();
     } finally {
       setSaving(false);
@@ -117,8 +128,8 @@ export default function NewPlaceScreen() {
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <PlaceSearchInput onSelect={pickSuggestion} autoFocus />
 
-        {fetching ? <Text style={styles.status}>Loading place details…</Text> : null}
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {fetching ? <Loading label="Loading place details…" /> : null}
+        {error ? <Notice tone="danger" title="Couldn't load that place" body={error} /> : null}
 
         {candidate ? (
           <Card style={styles.preview}>
@@ -130,12 +141,16 @@ export default function NewPlaceScreen() {
               <Text style={styles.previewAddress}>{candidate.address}</Text>
             ) : null}
             {candidate.rating != null ? (
-              <Text style={styles.previewRating}>★ {candidate.rating.toFixed(1)}</Text>
+              <View style={styles.previewRatingRow}>
+                <Ionicons name="star" size={13} color={colors.near} />
+                <Text style={styles.previewRating}>{candidate.rating.toFixed(1)}</Text>
+              </View>
             ) : null}
 
             <View style={styles.previewActions}>
               <Button
                 title="Add this stop"
+                icon="add"
                 onPress={confirmCandidate}
                 loading={saving}
                 style={styles.flexButton}
@@ -185,6 +200,7 @@ export default function NewPlaceScreen() {
                 </Field>
                 <Button
                   title="Add stop"
+                  icon="add"
                   onPress={saveManual}
                   disabled={!name.trim() || saving}
                   loading={saving}
@@ -201,8 +217,7 @@ export default function NewPlaceScreen() {
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.bg },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.lg },
-  status: { color: colors.textMuted, fontSize: 13 },
-  error: { color: colors.over, fontSize: 13 },
+
   preview: { gap: spacing.xs },
   photo: {
     width: '100%',
@@ -211,13 +226,14 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     backgroundColor: colors.bg,
   },
-  previewName: { fontSize: 17, fontWeight: '600', color: colors.text },
-  previewAddress: { fontSize: 13, color: colors.textMuted },
-  previewRating: { fontSize: 13, color: colors.textMuted, fontWeight: '600' },
+  previewName: { ...type.heading, color: colors.text },
+  previewAddress: { ...type.caption, color: colors.textMuted },
+  previewRatingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: 2 },
+  previewRating: { ...type.captionStrong, color: colors.textMuted },
   previewActions: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.md },
   flexButton: { flex: 1 },
-  manualToggle: { alignSelf: 'flex-start' },
-  manualToggleText: { color: colors.primary, fontSize: 14, fontWeight: '600' },
+  manualToggle: { alignSelf: 'flex-start', paddingVertical: spacing.sm },
+  manualToggleText: { ...type.label, color: colors.primary },
   manual: { gap: 0 },
   notes: { minHeight: 72, textAlignVertical: 'top' },
 });

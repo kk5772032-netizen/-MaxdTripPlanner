@@ -1,4 +1,5 @@
 import { act, render, screen, waitFor } from '@testing-library/react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import TripsScreen from '../app/(tabs)/trips';
 import NewTripScreen from '../app/new-trip';
@@ -100,9 +101,20 @@ afterEach(async () => {
   await db.closeAsync();
 });
 
+/**
+ * Metrics for a phone with a gesture bar, so screens that inset for the safe
+ * area are exercised with a non-zero bottom inset rather than zeros.
+ */
+const METRICS = {
+  frame: { x: 0, y: 0, width: 390, height: 844 },
+  insets: { top: 47, left: 0, right: 0, bottom: 34 },
+};
+
 /** Mounts a screen and waits for its initial SQLite load to settle. */
 async function mountAndSettle(ui: React.ReactElement) {
-  const result = render(ui);
+  const result = render(
+    <SafeAreaProvider initialMetrics={METRICS}>{ui}</SafeAreaProvider>,
+  );
   // Screens load on focus; let those promises flush before asserting.
   await act(async () => {
     await Promise.resolve();
@@ -166,7 +178,7 @@ describe('screen smoke tests', () => {
     await mountAndSettle(<StopDetailScreen />);
     await waitFor(() => expect(screen.getByText('Walk the memorial')).toBeTruthy());
     expect(screen.getByDisplayValue('Best at sunset')).toBeTruthy();
-    expect(screen.getByText('Activities (1)')).toBeTruthy();
+    expect(screen.getByText('To do 1')).toBeTruthy();
   });
 
   it('renders the expense log', async () => {

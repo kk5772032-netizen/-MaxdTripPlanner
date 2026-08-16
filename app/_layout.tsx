@@ -1,25 +1,29 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { prune } from '../src/api/placesCache';
+import { Button, Loading } from '../src/components/ui';
 import { getDb } from '../src/db/client';
-import { colors, spacing } from '../src/theme';
+import { colors, elevation, spacing, type } from '../src/theme';
 
 export default function RootLayout() {
   // Nothing renders until the schema exists — every screen reads from SQLite on
   // mount and an unmigrated database would just produce "no such table".
   const [dbState, setDbState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+    setDbState('loading');
     getDb()
       .then(() => {
-        if (!cancelled) setDbState('ready');
+        if (cancelled) return;
+        setDbState('ready');
         // Housekeeping, not correctness — `read` already treats expired rows as
         // misses. Fire and forget so it never delays the first screen.
         void prune().catch(() => {});
@@ -32,20 +36,29 @@ export default function RootLayout() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [attempt]);
 
   if (dbState !== 'ready') {
     return (
-      <View style={styles.center}>
-        {dbState === 'loading' ? (
-          <ActivityIndicator color={colors.primary} />
-        ) : (
-          <>
-            <Text style={styles.errorTitle}>Couldn&apos;t open the database</Text>
-            <Text style={styles.errorBody}>{error}</Text>
-          </>
-        )}
-      </View>
+      <SafeAreaProvider>
+        <View style={styles.center}>
+          {dbState === 'loading' ? (
+            <Loading label="Opening your trips…" />
+          ) : (
+            <>
+              <Text style={styles.errorTitle}>Couldn&apos;t open the database</Text>
+              <Text style={styles.errorBody}>{error}</Text>
+              <Button
+                title="Try again"
+                icon="refresh"
+                variant="secondary"
+                style={styles.retry}
+                onPress={() => setAttempt((n) => n + 1)}
+              />
+            </>
+          )}
+        </View>
+      </SafeAreaProvider>
     );
   }
 
@@ -55,14 +68,19 @@ export default function RootLayout() {
         <StatusBar style="dark" />
         <Stack
           screenOptions={{
-            headerStyle: { backgroundColor: colors.surface },
-            headerTintColor: colors.text,
-            headerTitleStyle: { fontWeight: '600' },
+            headerStyle: { backgroundColor: colors.surface, ...elevation.none },
+            headerShadowVisible: false,
+            headerTintColor: colors.primary,
+            headerTitleStyle: { ...type.heading, color: colors.text },
+            headerBackButtonDisplayMode: 'minimal',
             contentStyle: { backgroundColor: colors.bg },
           }}
         >
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="new-trip" options={{ title: 'New trip', presentation: 'modal' }} />
+          <Stack.Screen
+            name="new-trip"
+            options={{ title: 'New trip', presentation: 'modal' }}
+          />
           <Stack.Screen name="trip/[tripId]/index" options={{ title: 'Trip' }} />
           <Stack.Screen name="trip/[tripId]/new-place" options={{ title: 'Add stop' }} />
           <Stack.Screen name="trip/[tripId]/place/[placeId]" options={{ title: 'Stop' }} />
@@ -83,6 +101,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg,
     padding: spacing.xl,
   },
-  errorTitle: { fontSize: 16, fontWeight: '600', color: colors.text, marginBottom: spacing.sm },
-  errorBody: { fontSize: 13, color: colors.textMuted, textAlign: 'center' },
+  errorTitle: { ...type.heading, color: colors.text, marginBottom: spacing.sm },
+  errorBody: { ...type.caption, color: colors.textMuted, textAlign: 'center' },
+  retry: { marginTop: spacing.xl, alignSelf: 'stretch' },
 });

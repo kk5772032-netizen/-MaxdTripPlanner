@@ -18,10 +18,10 @@ import {
   toDecimalString,
 } from '../src/budget/money';
 import { DateRangeField } from '../src/components/DateRangeField';
-import { Button, Field, Input } from '../src/components/ui';
+import { Button, Chip, Field, Input, notifySuccess } from '../src/components/ui';
 import * as tripsRepo from '../src/db/repositories/trips';
 import { useTripsStore } from '../src/state/tripsStore';
-import { colors, radius, spacing } from '../src/theme';
+import { colors, spacing, type } from '../src/theme';
 
 /**
  * Create *and* edit — passing `?tripId=` switches it to edit mode. Same fields
@@ -72,9 +72,11 @@ export default function NewTripScreen() {
     try {
       if (tripId) {
         await update(tripId, input);
+        notifySuccess();
         router.back();
       } else {
         const trip = await create(input);
+        notifySuccess();
         // Replace so Back from the trip lands on the list, not this form.
         router.replace(`/trip/${trip.id}`);
       }
@@ -112,22 +114,14 @@ export default function NewTripScreen() {
 
         <Field label="Currency">
           <View style={styles.currencyRow}>
-            {SUPPORTED_CURRENCIES.map((code) => {
-              const active = code === currency;
-              return (
-                <Pressable
-                  key={code}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: active }}
-                  onPress={() => setCurrency(code)}
-                  style={[styles.currencyChip, active && styles.currencyChipActive]}
-                >
-                  <Text style={[styles.currencyText, active && styles.currencyTextActive]}>
-                    {code}
-                  </Text>
-                </Pressable>
-              );
-            })}
+            {SUPPORTED_CURRENCIES.map((code) => (
+              <Chip
+                key={code}
+                label={code}
+                selected={code === currency}
+                onPress={() => setCurrency(code)}
+              />
+            ))}
           </View>
         </Field>
 
@@ -149,6 +143,7 @@ export default function NewTripScreen() {
 
         <Button
           title={isEdit ? 'Save changes' : 'Create trip'}
+          icon={isEdit ? 'checkmark' : 'add'}
           onPress={save}
           disabled={!canSave}
           loading={saving}
@@ -157,6 +152,7 @@ export default function NewTripScreen() {
         {isEdit ? (
           <Button
             title="Delete trip"
+            icon="trash-outline"
             variant="danger"
             style={styles.delete}
             onPress={() =>
@@ -187,19 +183,8 @@ const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.bg },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
   currencyRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  currencyChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-  },
-  currencyChipActive: { backgroundColor: colors.primarySoft, borderColor: colors.primary },
-  currencyText: { fontSize: 13, fontWeight: '600', color: colors.textMuted },
-  currencyTextActive: { color: colors.primary },
   amountRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  amountSymbol: { fontSize: 17, color: colors.textMuted, minWidth: 20 },
+  amountSymbol: { ...type.heading, color: colors.textMuted, minWidth: 20 },
   amountInput: { flex: 1 },
   delete: { marginTop: spacing.md },
 });
