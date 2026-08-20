@@ -73,7 +73,7 @@ exports[`BudgetBar renders amber from 80% to the cap 1`] = `
             "height": "100%",
           },
           {
-            "backgroundColor": "#DC6803",
+            "backgroundColor": "#B54708",
             "width": "80%",
           },
         ]

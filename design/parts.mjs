@@ -29,13 +29,15 @@ export function card(inner, { pad = 16, gap = 12, t = C, style = '' } = {}) {
 }
 
 export function button(label, { variant = 'primary', ic, t = C, style = '' } = {}) {
+  // Filled grounds take `accent`/`dangerFill`, not the link tint — in dark the
+  // tint is too light to carry white text.
   const map = {
-    primary:   `background:${t.primary};color:${t.onPrimary};border:1px solid ${t.primary}`,
-    secondary: `background:${t.surface};color:${t.primary};border:1px solid ${t.borderStrong}`,
-    danger:    `background:${t.over};color:#fff;border:1px solid ${t.over}`,
-    ghost:     `background:transparent;color:${t.primary};border:1px solid transparent`,
+    primary:   `background:${t.accent};border:1px solid ${t.accent}`,
+    secondary: `background:${t.surface};border:1px solid ${t.borderStrong}`,
+    danger:    `background:${t.dangerFill};border:1px solid ${t.dangerFill}`,
+    ghost:     `background:transparent;border:1px solid transparent`,
   };
-  const fg = variant === 'primary' || variant === 'danger' ? '#fff' : t.primary;
+  const fg = variant === 'primary' || variant === 'danger' ? t.onPrimary : t.primary;
   return `<div style="min-height:50px;border-radius:12px;display:flex;align-items:center;justify-content:center;
     gap:8px;padding:0 16px;${map[variant]};${style}">
     ${ic ? icon(ic, 17, fg) : ''}<span style="${T.bodyS};color:${fg}">${label}</span></div>`;
@@ -52,13 +54,23 @@ export function chip(label, { on = false, ic, color, t = C } = {}) {
 export function segmented(items, { t = C } = {}) {
   return `<div style="display:flex;gap:4px;padding:4px;background:${t.sunken};border-radius:12px">
     ${items.map((i) => `<div style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;
-      min-height:38px;border-radius:8px;${i.on ? `background:${t.surface};${ELEV.sm}` : ''}">
+      min-height:44px;border-radius:8px;${i.on ? `background:${t.raised};${ELEV.sm}` : ''}">
       ${i.ic ? icon(i.ic, 15, i.on ? t.text : t.muted) : ''}
       <span style="${T.label};color:${i.on ? t.text : t.muted}">${i.label}</span></div>`).join('')}
   </div>`;
 }
 
 /** status: under | near | over | unset */
+/**
+ * The status colour to render words in. The app draws this distinction too:
+ * a green bright enough to read as a bar on white is too light to read as a
+ * word on white.
+ */
+const textOf = (t, status) => t[`${status}Text`] ?? t.unsetText;
+
+/** Override one declaration in a style string instead of appending a duplicate. */
+const lh = (style, px) => style.replace(/line-height:\d+px/, `line-height:${px}px`);
+
 export function budgetBar(actual, cap, status, { label, planned, compact = false, note, t = C } = {}) {
   // The figures arrive pre-formatted ("₹6,650") because that is what the bar
   // must display; pull the number back out for the fill rather than asking
@@ -82,7 +94,7 @@ export function budgetBar(actual, cap, status, { label, planned, compact = false
         ? `<div style="position:absolute;top:0;left:${plannedPct}%;width:2px;height:100%;background:${t.text};opacity:.35"></div>` : ''}
     </div>
     ${note ? `<div style="display:flex;align-items:center;gap:5px;margin-top:2px">
-      ${icon('alert', 13, t.over)}<span style="${T.captionS};color:${t.over}">${note}</span></div>` : ''}
+      ${icon('alert', 13, t.over)}<span style="${T.captionS};color:${t.overText}">${note}</span></div>` : ''}
   </div>`;
 }
 
@@ -96,19 +108,22 @@ export function budgetRing(pct, status, { size = 44, t = C } = {}) {
       ${status !== 'unset' ? `<circle cx="${cxy}" cy="${cxy}" r="${r}" stroke="${col}" stroke-width="4" fill="none"
         stroke-dasharray="${dash} ${circ}" stroke-linecap="round"/>` : ''}
     </svg>
-    <span style="${T.captionS};color:${status === 'unset' ? t.faint : col};font-variant-numeric:tabular-nums">${status === 'unset' ? '—' : pct + '%'}</span>
+    <span style="${T.captionS};color:${status === 'unset' ? t.faint : textOf(t, status)};font-variant-numeric:tabular-nums">${status === 'unset' ? '—' : pct + '%'}</span>
   </div>`;
 }
 
 export function notice(body, { tone = 'info', title, ic, t = C } = {}) {
+  // The icon can take the brighter fill; the title is text and takes the
+  // darker one, which is the whole reason those are separate tokens.
+  const ink = tone === 'danger' ? t.overText : tone === 'warning' ? t.nearText : t.primary;
   const col = tone === 'danger' ? t.over : tone === 'warning' ? t.near : t.primary;
   const bg = tone === 'danger' ? t.overSoft : tone === 'warning' ? t.nearSoft : t.primarySoft;
   const def = tone === 'danger' ? 'alert' : tone === 'warning' ? 'warning' : 'info';
   return `<div style="display:flex;gap:12px;padding:12px;border-radius:12px;background:${bg}">
     ${icon(ic ?? def, 18, col)}
     <div style="flex:1;display:flex;flex-direction:column;gap:2px">
-      ${title ? `<span style="${T.label};color:${col}">${title}</span>` : ''}
-      <span style="${T.caption};color:${t.muted};line-height:18px">${body}</span>
+      ${title ? `<span style="${T.label};color:${ink}">${title}</span>` : ''}
+      <span style="${lh(T.caption, 18)};color:${t.muted}">${body}</span>
     </div></div>`;
 }
 
@@ -174,8 +189,8 @@ export function listGroup(rows, { t = C } = {}) {
 
 export function fab({ bottom = 24, t = C } = {}) {
   return `<div style="position:absolute;right:16px;bottom:${bottom}px;width:58px;height:58px;border-radius:29px;
-    background:${t.primary};display:flex;align-items:center;justify-content:center;${ELEV.lg}">
-    ${icon('plus', 26, '#fff', 2.2)}</div>`;
+    background:${t.accent};display:flex;align-items:center;justify-content:center;${ELEV.lg}">
+    ${icon('plus', 26, t.onPrimary, 2.2)}</div>`;
 }
 
 /** The trip-total bar pinned above the gesture inset. */

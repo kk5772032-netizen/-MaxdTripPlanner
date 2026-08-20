@@ -1,6 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import { C, T, ELEV, dc, icon, iconFill } from './lib.mjs';
 import * as p from './parts.mjs';
+import { TOTALS, TRIP, money } from './data.mjs';
 
 const w = (f, s) => { writeFileSync(f, s); console.log('  ', f); };
 
@@ -26,15 +27,17 @@ const tripCard = (name, dates, stops, spend, pct, status, badge) => `
 </div>`;
 
 const badge = (text, status) => `<div style="padding:3px 8px;border-radius:999px;background:${C[status + 'Soft']}">
-  <span style="${T.captionS};color:${C[status]}">${text}</span></div>`;
+  <span style="${T.captionS};color:${C[status + 'Text']}">${text}</span></div>`;
 const noBudget = `<span style="${T.caption};color:${C.faint}">No budget set</span>`;
 
 w('Main.dc.html', dc(`
 ${p.header('Trips', { back: false, big: true })}
 <div style="flex:1;padding:16px;display:flex;flex-direction:column;gap:12px;overflow:hidden">
-  ${tripCard('Delhi weekend', '4–7 Nov 2025 · 4d', '3 stops', '₹12,500 of ₹15,000', 83, 'near', badge('Close to cap', 'near'))}
-  ${tripCard('Kerala backwaters', '2–9 Dec 2025 · 8d', '5 stops', '₹14,200 of ₹42,000', 34, 'under', badge('On track', 'under'))}
-  ${tripCard('Tokyo, spring', '28 Mar–4 Apr 2026 · 8d', '6 stops', '¥212,400 of ¥180,000', 118, 'over', badge('Over budget', 'over'))}
+  ${tripCard(TRIP.name, `${TRIP.dates} · 4d`, '3 stops',
+    `${money(TOTALS.actual)} of ${money(TOTALS.budget)}`, TOTALS.percent, TOTALS.status,
+    badge('Close to cap', TOTALS.status))}
+  ${tripCard('Kerala backwaters', '2–9 Dec 2026 · 8d', '5 stops', '₹14,200 of ₹42,000', 34, 'under', badge('On track', 'under'))}
+  ${tripCard('Tokyo, spring', '28 Mar–4 Apr 2027 · 8d', '6 stops', '¥212,400 of ¥180,000', 118, 'over', badge('Over budget', 'over'))}
   ${tripCard('Someday: Patagonia', 'No dates set', '2 stops', '₹0 spent', 0, 'unset', noBudget)}
 </div>
 ${p.fab({ bottom: 24 + p.INSET })}
@@ -77,18 +80,29 @@ const dateBox = (cap, val, active) => `<div style="flex:1;background:${C.surface
   <span style="${T.caption};color:${C.muted}">${cap}</span>
   <span style="${T.body};font-weight:500;color:${val === 'Not set' ? C.faint : C.text}">${val}</span></div>`;
 
+/**
+ * November 2026, laid out as the month actually falls: it opens on a Sunday,
+ * so a Monday-first grid starts with six blanks and runs to 30. The earlier
+ * version hard-coded two blanks and stopped at 27, which is a calendar for no
+ * month in particular — the kind of thing a reviewer spots before the copy.
+ */
 const cal = () => {
   const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  const YEAR = 2026, MONTH = 10;                        // 10 = November
+  const first = new Date(Date.UTC(YEAR, MONTH, 1)).getUTCDay();
+  const lead = (first + 6) % 7;                         // Monday-first offset
+  const length = new Date(Date.UTC(YEAR, MONTH + 1, 0)).getUTCDate();
   let cells = '';
-  for (let i = 0; i < 30; i++) {
-    const n = i - 2;
-    const sel = n === 4;
+  for (let i = 0; i < lead + length; i++) {
+    const n = i - lead + 1;
+    const day = n < 1 ? null : n;
+    const sel = day === 6;
     cells += `<div style="height:30px;display:flex;align-items:center;justify-content:center;
-      border-radius:15px;${sel ? `background:${C.primary}` : ''}">
-      <span style="${T.caption};color:${sel ? '#fff' : n < 1 ? C.faint : C.text};font-variant-numeric:tabular-nums">${n < 1 ? '' : n}</span></div>`;
+      border-radius:15px;${sel ? `background:${C.accent}` : ''}">
+      <span style="${T.caption};color:${sel ? C.onPrimary : C.text};font-variant-numeric:tabular-nums">${day ?? ''}</span></div>`;
   }
   return `<div style="margin-top:12px;background:${C.surface};border:1px solid ${C.border};border-radius:12px;padding:12px">
-    <div style="${T.label};color:${C.text};text-align:center;margin-bottom:8px">November 2025</div>
+    <div style="${T.label};color:${C.text};text-align:center;margin-bottom:8px">November 2026</div>
     <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px">
       ${days.map((d) => `<div style="height:20px;display:flex;align-items:center;justify-content:center">
         <span style="${T.caption};color:${C.faint}">${d}</span></div>`).join('')}
@@ -107,7 +121,7 @@ w('NewTrip.dc.html', dc(`
 </div>
 <div style="flex:1;padding:16px;display:flex;flex-direction:column;gap:20px;overflow:hidden">
   ${p.field('Trip name', p.input('Delhi long weekend', { focus: true }))}
-  ${p.field('Dates', `<div style="display:flex;gap:12px">${dateBox('Start', '4 Nov 2025', true)}${dateBox('End', 'Not set')}</div>${cal()}`)}
+  ${p.field('Dates', `<div style="display:flex;gap:12px">${dateBox('Start', '6 Nov 2026', true)}${dateBox('End', 'Not set')}</div>${cal()}`)}
   ${p.field('Currency', `<div style="display:flex;flex-wrap:wrap;gap:8px">
     ${CURRENCIES.map((c) => p.chip(c, { on: c === 'INR' })).join('')}</div>`)}
 </div>
@@ -122,12 +136,12 @@ w('EditTrip.dc.html', dc(`
   <div style="width:64px"></div>
 </div>
 <div style="flex:1;padding:16px;display:flex;flex-direction:column;gap:20px;overflow:hidden">
-  ${p.field('Trip name', p.input('Delhi weekend'))}
-  ${p.field('Dates', `<div style="display:flex;gap:12px">${dateBox('Start', '4 Nov 2025')}${dateBox('End', '7 Nov 2025')}</div>
+  ${p.field('Trip name', p.input(TRIP.name))}
+  ${p.field('Dates', `<div style="display:flex;gap:12px">${dateBox('Start', '6 Nov 2026')}${dateBox('End', '9 Nov 2026')}</div>
     <div style="margin-top:8px"><span style="${T.caption};color:${C.muted}">Clear dates</span></div>`)}
   ${p.field('Currency', `<div style="display:flex;flex-wrap:wrap;gap:8px">
     ${CURRENCIES.slice(0, 6).map((c) => p.chip(c, { on: c === 'INR' })).join('')}</div>`)}
-  ${p.field('Total budget', p.input('15000', { prefix: '₹' }),
+  ${p.field('Total budget', p.input(String(TRIP.budget), { prefix: '₹' }),
     'Optional. Leave empty to track spending without an overall cap.')}
   <div style="display:flex;flex-direction:column;gap:16px;margin-top:4px">
     ${p.button('Save changes', { ic: 'check' })}

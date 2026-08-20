@@ -1,6 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import { C, T, ELEV, dc, icon, iconFill, CAT_ICON } from './lib.mjs';
 import * as p from './parts.mjs';
+import { BY_CATEGORY, CATEGORY_LABEL, EXPENSES, TOTALS, UNTIED, money, stopRows } from './data.mjs';
 const w = (f, s) => { writeFileSync(f, s); console.log('  ', f); };
 
 /* ---------------- P15 · Expenses log ---------------- */
@@ -24,7 +25,8 @@ w('Expenses.dc.html', dc(`
 ${p.header('Expenses', { right: p.headerAction('Add', 'plus') })}
 <div style="flex:1;padding:16px;display:flex;flex-direction:column;gap:16px;overflow:hidden">
   ${filterRow('Stop', [
-    p.chip('All', { on: true }), p.chip('Whole trip'), p.chip('India Gate'), p.chip("Humayun's"),
+    p.chip('All', { on: true }), p.chip('Whole trip'),
+    ...stopRows.map((s) => p.chip(s.name)),
   ].join(''))}
   ${filterRow('Category', [
     p.chip('All', { on: true }),
@@ -33,20 +35,14 @@ ${p.header('Expenses', { right: p.headerAction('Add', 'plus') })}
     p.chip('Transport', { ic: CAT_ICON.transport, color: C.transport }),
   ].join(''))}
   <div style="display:flex;justify-content:space-between;align-items:baseline">
-    <span style="${T.label};color:${C.muted}">12 expenses</span>
-    <span style="${T.title};color:${C.text};font-variant-numeric:tabular-nums">₹6,650.00</span>
+    <span style="${T.label};color:${C.muted}">${TOTALS.count} expenses</span>
+    <span style="${T.title};color:${C.text};font-variant-numeric:tabular-nums">${money(TOTALS.actual, { paise: true })}</span>
   </div>
-  ${p.listGroup([
-    expRow('transport', 'Flights to Delhi', 'Whole trip · 2 Nov 2025', '₹8,000.00'),
-    expRow('food', "Lunch at Karim's", 'India Gate · 4 Nov 2025', '₹450.00'),
-    expRow('activity', 'Boat ride', 'India Gate · 4 Nov 2025', '₹1,200.00'),
-    expRow('food', 'Dinner', "Humayun's Tomb · 5 Nov 2025", '₹1,900.00'),
-    expRow('lodging', 'Guest house, 2 nights', 'Connaught Place · 5 Nov 2025', '₹3,400.00'),
-    expRow('other', 'Museum donation', 'Connaught Place · 6 Nov 2025', '₹200.00'),
-  ])}
+  ${p.listGroup(EXPENSES.map((e) =>
+    expRow(e.cat, e.note, `${e.stop ?? 'Whole trip'} · ${e.date}`, money(e.amount, { paise: true }))))}
   <span style="${T.caption};color:${C.faint};text-align:center">Tap to edit, long-press to delete.</span>
 </div>
-`));
+`, { h: 930 }));
 
 /* ---------------- P15b · Expenses, filtered empty ---------------- */
 w('ExpensesEmpty.dc.html', dc(`
@@ -62,7 +58,9 @@ ${p.header('Expenses', { right: p.headerAction('Add', 'plus') })}
     <span style="${T.label};color:${C.muted}">0 expenses</span>
     <span style="${T.title};color:${C.text};font-variant-numeric:tabular-nums">₹0.00</span>
   </div>
-  ${p.emptyState('filter', 'Nothing matches those filters', 'Try widening the stop or category filter.')}
+  ${p.emptyState('filter', 'Nothing matches those filters',
+    'No transport expenses at India Gate yet. Clear the filters to see the other 9.',
+    p.button('Clear filters', { variant: 'secondary', ic: 'close' }))}
 </div>
 `));
 
@@ -74,15 +72,15 @@ w('ExpenseForm.dc.html', dc(`
 ${p.header('Expenses', { right: p.headerAction('Close', 'close') })}
 <div style="flex:1;padding:16px;display:flex;flex-direction:column;gap:16px;overflow:hidden">
   ${p.card(`
-    ${p.field('New expense', p.input('450', { prefix: '₹', focus: true, style: 'min-height:52px' }))}
+    ${p.field('New expense', p.input('1450', { prefix: '₹', focus: true, style: 'min-height:52px' }))}
     ${p.field('Category', `<div style="display:flex;flex-wrap:wrap;gap:8px">
       ${CATS.map((c) => p.chip(LBL[c], { ic: CAT_ICON[c], color: C[c], on: c === 'food' })).join('')}</div>`)}
     ${p.field('Stop', `<div style="display:flex;flex-wrap:wrap;gap:8px">
       ${p.chip('Whole trip', { ic: 'globe' })}${p.chip('India Gate', { ic: 'location', on: true })}
       ${p.chip("Humayun's Tomb", { ic: 'location' })}</div>`,
-      "Leave on \\u201cWhole trip\\u201d for flights, visas and anything not tied to one place.")}
+      'Leave on \u201cWhole trip\u201d for flights, visas and anything not tied to one place.')}
     ${p.field('Date', `<div style="display:flex;gap:12px;align-items:center">
-      <div style="flex:1">${p.input('4 Nov 2025')}</div>
+      <div style="flex:1">${p.input('6 Nov 2026')}</div>
       <div style="min-height:36px;display:flex;align-items:center;padding:0 12px;border-radius:999px;
         background:${C.primarySoft}"><span style="${T.label};color:${C.primary}">Today</span></div></div>`)}
     ${p.field('Note', p.input("Lunch at Karim's"), 'Optional.')}
@@ -103,7 +101,7 @@ const pvaGroup = (name, actual, plannedW, actualW, status, caption) => `
 <div style="display:flex;flex-direction:column;gap:2px">
   <div style="display:flex;justify-content:space-between;align-items:baseline">
     <span style="${T.label};color:${C.text}">${name}</span>
-    <span style="${T.label};color:${status === 'over' ? C.over : C.text};font-variant-numeric:tabular-nums">${actual}</span>
+    <span style="${T.label};color:${status === 'over' ? C.overText : C.text};font-variant-numeric:tabular-nums">${actual}</span>
   </div>
   <div style="display:flex;flex-direction:column;gap:2px;margin:2px 0">
     <div style="height:8px;border-radius:4px;background:${C.sunken};overflow:hidden">
@@ -142,21 +140,26 @@ const legend = (cat, label, amount, share) => `
   <span style="${T.caption};color:${C.faint};width:38px;text-align:right;font-variant-numeric:tabular-nums">${share}</span>
 </div>`;
 
-const PIE = [
-  { cat: 'food', v: 2400 }, { cat: 'transport', v: 1900 },
-  { cat: 'activity', v: 1350 }, { cat: 'lodging', v: 1000 },
-];
+const PIE = BY_CATEGORY.map((c) => ({ cat: c.cat, v: c.amount }));
+
+/**
+ * Bar widths are shares of the largest figure on the chart, which is how the
+ * app scales them — one scale for both bars so their lengths are comparable
+ * across stops.
+ */
+const SCALE = Math.max(...stopRows.flatMap((s) => [s.planned, s.actual]));
+const width = (v) => Math.round((v / SCALE) * 100);
 
 w('Dashboard.dc.html', dc(`
 ${p.header('Dashboard')}
 <div style="flex:1;padding:16px;display:flex;flex-direction:column;gap:16px;overflow:hidden">
   ${p.card(`
     <span style="${T.label};color:${C.muted}">Remaining budget</span>
-    <span style="${T.hero};color:${C.text};font-variant-numeric:tabular-nums">₹8,350</span>
-    <div style="margin-top:8px">${p.budgetBar('₹6,650', '₹15,000', 'near', { planned: 9200 })}</div>
-    ${p.notice('This trip is close to its total budget.', { tone: 'warning' })}`, { gap: 8 })}
+    <span style="${T.hero};color:${C.text};font-variant-numeric:tabular-nums">${money(TOTALS.remaining)}</span>
+    <div style="margin-top:8px">${p.budgetBar(money(TOTALS.actual), money(TOTALS.budget), TOTALS.status, { planned: TOTALS.planned })}</div>
+    ${p.notice(`This trip has used ${TOTALS.percent}% of its total budget.`, { tone: 'warning' })}`, { gap: 8 })}
   <div style="display:flex;gap:12px">
-    ${stat('Budget', '₹15,000')}${stat('Planned', '₹9,200')}${stat('Actual', '₹6,650')}
+    ${stat('Budget', money(TOTALS.budget))}${stat('Planned', money(TOTALS.planned))}${stat('Actual', money(TOTALS.actual))}
   </div>
   ${p.card(`
     <span style="${T.heading};color:${C.text}">Planned vs actual per stop</span>
@@ -168,19 +171,15 @@ ${p.header('Dashboard')}
         <div style="width:10px;height:10px;border-radius:3px;background:${C.primary}"></div>
         <span style="${T.caption};color:${C.muted}">Actual <span style="color:${C.faint}">(coloured by budget status)</span></span></div>
     </div>
-    ${pvaGroup('India Gate', '₹450', 33, 11, 'under', 'Planned ₹1,400 · cap ₹3,000')}
-    ${pvaGroup("Humayun's Tomb", '₹1,900', 37, 44, 'near', 'Planned ₹1,600 · cap ₹2,200')}
-    ${pvaGroup('Connaught Place', '₹4,300', 72, 100, 'over', 'Planned ₹3,100 · cap ₹3,500')}`, { gap: 16 })}
+    ${stopRows.map((s) => pvaGroup(s.name, money(s.actual), width(s.planned), width(s.actual), s.status,
+      `Planned ${money(s.planned)} · cap ${money(s.cap)}`)).join('\n    ')}`, { gap: 16 })}
   ${p.card(`
     <span style="${T.heading};color:${C.text}">Where the money went</span>
     <div style="display:flex;justify-content:center">${donut(PIE)}</div>
     <div style="display:flex;flex-direction:column;gap:8px">
-      ${legend('food', 'Food', '₹2,400', '36%')}
-      ${legend('transport', 'Transport', '₹1,900', '29%')}
-      ${legend('activity', 'Activity', '₹1,350', '20%')}
-      ${legend('lodging', 'Lodging', '₹1,000', '15%')}
+      ${BY_CATEGORY.map((c) => legend(c.cat, CATEGORY_LABEL[c.cat], money(c.amount), `${c.share}%`)).join('\n      ')}
     </div>
-    <span style="${T.caption};color:${C.faint}">₹8,000 of this isn't tied to a stop — flights, visas and the like.</span>`,
+    <span style="${T.caption};color:${C.faint}">${money(UNTIED)} of this isn't tied to a stop — the hotel and getting around.</span>`,
     { gap: 16 })}
 </div>
 `, { h: 1180 }));

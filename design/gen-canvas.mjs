@@ -53,12 +53,12 @@ const canvas = {
   annotations: [
     { id: 'first-run', x: 0, y: -66, w: 420, page: 'screens',
       text: 'First run — three panels, then the notification ask AFTER the first trip exists, never on launch.' },
-    { id: 'new-work', x: 1320, y: -66, w: 380, page: 'screens',
-      text: 'Onboarding, the permission sheet, settings and the recap are new — the app has none of these today.' },
+    { id: 'one-trip', x: 1320, y: -66, w: 420, page: 'screens',
+      text: 'Every screen shows the same trip: ₹12,550 spent of a ₹15,000 budget, across 9 expenses and 3 stops. The figures are derived from one fixture, so they add up wherever you check them.' },
     { id: 'push-note', x: 0, y: -66, w: 460, page: 'messaging',
       text: 'Every push carries a real figure. None of them scold. Both platforms drawn so the copy can be checked at its real length.' },
     { id: 'dark-note', x: 0, y: -66, w: 440, page: 'system',
-      text: 'Dark is re-derived, not inverted: primary lifts to #4E86F7 to hold contrast, and elevation becomes surface lightness because shadows vanish on a dark ground.' },
+      text: 'Dark is re-derived, not inverted. Elevation becomes surface lightness, because shadows vanish on a dark ground. And the blue splits in two: the link tint lifts to #4E86F7 to stay readable on the dark ground, while filled buttons drop to #2F5FD0 so white text on them still clears 4.5:1.' },
   ],
   launch: { view: 'canvas', page: 'screens' },
 };

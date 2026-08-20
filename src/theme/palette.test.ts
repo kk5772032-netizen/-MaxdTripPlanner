@@ -98,3 +98,19 @@ describe.each([
     expect(contrast(palette.textMuted, palette.textFaint)).toBeGreaterThan(1.2);
   });
 });
+
+/**
+ * Status and category are two independent vocabularies that meet on the
+ * dashboard — an amber trip bar sits directly above an orange Food slice. They
+ * do not have to be far apart in hue (amber and orange are neighbours), but
+ * they must not be the same value, or the two readings look related.
+ */
+describe.each([
+  ['light', lightPalette],
+  ['dark', darkPalette],
+])('%s palette keeps status and category apart', (_name, palette) => {
+  const statuses = ['under', 'near', 'over'] as const;
+  it.each(statuses)('%s is not identical to any category colour', (status) => {
+    expect(Object.values(palette.categories)).not.toContain(palette[status]);
+  });
+});

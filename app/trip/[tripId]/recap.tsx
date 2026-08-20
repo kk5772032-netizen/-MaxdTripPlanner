@@ -155,6 +155,18 @@ export default function TripRecapScreen() {
                 </View>
               );
             })}
+
+            {totals.unassignedActual > 0 ? (
+              // Without this the section reads as a broken total: three stops
+              // adding up to less than the figure in the hero, with no clue
+              // where the difference went.
+              <View style={styles.untiedRow}>
+                <Text style={styles.untiedLabel}>Not tied to a stop</Text>
+                <Text style={styles.untiedValue}>
+                  {formatMoney(totals.unassignedActual, trip.currency, { compact: true })}
+                </Text>
+              </View>
+            ) : null}
           </Card>
         ) : null}
 
@@ -221,5 +233,15 @@ const useStyles = makeStyles((t) => ({
   stopName: { ...type.label, color: t.text, flex: 1 },
   stopFigures: { ...type.caption, color: t.textMuted },
   track: { height: 6, borderRadius: 3, backgroundColor: t.surfaceSunken, overflow: 'hidden' },
+  untiedRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: t.border,
+    paddingTop: spacing.sm,
+  },
+  untiedLabel: { ...type.label, color: t.textMuted },
+  untiedValue: { ...type.label, color: t.textMuted, fontVariant: ['tabular-nums'] },
   fill: { height: '100%', borderRadius: 3 },
 }));

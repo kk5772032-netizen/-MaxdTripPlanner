@@ -1,6 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import { C, D, T, ELEV, dc, icon, iconFill, CAT_ICON, FONT } from './lib.mjs';
 import * as p from './parts.mjs';
+import { BIGGEST, BY_CATEGORY, CATEGORY_LABEL, TOTALS, TRIP, money, stopRows } from './data.mjs';
 const w = (f, s) => { writeFileSync(f, s); console.log('  ', f); };
 
 /* ---------------- P20 · Trip recap ---------------- */
@@ -37,24 +38,24 @@ const byStop = (name, actual, cap, pctW, status) => `
 </div>`;
 
 w('TripRecap.dc.html', dc(`
-<div style="flex:none;background:${C.primary};padding:16px 20px 28px;border-radius:0 0 20px 20px;
+<div style="flex:none;background:${C.accent};padding:16px 20px 28px;border-radius:0 0 20px 20px;
   display:flex;flex-direction:column;gap:10px">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
     ${icon('close', 22, '#fff', 2)}
-    <span style="${T.bodyS};color:#fff">Delhi weekend</span>
+    <span style="${T.bodyS};color:#fff">${TRIP.name}</span>
     ${icon('share', 20, '#fff', 2)}
   </div>
-  <span style="font-size:12px;line-height:16px;font-weight:600;letter-spacing:.08em;color:rgba(255,255,255,.7)">4–7 NOV 2025</span>
-  <span style="${T.display};color:#fff;text-wrap:balance">You came in ₹2,350 under.</span>
-  <span style="${T.body};color:rgba(255,255,255,.82)">₹12,650 spent of a ₹15,000 budget.</span>
+  <span style="font-size:12px;line-height:16px;font-weight:600;letter-spacing:.08em;color:rgba(255,255,255,.7)">${TRIP.dates.toUpperCase()}</span>
+  <span style="${T.display};color:#fff;text-wrap:balance">You came in ${money(TOTALS.remaining)} under.</span>
+  <span style="${T.body};color:rgba(255,255,255,.82)">${money(TOTALS.actual)} spent of a ${money(TOTALS.budget)} budget.</span>
 </div>
 <div style="flex:1;padding:16px;display:flex;flex-direction:column;gap:16px;overflow:hidden">
-  <div style="display:flex;gap:12px">${recapStat('3', 'stops')}${recapStat('18', 'expenses')}${recapStat('₹4,216', 'a day')}</div>
+  <div style="display:flex;gap:12px">${recapStat(String(stopRows.length), 'stops')}${recapStat(String(TOTALS.count), 'expenses')}${recapStat(money(Math.round(TOTALS.actual / 4)), 'a day')}</div>
   ${p.card(`<span style="${T.heading};color:${C.text}">Where the money went</span>
     <div style="display:flex;align-items:center;gap:16px">
-      ${donut([{ cat: 'food', v: 4600 }, { cat: 'transport', v: 3800 }, { cat: 'lodging', v: 2600 }, { cat: 'activity', v: 1650 }])}
+      ${donut(BY_CATEGORY.map((c) => ({ cat: c.cat, v: c.amount })))}
       <div style="flex:1;display:flex;flex-direction:column;gap:8px">
-        ${[['food', 'Food', '₹4,600'], ['transport', 'Transport', '₹3,800'], ['lodging', 'Lodging', '₹2,600'], ['activity', 'Activity', '₹1,650']]
+        ${BY_CATEGORY.map((c) => [c.cat, CATEGORY_LABEL[c.cat], money(c.amount)])
           .map(([c, l, v]) => `<div style="display:flex;align-items:center;gap:8px">
             <div style="width:10px;height:10px;border-radius:3px;background:${C[c]}"></div>
             <span style="flex:1;${T.caption};color:${C.text}">${l}</span>
@@ -62,15 +63,19 @@ w('TripRecap.dc.html', dc(`
       </div></div>`)}
   ${p.card(`<span style="${T.label};color:${C.muted}">Biggest single expense</span>
     <div style="display:flex;align-items:center;gap:12px">
-      ${p.catTile('transport', { size: 38 })}
+      ${p.catTile(BIGGEST.cat, { size: 38 })}
       <div style="flex:1;display:flex;flex-direction:column;gap:1px">
-        <span style="${T.bodyS};color:${C.text}">Flights to Delhi</span>
-        <span style="${T.caption};color:${C.muted}">Whole trip · 2 Nov</span></div>
-      <span style="${T.amount};color:${C.text}">₹8,000.00</span></div>`, { gap: 10 })}
+        <span style="${T.bodyS};color:${C.text}">${BIGGEST.note}</span>
+        <span style="${T.caption};color:${C.muted}">${BIGGEST.stop ?? 'Whole trip'} · ${BIGGEST.date}</span></div>
+      <span style="${T.amount};color:${C.text}">${money(BIGGEST.amount, { paise: true })}</span></div>`, { gap: 10 })}
   ${p.card(`<span style="${T.heading};color:${C.text}">By stop</span>
-    ${byStop('India Gate', '₹2,850', '₹3,000', 95, 'near')}
-    ${byStop("Humayun's Tomb", '₹1,900', '₹2,200', 86, 'near')}
-    ${byStop('Connaught Place', '₹4,300', '₹3,500', 100, 'over')}`, { gap: 14 })}
+    ${stopRows.map((s) => byStop(s.name, money(s.actual), money(s.cap),
+      Math.min(100, Math.round((s.actual / s.cap) * 100)), s.status)).join('\n    ')}
+    <div style="display:flex;justify-content:space-between;align-items:baseline;padding-top:4px;
+      border-top:1px solid ${C.border}">
+      <span style="${T.label};color:${C.muted}">Not tied to a stop</span>
+      <span style="${T.label};color:${C.muted};font-variant-numeric:tabular-nums">${money(TOTALS.actual - stopRows.reduce((a, s) => a + s.actual, 0))}</span>
+    </div>`, { gap: 14 })}
   ${p.button('Plan a trip like this', { variant: 'secondary', ic: 'plus' })}
 </div>
 `, { h: 1060 }));
@@ -117,12 +122,24 @@ const androidNotif = (title, body, actions) => `
   </div>` : ''}
 </div>`;
 
+/**
+ * The four the app actually sends, worded by the same templates in
+ * src/notifications.ts — the copy here is what those templates produce for the
+ * fixture, not an approximation of it. No action buttons: the app registers no
+ * notification categories, and drawing buttons that don't exist is the kind of
+ * thing that gets built and then can't be.
+ */
+const NEAR = stopRows.find((s) => s.status === 'near');
+const OVER = stopRows.find((s) => s.status === 'over');
 const NOTIFS = [
-  ['Connaught Place is at 85%', '₹2,975 of ₹3,500 spent. ₹525 left at this stop.', ['Log expense', 'View stop']],
-  ['Delhi weekend is over budget', "₹15,840 spent of ₹15,000. You're ₹840 over.", ['See dashboard']],
-  ['Log today’s spending', "Day 2 of Delhi weekend. You've logged ₹1,200 so far today.", ['Add expense', 'Nothing today']],
-  ['Delhi weekend starts tomorrow', '3 stops planned, ₹15,000 budget. 2 stops still have no budget set.', ['Review trip']],
-  ['How did Delhi weekend go?', 'You came in ₹2,350 under budget. See the recap.', ['See recap']],
+  [`${NEAR.name} is at ${Math.round((NEAR.actual / NEAR.cap) * 100)}%`,
+   `${money(NEAR.actual)} of ${money(NEAR.cap)} spent. ${money(NEAR.cap - NEAR.actual)} left at this stop.`, []],
+  [`${OVER.name} is over budget`,
+   `${money(OVER.actual)} spent of ${money(OVER.cap)}. You're ${money(OVER.actual - OVER.cap)} over.`, []],
+  [`${TRIP.name} is at ${TOTALS.percent}%`,
+   `${money(TOTALS.actual)} of ${money(TOTALS.budget)} spent. ${money(TOTALS.remaining)} left.`, []],
+  ['Log today’s spending', `${TRIP.name} is under way. Add what you spent while it's fresh.`, []],
+  [`${TRIP.name} starts tomorrow`, `3 stops planned, ${money(TOTALS.budget)} budget.`, []],
 ];
 
 const colHead = (t) => `<span style="${T.label};color:${C.muted};letter-spacing:.06em;text-transform:uppercase">${t}</span>`;
@@ -132,7 +149,7 @@ w('PushNotifications.dc.html', dc(`
   <div style="display:flex;flex-direction:column;gap:6px">
     <span style="${T.title};color:${C.text}">Push notifications</span>
     <span style="${T.body};color:${C.muted};max-width:640px;text-wrap:pretty">Every push carries a real number —
-      one with no figure gets swiped away. None of them scold: "You're ₹840 over" is a fact.</span>
+      one with no figure gets swiped away. None of them scold: "You're ₹220 over" is a fact.</span>
   </div>
   <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px 32px">
     <div style="display:flex;flex-direction:column;gap:12px">${colHead('iOS')}
@@ -140,16 +157,16 @@ w('PushNotifications.dc.html', dc(`
     <div style="display:flex;flex-direction:column;gap:12px">${colHead('Android')}
       ${NOTIFS.map((n) => androidNotif(...n)).join('')}</div>
   </div>
-</div>`, { w: 880, h: 1120, bg: '#E9EDF2' }));
+</div>`, { w: 880, h: 700, bg: '#E9EDF2' }));
 
 /* ---------------- N02 · Toasts ---------------- */
 const toast = (ic, text, action, { timer, danger } = {}) => `
 <div style="background:rgba(12,17,29,.96);border-radius:12px;padding:14px 16px;display:flex;align-items:center;
   gap:12px;${ELEV.lg};position:relative;overflow:hidden">
-  ${icon(ic, 20, danger ? C.over : '#fff')}
+  ${icon(ic, 20, danger ? D.over : '#fff')}
   <span style="flex:1;${T.body};color:#fff">${text}</span>
-  ${action ? `<span style="${T.bodyS};color:#93B4FD">${action}</span>` : ''}
-  ${timer ? `<div style="position:absolute;left:0;bottom:0;height:2px;width:62%;background:#93B4FD;opacity:.7"></div>` : ''}
+  ${action ? `<span style="${T.bodyS};color:${C.onDarkAccent}">${action}</span>` : ''}
+  ${timer ? `<div style="position:absolute;left:0;bottom:0;height:2px;width:62%;background:${C.onDarkAccent};opacity:.7"></div>` : ''}
 </div>`;
 
 const ruleLine = (t) => `<div style="display:flex;gap:10px;align-items:flex-start">
@@ -198,22 +215,22 @@ w('Banners.dc.html', dc(`
       ${p.notice('Waypoint stores everything on this device.', { ic: 'lock', title: 'Nothing leaves your phone' })}
     </div>
     <div style="display:flex;flex-direction:column;gap:12px">${colHead('Warning')}
-      ${p.notice('Connaught Place is over its budget.', { tone: 'warning' })}
+      ${p.notice(`${OVER.name} is over its budget.`, { tone: 'warning' })}
       ${p.notice('Your plan already costs more than the trip budget.', { tone: 'warning' })}
       ${p.notice("Showing a cached list — couldn't reach Google just now.", { tone: 'warning' })}
-      ${p.notice('This trip is close to its total budget.', { tone: 'warning' })}
+      ${p.notice(`This trip has used ${TOTALS.percent}% of its total budget.`, { tone: 'warning' })}
     </div>
     <div style="display:flex;flex-direction:column;gap:12px">${colHead('Danger')}
-      ${p.notice('no such table: trips', { tone: 'danger', title: "Couldn't load your trips" })}
+      ${p.notice('Restarting the app usually fixes this.', { tone: 'danger', title: "Couldn't load your trips" })}
       ${p.notice('Check your connection and try Refresh.', { tone: 'danger', title: "Couldn't load restaurants" })}
     </div>
   </div>
   <div style="display:flex;flex-direction:column;gap:12px">${colHead('Persistent offline bar')}
     <div style="width:390px;border:1px solid ${C.border};border-radius:12px;overflow:hidden;background:${C.surface}">
       <div style="padding:14px 16px;border-bottom:1px solid ${C.border};display:flex;align-items:center;gap:12px">
-        ${icon('back', 22, C.primary, 2)}<span style="${T.heading};color:${C.text}">Delhi weekend</span></div>
+        ${icon('back', 22, C.primary, 2)}<span style="${T.heading};color:${C.text}">${TRIP.name}</span></div>
       <div style="height:32px;background:${C.nearSoft};display:flex;align-items:center;gap:8px;padding:0 16px">
-        ${icon('cloudOff', 15, C.near)}<span style="${T.captionS};color:${C.near}">Offline — showing saved data</span></div>
+        ${icon('cloudOff', 15, C.near)}<span style="${T.captionS};color:${C.nearText}">Offline — showing saved data</span></div>
       <div style="height:44px"></div>
     </div>
   </div>
@@ -226,7 +243,7 @@ const dialog = (title, body, cancel, confirm) => `
   <span style="${T.body};color:${C.muted};text-wrap:pretty">${body}</span>
   <div style="display:flex;justify-content:flex-end;gap:20px;margin-top:12px">
     <span style="${T.body};color:${C.muted}">${cancel}</span>
-    <span style="${T.bodyS};color:${C.over}">${confirm}</span></div>
+    <span style="${T.bodyS};color:${C.overText}">${confirm}</span></div>
 </div>`;
 
 w('Dialogs.dc.html', dc(`
@@ -237,7 +254,7 @@ w('Dialogs.dc.html', dc(`
       Note the second one: telling people what is <em>preserved</em> matters as much as what is lost.</span>
   </div>
   <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px">
-    ${dialog('Delete trip?', 'Delhi weekend and everything in it — stops, activities, food plans and expenses — will be removed.', 'Cancel', 'Delete')}
+    ${dialog('Delete trip?', TRIP.name + ' and everything in it — stops, activities, food plans and expenses — will be removed.', 'Cancel', 'Delete')}
     ${dialog('Remove stop?', 'India Gate, its activities and its food plan will be removed. Expenses logged against it are kept as trip-level expenses.', 'Cancel', 'Remove')}
     ${dialog('Delete all data?', "Every trip, stop and expense on this device will be removed. This can't be undone.", 'Cancel', 'Delete everything')}
   </div>

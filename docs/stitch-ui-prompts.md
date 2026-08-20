@@ -5,8 +5,16 @@ covering every screen, state, notification and cross-cutting concern in Waypoint
 
 Each prompt is self-contained and paste-ready. `S0` is the shared design system —
 paste it once at the start of a Stitch project, then run screen prompts one at a
-time. Prompts marked **NEW** describe screens the app doesn't have yet; they are
-the highest-value additions to design.
+time.
+
+Every screen described here is now built, and every figure in the pack comes
+from one worked example: a four-day Delhi trip, ₹12,550 spent against a ₹15,000
+budget, 9 expenses across 3 stops. The numbers reconcile wherever you check
+them — the stop totals plus the untied expenses equal the trip total, the
+category shares total 100%, and the amber states are amber because they are
+past 80% of a cap. That is deliberate: mock data that doesn't add up is the
+fastest way to lose a design review, and the second fastest way to ship a
+screen that can't display real data.
 
 ---
 
@@ -59,40 +67,64 @@ COLOUR — surfaces and text
 Background        #F6F7F9
 Surface (cards)   #FFFFFF
 Sunken surface    #F2F4F7   (inputs, tracks, grouped rows)
+Raised surface    #FFFFFF   (the selected pill inside a sunken track)
 Border            #E4E7EC
 Border strong     #D0D5DD
 Text primary      #0C111D
-Text secondary    #5D6B82
-Text tertiary     #98A2B3
+Text secondary    #475467
+Text tertiary     #626D80
+The two muted levels are darker than they look like they need to be. A lighter
+tertiary reads as elegant at a glance and measures 2.4:1, which is not readable
+text. Every value here clears 4.5:1 on both the background and the card.
 
 COLOUR — brand
-Primary           #2563EB
+Primary           #2563EB   (the tint: links, icons, active states)
 Primary pressed   #1D4FD7
 Primary soft      #EFF4FF   (tinted fills, selected chips)
+Accent            #2563EB   (the FILL under white text: buttons, FAB, hero)
+Accent pressed    #1D4FD7
+Danger fill       #D92D20   (destructive buttons — the status red is too light
+                             to carry white text)
+In light mode the tint and the fill happen to be the same blue. Keep them as
+two names anyway: in dark they diverge, because a blue light enough to read as
+a link on a dark ground is too light to carry white text.
 
 COLOUR — budget status (semantic, reserved, never decorative)
-Under budget      #12B76A on #ECFDF3
-Near cap (>=80%)  #F79009 on #FFFAEB
-Over budget       #F04438 on #FEF3F2
-No budget set     #98A2B3 on #F2F4F7
+                  FILL (bars, arcs)   TEXT (labels, pills)   SOFT (pill ground)
+Under budget      #099250             #067647                #ECFDF3
+Near cap (>=80%)  #B54708             #B54708                #FFFAEB
+Over budget       #F04438             #B42318                #FEF3F2
+No budget set     #98A2B3             #667085                #F2F4F7
+Fill and text are different values of the same colour for a measurable reason:
+a green bright enough to read as a bar on white is too light to read as a word
+on white. Use the fill column for bars, rings and dots; the text column the
+moment the colour lands on a glyph.
 
 COLOUR — expense categories (identity, never reused as decoration)
 Food        #DC6803
 Activity    #2E90FA
 Transport   #9E33D6
-Lodging     #039855
-Other       #8D97A5
+Lodging     #0E7C6B   (teal, not green — see below)
+Other       #7A8595
 These four chromatic hues are a validated categorical palette: every adjacent
 pair clears colourblind-separation and contrast checks. Do not substitute them
 by eye. "Other" is intentionally neutral grey — it is a residual bucket, not a
-fifth identity. Category colours are deliberately kept clear of the status
-colours above, so that red anywhere in this app means "over budget" and nothing
-else.
+fifth identity.
+
+Status and category are two separate vocabularies that happen to meet on the
+dashboard, where an amber trip bar sits above an orange Food slice. They need
+not be far apart in hue — amber and orange are neighbours — but no category may
+be the SAME value as a status colour, or the eye reads a relationship that
+isn't there. Red is the one hue held fully in reserve: red anywhere in this app
+means over budget and nothing else. Lodging is teal for the same reason it
+isn't green: it is usually the biggest slice on the dashboard donut, which
+sits on the same screen as a green "under budget" bar.
 
 TYPOGRAPHY
 Use a clean geometric or neo-grotesque sans (Inter, Roboto or the platform
 default). One family throughout. Scale, with line height:
-Display     30 / 36, weight 700, tracking -0.5   (dashboard hero number)
+Hero        34 / 40, weight 700, tracking -0.8   (the dashboard's one big number)
+Display     30 / 36, weight 700, tracking -0.5   (recap headline)
 Title       22 / 28, weight 700, tracking -0.3   (screen titles)
 Heading     17 / 22, weight 600, tracking -0.2   (card and section titles)
 Body        15 / 21, weight 400
@@ -118,7 +150,7 @@ always pair with a text label except in a FAB or a well-established affordance.
 CORE COMPONENTS
 - Budget bar: a 10px rounded track (6px in compact rows), filled left to right
   in the status colour, with a faint vertical tick marking "planned" against the
-  cap. ALWAYS labelled with its numbers, e.g. "₹12,500 of ₹15,000". Never a bare
+  cap. ALWAYS labelled with its numbers, e.g. "₹12,550 of ₹15,000". Never a bare
   bar. Past the cap the fill stays full and a red line beneath reads
   "₹2,300 over budget".
 - Budget ring: 44px circular progress, same status colours, centred percentage
@@ -128,8 +160,10 @@ CORE COMPONENTS
   a star rating chip if present, and a drag handle on the right.
 - Chip: pill, 36pt min height, outline by default; when selected takes an 8%
   tint of its own colour with a matching border.
-- Segmented control: sunken track, 4px padding, the active segment a white
-  raised pill with icon and label.
+- Segmented control: sunken track, 4px padding, the active segment a RAISED
+  pill with icon and label. Raised means lighter than the track, not "white" —
+  in dark mode the card surface is darker than the track, and a pill drawn in
+  it reads as the segment you did not pick.
 - Notice: soft-tinted inline block with a leading icon, optional bold title, and
   explanatory body. Tones: info (blue), warning (amber), danger (red).
 - Empty state: 56px circular primary-soft icon badge, heading, one or two lines
@@ -138,8 +172,8 @@ CORE COMPONENTS
 MONEY FORMATTING
 Default currency INR, symbol ₹. Indian digit grouping: ₹12,34,567 not
 ₹1,234,567. Other currencies use standard grouping. Compact display in bars,
-rings and charts drops the decimals (₹12,500); full precision appears in
-expense rows and detail figures (₹12,500.00).
+rings and charts drops the decimals (₹12,550); full precision appears in
+expense rows and detail figures (₹12,550.00).
 
 RULES
 - Minimum tap target 44 x 44pt.
@@ -153,7 +187,7 @@ RULES
 
 ---
 
-## P01 — Onboarding **NEW**
+## P01 — Onboarding
 
 Purpose: three swipeable panels on first launch. The app currently drops the
 user straight into an empty list, which under-sells what it does.
@@ -174,7 +208,7 @@ simplified light map, in primary blue.
 Panel 2 — "Decide what it should cost"
 Body: "Give each stop a budget, then plan the things to do and places to eat
 inside it."
-Illustration: a stop card with a green budget bar reading "₹800 of ₹3,000",
+Illustration: a stop card with a green budget bar reading "₹800 of ₹2,000",
 with a small checklist and a fork-and-knife icon beside it.
 
 Panel 3 — "Watch it as it happens"
@@ -191,7 +225,7 @@ gradient meshes.
 
 ---
 
-## P02 — Notification permission priming **NEW**
+## P02 — Notification permission priming
 
 Purpose: ask *before* the OS dialog, so a "no" isn't permanent. This is the
 screen that decides whether budget alerts ever work.
@@ -235,18 +269,18 @@ blue when active.
 Trip card (radius 16, white, level-1 elevation, 16 padding, 12 gap):
 Top row —
   Left column: trip name at 17/22 600; then two meta rows, each a 13px outline
-  icon plus 12/16 secondary text: a calendar icon with "4–7 Nov 2025 · 4d", and
+  icon plus 12/16 secondary text: a calendar icon with "6–9 Nov 2026 · 4d", and
   a location pin with "3 stops".
   Right: a 44px budget ring showing percentage of budget spent, coloured by
-  status, e.g. an amber ring reading "83%".
+  status, e.g. an amber ring reading "84%".
 Divider, then footer row —
-  Left: "₹12,500 of ₹15,000" at 13/18 600 in primary text.
+  Left: "₹12,550 of ₹15,000" at 13/18 600 in primary text.
   Right: a status pill — green "On track", amber "Close to cap", or red
   "Over budget" — in its soft background with its own colour text. If the trip
   has no budget, show plain tertiary text "No budget set" instead of a pill.
 
 Show four cards in different states so the system is visible at a glance:
-1. "Delhi weekend" — amber, 83%, "Close to cap"
+1. "Delhi long weekend" — amber, 84%, "Close to cap"
 2. "Kerala backwaters" — green, 34%, "On track"
 3. "Tokyo, spring" — red, 118%, "Over budget", currency ¥
 4. "Someday: Patagonia" — no dates, no budget, grey ring showing an em dash
@@ -306,7 +340,7 @@ of space between groups:
 
 2. "Dates" — two side-by-side tappable date fields, each a bordered box with a
    12/16 secondary caption ("Start" / "End") above a 15/21 500 value
-   ("4 Nov 2025" / "Not set"). Below them a low-emphasis "Clear dates" text
+   ("6 Nov 2026" / "Not set"). Below them a low-emphasis "Clear dates" text
    button. Show an inline calendar picker expanded under the Start field, in the
    platform's own style, with the selected date in primary blue.
 
@@ -334,8 +368,8 @@ Purpose: same form, different intent, plus the destructive path.
 Design the "Edit trip" variant of the Waypoint trip form (see P05 layout).
 
 Differences from Create:
-- Title reads "Edit trip". Fields are pre-filled: name "Delhi weekend", dates
-  "4 Nov 2025"/"7 Nov 2025", INR selected, budget "15000".
+- Title reads "Edit trip". Fields are pre-filled: name "Delhi long weekend",
+  dates "6 Nov 2026"/"9 Nov 2026", INR selected, budget "15000".
 - Primary button reads "Save changes" with a checkmark icon.
 - Below it, separated by 16pt, a full-width DANGER button: solid #F04438,
   white text, trash outline icon, label "Delete trip".
@@ -343,7 +377,7 @@ Differences from Create:
 Also design the confirmation dialog that "Delete trip" opens:
 Centred alert, radius 16, white, level-3 elevation, dimmed backdrop.
 Title 17/22 600: "Delete trip?"
-Body 15/21 secondary: "Delhi weekend and everything in it — stops, activities,
+Body 15/21 secondary: "Delhi long weekend and everything in it — stops, activities,
 food plans and expenses — will be removed."
 Two actions: "Cancel" (ghost, secondary text) and "Delete" (red text, weight
 600). Destructive action on the right, never pre-selected, never the same
@@ -360,37 +394,39 @@ trip total pinned in view.
 ```prompt
 Design the trip detail screen for Waypoint, itinerary view.
 
-Header: back chevron, title "Delhi weekend" (17/22 600), and a right action
+Header: back chevron, title "Delhi long weekend" (17/22 600), and a right action
 "Edit" with a pencil-outline icon, in primary blue, inset 16 from the edge.
 
 Below the header, a scrolling area:
-- A meta row: 14px calendar outline icon plus "4–7 Nov 2025" in 12/16 secondary.
+- A meta row: 14px calendar outline icon plus "6–9 Nov 2026" in 12/16 secondary.
 - A full-width segmented control with two segments, "Itinerary" (list icon) and
-  "Map" (map icon). Itinerary is active: white raised pill on a sunken track.
-- An amber warning Notice: "Connaught Place is over its budget."
+  "Map" (map icon). Itinerary is active: a raised pill on a sunken track.
+- An amber warning Notice: "Humayun's Tomb is over its budget." A stop over
+  its cap while the trip is still under is a caution, not a failure — danger
+  red is reserved for the trip total going over.
 - A 12/16 tertiary hint: "Drag a handle to reorder stops."
 - Then the ordered stop cards, 12pt apart:
 
 Stop card (white, radius 16, level-1, 16 padding):
   Row: a 28px primary-soft circle with the sequence number in 12/16 700 primary;
   then a column with the stop name (15/21 600), address (12/16 secondary), and a
-  meta line (12/16 tertiary) "2 activities · 3 food spots"; then a star chip
+  meta line (12/16 tertiary) "2 activities · 1 food spot"; then a star chip
   showing "4.6" on sunken grey; then a reorder handle icon in tertiary grey.
   Below the row, a compact 6px budget bar with its numbers above it, right
   aligned, at 12/16.
 
 Show three stops:
-  1. India Gate — green bar "₹450 of ₹3,000"
-  2. Humayun's Tomb — amber bar "₹1,900 of ₹2,200"
-  3. Connaught Place — red bar "₹4,300 of ₹3,500", with "₹800 over budget" in
+  1. India Gate — amber bar "₹1,850 of ₹2,000"
+  2. Humayun's Tomb — red bar "₹1,720 of ₹1,500", with "₹220 over budget" in
+  3. Connaught Place — green bar "₹2,480 of ₹4,000"
      red 12/16 beneath it
 
 STICKY BOTTOM BAR (level-3 elevation, white, hairline top border, sitting above
 the 34pt safe-area inset):
-  Row 1: "Trip total" label left, "₹6,650 of ₹15,000" right, both 13/18 600;
+  Row 1: "Trip total" label left, "₹12,550 of ₹15,000" right, both 13/18 600;
   beneath them a full-width 10px budget bar in amber with a faint planned tick.
-  Row 2: left, a receipt outline icon plus "12 expenses" in primary blue; right,
-  "₹8,350 left" in primary blue followed by a small bar-chart icon.
+  Row 2: left, a receipt outline icon plus "9 expenses" in primary blue; right,
+  "₹2,450 left" in primary blue followed by a small bar-chart icon.
   Both halves of row 2 are tappable.
 
 A primary FAB with a plus icon, bottom right, floating clear of the sticky bar
@@ -538,7 +574,7 @@ Below the header, pinned above the tabs:
 - A multi-line input, 60pt tall, containing "Sunset is best, enter from the
   south gate".
 
-A three-segment control: "To do 3" (checkbox icon), "Food 2" (fork icon),
+A three-segment control: "To do 2" (checkbox icon), "Food 1" (fork icon),
 "Budget" (wallet icon). "To do" active. Counts are part of the label.
 
 Content:
@@ -546,15 +582,14 @@ Content:
   placeholder "Walk to the war memorial"; below it a row with an amount input
   (₹ prefix, placeholder "Est. cost (optional)") taking the remaining width, and
   a compact primary "Add" button beside it.
-- A summary row: "1 of 3 done" left, "Planned ₹1,400" right, both 13/18 600
+- A summary row: "1 of 2 done" left, "Planned ₹400" right, both 13/18 600
   secondary.
 - A grouped list, white, radius 16, hairline dividers, each row 56pt tall:
     A 24px rounded checkbox, then the task title at 15/21, then its cost at
     13/18 600 secondary, then a small circular trash icon button in red.
     Row 1: checked — green filled checkbox with a white tick, title struck
-    through in tertiary grey, "₹200"
-    Row 2: unchecked, "Sunset photos at the arch", no cost shown
-    Row 3: unchecked, "Boat ride at the canal", "₹1,200"
+    through in tertiary grey, "Evening walk to the war memorial", no cost shown
+    Row 2: unchecked, "Boat ride at Children's Park", "₹400"
 - A centred 12/16 tertiary hint: "Tap a row to tick it off."
 
 Also design the empty variant: a checkbox-outline empty state, heading "Nothing
@@ -572,16 +607,17 @@ and offline variants.
 ```prompt
 Design the "Food" tab of Waypoint's stop detail screen.
 
-Same header, notes block and segmented control as P12, with "Food 2" active.
+Same header, notes block and segmented control as P12, with "Food 1" active.
 
 Section 1 — "Your food plan"
 Section header row: title "Your food plan" at 17/22 600, right-aligned
 "Planned ₹1,600" at 13/18 600 secondary.
 A grouped white list, radius 16, hairline dividers. Each row: name at 15/21 600,
 a 12/16 secondary line combining cuisine and note ("Mughlai · go early"), then a
-compact 104pt-wide amount input showing "600", then a small red circular trash
+compact 104pt-wide amount input showing "1600", then a small red circular trash
 icon button.
-Two rows: "Karim's" and "Indian Accent".
+One row: "Karim's". The planned figure above it is the sum of these inputs and
+nothing else — it must never quote the stop's whole planned spend.
 
 Section 2 — "Restaurants nearby"
 Section header with the title left and a primary "Refresh" text button with a
@@ -618,30 +654,33 @@ Same header, notes block and segmented control as P12, with "Budget" active.
 
 Card 1 — set the cap
   Label "Budget for this stop" at 13/18 600 secondary.
-  An amount input with a ₹ prefix showing "3,000".
+  An amount input with a ₹ prefix showing "2,000".
   Hint 12/16 tertiary: "The cap you don't want to exceed here. Leave empty for
   no cap."
   Full-width primary button "Save budget" with a checkmark icon.
 
 Card 2 — the picture
-  A labelled budget bar: "Spent against budget" left, "₹450 of ₹3,000" right,
-  then a 10px green track with a faint vertical tick at the planned position.
+  A labelled budget bar: "Spent against budget" left, "₹1,850 of ₹2,000" right,
+  then a 10px amber track with a faint vertical tick at the planned position.
   A three-row figure list, each row label left in 15/21 secondary and value
   right in 15/20 700 tabular:
-    Planned    ₹1,400
-    Actual     ₹450
-    Remaining  ₹2,550
+    Planned    ₹2,000
+    Actual     ₹1,850
+    Remaining  ₹150
   A 12/16 tertiary explanation: "Planned is what your activities and food plan
   add up to. The tick on the bar marks it against your cap."
+  Planned here is the WHOLE stop: its activity estimates plus its food plan.
+  The To do tab's figure counts only activities, and the Food tab's only food —
+  three numbers that must add up, because one screen away they are compared.
 
 Then, stacked with 16pt gaps:
-  Secondary outline button "View 3 expenses" with a receipt icon.
+  Secondary outline button "View 2 expenses" with a receipt icon.
   Danger solid button "Remove stop" with a trash icon.
 
-Design a second frame in the OVER-BUDGET state: the bar full and red, a red
-row beneath it with an alert-circle icon reading "₹1,300 over budget", the
-Remaining figure showing "-₹1,300" in red, and the header figure "₹4,300 of
-₹3,000".
+Design a second frame in the OVER-BUDGET state, for Humayun's Tomb: the bar
+full and red, a red row beneath it with an alert-circle icon reading "₹220 over
+budget", the Remaining figure showing "-₹220" in red, and the header figure
+"₹1,720 of ₹1,500".
 ```
 
 ---
@@ -664,18 +703,19 @@ Filters, stacked with 12pt between:
   "Transport", "Lodging", "Other" — each with its category icon, and when
   selected tinted with its own category colour rather than blue.
 
-A totals row: "12 expenses" left at 13/18 secondary; "₹6,650.00" right at 22/28
+A totals row: "9 expenses" left at 13/18 secondary; "₹12,550.00" right at 22/28
 700 tabular.
 
 A grouped white list, radius 16, hairline dividers. Each row, 64pt tall:
   a 34px rounded-square icon tile filled with the category colour at 10% opacity
   and the category icon in full colour; then a column with the note at 15/21 600
   ("Lunch at Karim's") and a 12/16 secondary meta line joining stop and date
-  ("India Gate · 4 Nov 2025"); then the amount right-aligned at 15/20 700
-  tabular ("₹450.00").
-Show six rows across at least four categories, including one trip-level expense
-whose meta reads "Whole trip · 2 Nov 2025" with a transport icon and a large
-amount "₹8,000.00".
+  ("India Gate · 6 Nov 2026"); then the amount right-aligned at 15/20 700
+  tabular ("₹1,450.00").
+Show all nine rows, newest first, across all five categories, including the
+trip-level ones whose meta reads "Whole trip · 9 Nov 2026" — the largest is a
+lodging expense of "₹5,400.00". The rows must sum to the figure in the totals
+row: a list that does not add up is the first thing a reviewer checks.
 
 Beneath the list, a centred 12/16 tertiary hint: "Tap to edit, long-press to
 delete."
@@ -699,7 +739,7 @@ Expenses screen (not a separate route).
 Card, white, radius 16, level-1, 16 padding, fields stacked with 16pt gaps:
 
 1. Label "New expense". A large amount input, ₹ prefix in secondary text,
-   focused, showing "450". This field is the first thing focused when the form
+   focused, showing "1450". This field is the first thing focused when the form
    opens.
 
 2. Label "Category". A wrapping row of five chips, each with its category icon,
@@ -711,7 +751,7 @@ Card, white, radius 16, level-1, 16 padding, fields stacked with 16pt gaps:
    primary-soft. Hint 12/16 tertiary: "Leave on 'Whole trip' for flights, visas
    and anything not tied to one place."
 
-4. Label "Date". A bordered field showing "4 Nov 2025" beside a small
+4. Label "Date". A bordered field showing "6 Nov 2026" beside a small
    primary-soft "Today" shortcut pill.
 
 5. Label "Note". A single-line input, placeholder "Lunch at Karim's". Hint
@@ -741,14 +781,16 @@ Header: back chevron, title "Dashboard".
 
 Card 1 — hero
   Label "Remaining budget" at 13/18 600 secondary.
-  The number at 34/40 700, tabular: "₹8,350". If negative it turns red and reads
+  The number at 34/40 700, tabular: "₹2,450". If negative it turns red and reads
   "-₹1,240".
-  A full-width budget bar beneath, amber, labelled "₹6,650 of ₹15,000".
-  An amber warning Notice inside the card when relevant: "This trip is close to
-  its total budget."
+  A full-width budget bar beneath, amber, labelled "₹12,550 of ₹15,000".
+  An amber warning Notice inside the card when relevant: "This trip has used
+  84% of its total budget."
+  Amber is not a mood: it starts at 80% of the cap and not a rupee earlier. A
+  bar drawn amber at 44% teaches the reader that the colours mean nothing.
 
 Row of three equal stat tiles (white, radius 12, level-1, 12 padding):
-  "Budget" ₹15,000 · "Planned" ₹9,200 · "Actual" ₹6,650
+  "Budget" ₹15,000 · "Planned" ₹6,400 · "Actual" ₹12,550
   Each: 12/16 600 secondary label above a 17/22 600 value.
 
 Card 2 — "Planned vs actual per stop"
@@ -760,9 +802,9 @@ Card 2 — "Planned vs actual per stop"
     two stacked horizontal bars sharing one scale, 8px tall, radius 4, with a
     2px gap between them — the upper bar grey for planned, the lower bar in the
     stop's status colour for actual;
-    a 11/15 tertiary caption "Planned ₹1,400 · cap ₹3,000".
-  Show three stops: one green, one amber, one red where the actual bar clearly
-  outruns the planned bar.
+    a 11/15 tertiary caption "Planned ₹2,000 · cap ₹2,000".
+  Show three stops: India Gate amber, Humayun's Tomb red with the actual bar
+  clearly outrunning the planned bar, Connaught Place green.
   Horizontal bars, not vertical — the category labels are stop names and must
   stay readable.
 
@@ -772,10 +814,12 @@ Card 3 — "Where the money went"
   Beneath it a legend list, one row per category: a 10px colour swatch, the
   label at 13/18, the amount at 13/18 600, and the share at 12/16 tertiary right
   aligned in a fixed 38pt column so the percentages line up.
-  Rows: Food ₹2,400 36%, Transport ₹1,900 29%, Activity ₹1,350 20%, Lodging
-  ₹1,000 15%.
-  A 12/16 tertiary footnote: "₹8,000 of this isn't tied to a stop — flights,
-  visas and the like."
+  Rows, largest first: Lodging ₹5,400 43%, Food ₹2,930 23%, Other ₹1,600 13%,
+  Activity ₹1,520 12%, Transport ₹1,100 9%. They total the Actual tile above,
+  and the percentages total 100.
+  A 12/16 tertiary footnote: "₹6,500 of this isn't tied to a stop — the hotel
+  and getting around." That figure is the trip total minus the three stop
+  totals; it cannot be picked to sound plausible.
 
 Never use a dual-axis chart, never a rainbow palette, and never rely on the
 donut alone — every slice is direct-labelled in the legend.
@@ -783,7 +827,7 @@ donut alone — every slice is direct-labelled in the legend.
 
 ---
 
-## P18 — Settings **NEW**
+## P18 — Settings
 
 Purpose: the app has no settings screen. It needs one for currency defaults,
 data export and the API-key state.
@@ -826,7 +870,7 @@ The footer is a feature, not fine print — give it room to breathe.
 
 ---
 
-## P19 — Notification settings detail **NEW**
+## P19 — Notification settings detail
 
 Purpose: give people precise control so they don't switch everything off.
 
@@ -866,7 +910,7 @@ disappearing, so the structure stays stable.
 
 ---
 
-## P20 — Trip recap **NEW**
+## P20 — Trip recap
 
 Purpose: the moment after a trip ends. The most shareable screen in the app.
 
@@ -874,23 +918,26 @@ Purpose: the moment after a trip ends. The most shareable screen in the app.
 Design a "Trip recap" screen for Waypoint, shown the day after a trip's end
 date and reachable later from the trip.
 
-Header: close icon left, title "Delhi weekend", share icon right.
+Header: close icon left, title "Delhi long weekend", share icon right.
 
 Hero block on a primary-blue background with white text, rounded 20 bottom
 corners:
-  Eyebrow 12/16 600 uppercase, 0.08em tracking, at 70% white: "4–7 NOV 2025"
-  A headline 30/36 700: "You came in ₹2,350 under."
-  A sub-line 15/21 at 80% white: "₹12,650 spent of a ₹15,000 budget."
+  Eyebrow 12/16 600 uppercase, 0.08em tracking, at 70% white: "6–9 NOV 2026"
+  A headline 30/36 700: "You came in ₹2,450 under."
+  A sub-line 15/21 at 80% white: "₹12,550 spent of a ₹15,000 budget."
   If over budget instead: "You went ₹1,240 over." on the same blue — do not
   turn the hero red. Blame-free.
 
 Below, on the normal app background:
-  A three-tile stat row: "3 stops", "18 expenses", "₹4,216 a day".
+  A three-tile stat row: "3 stops", "9 expenses", "₹3,138 a day".
   A "Where the money went" donut, same spec as P17.
-  A "Biggest single expense" card: category icon tile, "Flights to Delhi",
-  "Whole trip · 2 Nov", "₹8,000.00".
+  A "Biggest single expense" card: category icon tile, "Hotel · 2 nights",
+  "Whole trip · 9 Nov 2026", "₹5,400.00".
   A "By stop" list: each stop name with a compact status-coloured budget bar
-  and its actual vs cap.
+  and its actual vs cap. Below the three stops, above a hairline, a final row
+  "Not tied to a stop  ₹6,500" in secondary text. Without it the section shows
+  ₹6,050 on a screen whose headline says ₹12,550, and the reader is left to
+  wonder which number is wrong.
   A full-width secondary button "Plan a trip like this" that duplicates the
   itinerary into a new trip.
 
@@ -899,7 +946,7 @@ Keep it factual and warm. No confetti, no badges, no gamification, no score.
 
 ---
 
-## N01 — Push notifications **NEW**
+## N01 — Push notifications
 
 Purpose: the exact copy and layout for every push the app should send. Design as
 native notification shades, both platforms.
@@ -912,30 +959,35 @@ Android and an iOS variant of each.
 App icon: a white dashed route with waypoint dots ending in a map pin, on a
 primary blue (#2563EB) rounded square.
 
-Notification 1 — approaching a stop's cap
-  Title: "Connaught Place is at 85%"
-  Body: "₹2,975 of ₹3,500 spent. ₹525 left at this stop."
-  Actions: "Log expense", "View stop"
+These are the four kinds the app sends, and nothing else. Draw no action
+buttons: the app registers no notification categories, so buttons drawn here
+would be a promise nobody can keep.
 
-Notification 2 — over the trip budget
-  Title: "Delhi weekend is over budget"
-  Body: "₹15,840 spent of ₹15,000. You're ₹840 over."
-  Actions: "See dashboard"
+Notification 1 — a stop crossing 80% of its cap
+  Title: "India Gate is at 93%"
+  Body: "₹1,850 of ₹2,000 spent. ₹150 left at this stop."
 
-Notification 3 — daily reminder while travelling
+Notification 2 — a stop going over its cap
+  Title: "Humayun's Tomb is over budget"
+  Body: "₹1,720 spent of ₹1,500. You're ₹220 over."
+
+Notification 3 — the same alert at trip scope
+  Title: "Delhi long weekend is at 84%"
+  Body: "₹12,550 of ₹15,000 spent. ₹2,450 left."
+  (No "at this stop" — that clause belongs to stop scope only.)
+
+Notification 4 — daily reminder while travelling
   Title: "Log today's spending"
-  Body: "Day 2 of Delhi weekend. You've logged ₹1,200 so far today."
-  Actions: "Add expense", "Nothing today"
+  Body: "Delhi long weekend is under way. Add what you spent while it's fresh."
 
-Notification 4 — trip starting tomorrow
-  Title: "Delhi weekend starts tomorrow"
-  Body: "3 stops planned, ₹15,000 budget. 2 stops still have no budget set."
-  Actions: "Review trip"
+Notification 5 — trip starting tomorrow
+  Title: "Delhi long weekend starts tomorrow"
+  Body: "3 stops planned, ₹15,000 budget."
+  (A trailing sentence is appended only when stops are missing budgets:
+  "2 stops still have no budget set.")
 
-Notification 5 — trip finished
-  Title: "How did Delhi weekend go?"
-  Body: "You came in ₹2,350 under budget. See the recap."
-  Actions: "See recap"
+Each alert fires on the CROSSING, once. Staying over budget is not news, and a
+notification that repeats itself is one the reader turns off.
 
 COPY RULES, applied to all five:
 - Lead with the specific thing, never with the app name.
@@ -947,7 +999,7 @@ COPY RULES, applied to all five:
 
 ---
 
-## N02 — In-app toasts **NEW**
+## N02 — In-app toasts
 
 Purpose: confirm actions without a dialog, and make destructive actions
 recoverable.
@@ -1029,7 +1081,7 @@ at the bottom right — the safe action as ghost secondary text, the destructive
 action in #F04438 at weight 600.
 
 Dialogs:
-1. "Delete trip?" / "Delhi weekend and everything in it — stops, activities,
+1. "Delete trip?" / "Delhi long weekend and everything in it — stops, activities,
    food plans and expenses — will be removed." / Cancel · Delete
 2. "Remove stop?" / "India Gate, its activities and its food plan will be
    removed. Expenses logged against it are kept as trip-level expenses." /
@@ -1046,7 +1098,8 @@ telling the user what is preserved is as important as telling them what is lost.
 
 ## X01 — Dark mode
 
-Purpose: the app is light-only today. Dark mode is a genuine gap.
+Purpose: appearance follows the system by default, with a light/dark override
+in Settings.
 
 ```prompt
 Produce a dark theme for Waypoint by re-deriving the S0 palette — not by
@@ -1056,26 +1109,40 @@ Surfaces and text:
 Background        #0B0F17
 Surface (cards)   #141A24
 Sunken surface    #1C232F
+Raised surface    #2E3A4A   (the selected pill in a segmented control)
 Border            #263041
 Text primary      #F2F5F9
 Text secondary    #9AA8BD
-Text tertiary     #6B7A90
+Text tertiary     #7B8AA1
 
-Brand: primary #4E86F7 (lifted from #2563EB so it holds contrast on a dark
-ground), primary soft #16233C.
+Brand — and this is where dark stops being a recolour:
+Primary (tint)    #4E86F7   (lifted from #2563EB so links hold contrast)
+Accent (fill)     #2F5FD0   (dropped, so white text on a button clears 4.5:1)
+Accent pressed    #2951B8
+Danger fill       #D93A2B
+Primary soft      #16233C
+In light mode the tint and the fill are the same blue. Here they must not be:
+white on #4E86F7 measures 3.4:1. Anything with white text on it takes the
+accent; anything that IS text or an icon takes the tint.
 
-Status, lifted for dark grounds:
+Status, lifted for dark grounds — and here fill and text converge, because a
+colour bright enough to read on #0B0F17 is already dark-ground-legible as text:
 Under #2BC77F on #10251C · Near #FDB022 on #2A1F0C · Over #FF6B5E on #2B1512
 
 Categories, lifted: Food #F79009 · Activity #63A6FF · Transport #C07DEE ·
-Lodging #2BC77F · Other #97A2B2
+Lodging #4FD1C5 · Other #97A2B2
 
 Rules:
 - Elevation is expressed by surface lightness, not by shadow — a raised card is
-  a lighter surface, since shadows are invisible on dark grounds.
+  a lighter surface, since shadows are invisible on dark grounds. This applies
+  to the selected segment too: raised means lighter than its track, so it
+  cannot be the card surface, which is darker.
 - Keep the same tap targets, spacing and type scale. Nothing moves.
 - Charts keep their category hues but drop grid lines to #263041.
 - Re-check that every status colour still reads at 3:1 against #141A24.
+- The ground behind the navigator has to change with the theme as well. Left at
+  a framework default it flashes light grey between screens, which is the one
+  place a dark theme is most obviously unfinished.
 
 Redraw these screens in dark: Trips list (P03), Trip detail itinerary (P07),
 Dashboard (P17), and the notification sheet (N01).
@@ -1195,6 +1262,18 @@ this pack is written to prevent.
 - Any tap target is under 44 x 44pt.
 - Placeholder or lorem content survives anywhere — every screen in this pack
   specifies real copy and real figures.
+- The figures don't reconcile: a list that doesn't sum to its own total, a stop
+  total that ignores a tab's contribution, shares that don't reach 100%, or the
+  same trip quoting two different totals on two screens. Check the arithmetic
+  before you check the layout — it is faster, and it is where mock data fails.
+- A status colour is used at a threshold it doesn't belong to: amber before 80%
+  of a cap, red before the cap is passed. Colours that don't mean what they say
+  teach the reader to ignore them.
+- A status colour appears as text at its bar-fill value. Fill and text are
+  separate values in this system for a measurable reason.
+- A raw error string reaches the user — "no such table: trips" is a log line,
+  not a notice.
+- A notification carries action buttons the app has no categories for.
 - Money is shown with inconsistent grouping, or INR uses western grouping
   (₹1,234,567 instead of ₹12,34,567).
 - A loading state is a bare centred spinner on a list screen where a skeleton

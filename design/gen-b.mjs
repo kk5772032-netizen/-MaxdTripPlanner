@@ -1,33 +1,41 @@
 import { writeFileSync } from 'node:fs';
 import { C, T, ELEV, dc, icon, iconFill } from './lib.mjs';
 import * as p from './parts.mjs';
+import { TOTALS, TRIP, money, stopRows } from './data.mjs';
 const w = (f, s) => { writeFileSync(f, s); console.log('  ', f); };
 
 const tripFooter = () => p.stickyFooter(`
-  ${p.budgetBar('₹6,650', '₹15,000', 'near', { label: 'Trip total', planned: 9200, cap: 15000 })}
+  ${p.budgetBar(money(TOTALS.actual), money(TOTALS.budget), TOTALS.status,
+    { label: 'Trip total', planned: TOTALS.planned })}
   <div style="display:flex;justify-content:space-between;align-items:center">
     <div style="display:flex;align-items:center;gap:5px">${icon('receipt', 15, C.primary)}
-      <span style="${T.label};color:${C.primary}">12 expenses</span></div>
+      <span style="${T.label};color:${C.primary}">${TOTALS.count} expenses</span></div>
     <div style="display:flex;align-items:center;gap:5px">
-      <span style="${T.label};color:${C.primary};font-variant-numeric:tabular-nums">₹8,350 left</span>
+      <span style="${T.label};color:${C.primary};font-variant-numeric:tabular-nums">${money(TOTALS.remaining)} left</span>
       ${icon('chart', 15, C.primary)}</div>
   </div>`);
 
+/** One stop card, straight off the fixture — meta counts included. */
+const card = (s) => {
+  const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+  const meta = `${plural(s.activities.length, 'activity', 'activities')} · ${plural(s.food.length, 'food spot', 'food spots')}`;
+  const over = s.actual > s.cap ? `${money(s.actual - s.cap)} over budget` : undefined;
+  return p.stopCard(s.n, s.name, s.address, meta,
+    p.budgetBar(money(s.actual), money(s.cap), s.status,
+      { compact: true, planned: s.planned, note: over }),
+    { rating: s.rating });
+};
+
 /* ---------------- P07 · Trip detail, itinerary ---------------- */
 w('TripItinerary.dc.html', dc(`
-${p.header('Delhi weekend', { right: p.headerAction('Edit', 'edit') })}
+${p.header(TRIP.name, { right: p.headerAction('Edit', 'edit') })}
 <div style="flex:1;padding:16px;display:flex;flex-direction:column;gap:12px;overflow:hidden">
   <div style="display:flex;align-items:center;gap:4px">${icon('calendar', 14, C.faint)}
-    <span style="${T.caption};color:${C.muted}">4–7 Nov 2025</span></div>
+    <span style="${T.caption};color:${C.muted}">${TRIP.dates}</span></div>
   ${p.segmented([{ label: 'Itinerary', ic: 'list', on: true }, { label: 'Map', ic: 'map' }])}
-  ${p.notice('Connaught Place is over its budget.', { tone: 'warning' })}
+  ${p.notice(`${stopRows.find((s) => s.status === 'over').name} is over its budget.`, { tone: 'warning' })}
   <span style="${T.caption};color:${C.faint}">Drag a handle to reorder stops.</span>
-  ${p.stopCard(1, 'India Gate', 'Kartavya Path, New Delhi', '2 activities · 3 food spots',
-    p.budgetBar('₹450', '₹3,000', 'under', { compact: true, planned: 1400, cap: 3000 }), { rating: '4.6' })}
-  ${p.stopCard(2, "Humayun's Tomb", 'Mathura Road, Nizamuddin', '1 activity · 2 food spots',
-    p.budgetBar('₹1,900', '₹2,200', 'near', { compact: true, planned: 1600, cap: 2200 }), { rating: '4.5' })}
-  ${p.stopCard(3, 'Connaught Place', 'Rajiv Chowk, New Delhi', '3 activities · 4 food spots',
-    p.budgetBar('₹4,300', '₹3,500', 'over', { compact: true, note: '₹800 over budget' }), { rating: '4.3' })}
+  ${stopRows.map(card).join('\n  ')}
 </div>
 ${p.fab({ bottom: 116 + p.INSET })}
 ${tripFooter()}
@@ -46,10 +54,10 @@ const pin = (n, x, y, sel) => `<div style="position:absolute;left:${x}px;top:${y
     <span style="${T.captionS};color:#fff">${n}</span></div></div>`;
 
 w('TripMap.dc.html', dc(`
-${p.header('Delhi weekend', { right: p.headerAction('Edit', 'edit') })}
+${p.header(TRIP.name, { right: p.headerAction('Edit', 'edit') })}
 <div style="flex:1;padding:16px;display:flex;flex-direction:column;gap:12px;overflow:hidden;padding-bottom:150px">
   <div style="display:flex;align-items:center;gap:4px">${icon('calendar', 14, C.faint)}
-    <span style="${T.caption};color:${C.muted}">4–7 Nov 2025</span></div>
+    <span style="${T.caption};color:${C.muted}">${TRIP.dates}</span></div>
   ${p.segmented([{ label: 'Itinerary', ic: 'list' }, { label: 'Map', ic: 'map', on: true }])}
   <span style="${T.caption};color:${C.faint}">Tap a pin, then its label, to open that stop.</span>
   <div style="flex:1;border-radius:16px;overflow:hidden;position:relative;background:#E8EDF2;border:1px solid ${C.border}">

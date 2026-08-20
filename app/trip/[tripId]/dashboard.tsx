@@ -121,7 +121,7 @@ const useStyles = makeStyles((t) => ({
   content: { padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xxl },
   hero: { gap: spacing.sm },
   heroLabel: { ...type.label, color: t.textMuted },
-  heroValue: { ...type.display, fontSize: 34, lineHeight: 40, color: t.text },
+  heroValue: { ...type.hero, color: t.text },
   heroValueOver: { color: t.overText },
   heroBar: { marginTop: spacing.sm },
   statRow: { flexDirection: 'row', gap: spacing.md },

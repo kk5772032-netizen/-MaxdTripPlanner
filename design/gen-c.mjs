@@ -1,35 +1,43 @@
 import { writeFileSync } from 'node:fs';
 import { C, T, ELEV, dc, icon, iconFill } from './lib.mjs';
 import * as p from './parts.mjs';
+import { money, stopRows } from './data.mjs';
 const w = (f, s) => { writeFileSync(f, s); console.log('  ', f); };
 
 const notesBlock = (val, saved) => `
 <div style="display:flex;flex-direction:column;gap:4px">
   <div style="display:flex;justify-content:space-between;align-items:baseline">
     <span style="${T.label};color:${C.muted}">Notes</span>
-    ${saved ? `<span style="${T.captionS};color:${C.under}">Saved</span>` : ''}
+    ${saved ? `<span style="${T.captionS};color:${C.underText}">Saved</span>` : ''}
   </div>
   ${p.input(val, { multiline: true, style: 'min-height:60px' })}
 </div>`;
 
-const tabs = (active) => p.segmented([
-  { label: 'To do 3', ic: 'checkbox', on: active === 'todo' },
-  { label: 'Food 2', ic: 'food', on: active === 'food' },
+const STOP = stopRows[0];                                // India Gate
+const OVER = stopRows.find((s) => s.status === 'over');   // Humayun's Tomb
+
+const tabs = (stop, active) => p.segmented([
+  { label: `To do ${stop.activities.length}`, ic: 'checkbox', on: active === 'todo' },
+  { label: `Food ${stop.food.length}`, ic: 'food', on: active === 'food' },
   { label: 'Budget', ic: 'wallet', on: active === 'budget' },
 ]);
 
-const stopHead = (active) => `${p.header('India Gate')}
+const stopHead = (active) => `${p.header(STOP.name)}
 <div style="flex:none;padding:16px 16px 12px;display:flex;flex-direction:column;gap:12px">
   ${notesBlock('Sunset is best, enter from the south gate', true)}
-  ${tabs(active)}
+  ${tabs(STOP, active)}
 </div>`;
+
+const sum = (ns) => ns.reduce((a, b) => a + b, 0);
+const plannedActivities = sum(STOP.activities.map((a) => a.est));
+const plannedFood = sum(STOP.food.map((f) => f.est));
 
 /* ---------------- P12 · Stop detail, To do ---------------- */
 const todoRow = (title, cost, done) => `
 <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;min-height:56px">
   <div style="width:24px;height:24px;border-radius:8px;flex:none;display:flex;align-items:center;justify-content:center;
     ${done ? `background:${C.under};border:1.5px solid ${C.under}` : `border:1.5px solid ${C.borderStrong}`}">
-    ${done ? icon('check', 14, '#fff', 2.4) : ''}</div>
+    ${done ? icon('check', 14, C.onPrimary, 2.4) : ''}</div>
   <span style="flex:1;${T.body};color:${done ? C.faint : C.text};${done ? 'text-decoration:line-through' : ''}">${title}</span>
   ${cost ? `<span style="${T.label};color:${C.muted};font-variant-numeric:tabular-nums">${cost}</span>` : ''}
   <div style="width:30px;height:30px;border-radius:15px;background:${C.sunken};display:flex;align-items:center;
@@ -45,14 +53,10 @@ ${stopHead('todo')}
       ${p.button('Add', { style: 'min-height:48px;padding:0 20px' })}
     </div>`)}
   <div style="display:flex;justify-content:space-between">
-    <span style="${T.label};color:${C.muted}">1 of 3 done</span>
-    <span style="${T.label};color:${C.muted};font-variant-numeric:tabular-nums">Planned ₹1,400</span>
+    <span style="${T.label};color:${C.muted}">${STOP.activities.filter((a) => a.done).length} of ${STOP.activities.length} done</span>
+    <span style="${T.label};color:${C.muted};font-variant-numeric:tabular-nums">Planned ${money(plannedActivities)}</span>
   </div>
-  ${p.listGroup([
-    todoRow('Walk the memorial', '₹200', true),
-    todoRow('Sunset photos at the arch', null, false),
-    todoRow('Boat ride at the canal', '₹1,200', false),
-  ])}
+  ${p.listGroup(STOP.activities.map((a) => todoRow(a.name, a.est ? money(a.est) : null, a.done)))}
   <span style="${T.caption};color:${C.faint};text-align:center">Tap a row to tick it off.</span>
 </div>
 `));
@@ -93,9 +97,9 @@ ${stopHead('food')}
   <div style="display:flex;flex-direction:column;gap:12px">
     <div style="display:flex;justify-content:space-between;align-items:center">
       <span style="${T.heading};color:${C.text}">Your food plan</span>
-      <span style="${T.label};color:${C.muted};font-variant-numeric:tabular-nums">Planned ₹1,600</span>
+      <span style="${T.label};color:${C.muted};font-variant-numeric:tabular-nums">Planned ${money(plannedFood)}</span>
     </div>
-    ${p.listGroup([planRow("Karim's", 'Mughlai · go early', '600'), planRow('Indian Accent', 'Modern Indian', '1000')])}
+    ${p.listGroup(STOP.food.map((f) => planRow(f.name, `${f.cuisine} · go early`, String(f.est))))}
   </div>
   <div style="display:flex;flex-direction:column;gap:12px">
     <div style="display:flex;justify-content:space-between;align-items:center">
@@ -104,10 +108,10 @@ ${stopHead('food')}
         <span style="${T.label};color:${C.primary}">Refresh</span></div>
     </div>
     ${p.listGroup([
-      nearbyRow("Karim's", 'North Indian', '4.4', '₹₹', true),
+      nearbyRow("Karim's", 'Mughlai', '4.4', '₹₹', true),
       nearbyRow('Saravana Bhavan', 'South Indian', '4.2', '₹', false),
       nearbyRow('The Spice Route', 'Pan-Asian', '4.6', '₹₹₹₹', false),
-      nearbyRow('Andhra Bhavan Canteen', 'Andhra', '4.3', '₹', false),
+      nearbyRow('Andhra Bhavan', 'South Indian', '4.3', '₹', false),
     ])}
   </div>
   <span style="${T.label};color:${C.primary}">Add a place manually instead</span>
@@ -117,43 +121,45 @@ ${stopHead('food')}
 /* ---------------- P14 · Stop detail, Budget ---------------- */
 const figure = (label, value, over) => `<div style="display:flex;justify-content:space-between;align-items:center">
   <span style="${T.body};color:${C.muted}">${label}</span>
-  <span style="${T.amount};color:${over ? C.over : C.text}">${value}</span></div>`;
+  <span style="${T.amount};color:${over ? C.overText : C.text}">${value}</span></div>`;
 
 w('StopBudget.dc.html', dc(`
 ${stopHead('budget')}
 <div style="flex:1;padding:0 16px;display:flex;flex-direction:column;gap:16px;overflow:hidden">
-  ${p.card(`${p.field('Budget for this stop', p.input('3,000', { prefix: '₹' }),
+  ${p.card(`${p.field('Budget for this stop', p.input(money(STOP.cap).slice(1), { prefix: '₹' }),
     "The cap you don't want to exceed here. Leave empty for no cap.")}
     ${p.button('Save budget', { ic: 'check' })}`)}
   ${p.card(`
-    ${p.budgetBar('₹450', '₹3,000', 'under', { label: 'Spent against budget', planned: 1400 })}
+    ${p.budgetBar(money(STOP.actual), money(STOP.cap), STOP.status,
+      { label: 'Spent against budget', planned: STOP.planned })}
     <div style="display:flex;flex-direction:column;gap:8px">
-      ${figure('Planned', '₹1,400')}${figure('Actual', '₹450')}${figure('Remaining', '₹2,550')}
+      ${figure('Planned', money(STOP.planned))}${figure('Actual', money(STOP.actual))}${figure('Remaining', money(STOP.cap - STOP.actual))}
     </div>
     <span style="${T.caption};color:${C.faint}">Planned is what your activities and food plan add up to.
       The tick on the bar marks it against your cap.</span>`)}
-  ${p.button('View 3 expenses', { variant: 'secondary', ic: 'receipt' })}
+  ${p.button('View 2 expenses', { variant: 'secondary', ic: 'receipt' })}
   ${p.button('Remove stop', { variant: 'danger', ic: 'trash' })}
 </div>
 `));
 
 /* ---------------- P14b · Stop budget, over ---------------- */
 w('StopBudgetOver.dc.html', dc(`
-${p.header('Connaught Place')}
+${p.header(OVER.name)}
 <div style="flex:none;padding:16px 16px 12px;display:flex;flex-direction:column;gap:12px">
-  ${notesBlock('Janpath market first, then dinner', false)}
-  ${p.segmented([{ label: 'To do 3', ic: 'checkbox' }, { label: 'Food 4', ic: 'food' }, { label: 'Budget', ic: 'wallet', on: true }])}
+  ${notesBlock('Tickets are cheaper before 10am', false)}
+  ${tabs(OVER, 'budget')}
 </div>
 <div style="flex:1;padding:0 16px;display:flex;flex-direction:column;gap:16px;overflow:hidden">
-  ${p.card(`${p.field('Budget for this stop', p.input('3,500', { prefix: '₹' }),
+  ${p.card(`${p.field('Budget for this stop', p.input(money(OVER.cap).slice(1), { prefix: '₹' }),
     "The cap you don't want to exceed here. Leave empty for no cap.")}
     ${p.button('Save budget', { ic: 'check' })}`)}
   ${p.card(`
-    ${p.budgetBar('₹4,300', '₹3,500', 'over', { label: 'Spent against budget', note: '₹800 over budget' })}
+    ${p.budgetBar(money(OVER.actual), money(OVER.cap), OVER.status,
+      { label: 'Spent against budget', note: `${money(OVER.actual - OVER.cap)} over budget` })}
     <div style="display:flex;flex-direction:column;gap:8px">
-      ${figure('Planned', '₹3,100')}${figure('Actual', '₹4,300')}${figure('Remaining', '-₹800', true)}
+      ${figure('Planned', money(OVER.planned))}${figure('Actual', money(OVER.actual))}${figure('Remaining', money(OVER.cap - OVER.actual), true)}
     </div>`)}
-  ${p.button('View 7 expenses', { variant: 'secondary', ic: 'receipt' })}
+  ${p.button('View 2 expenses', { variant: 'secondary', ic: 'receipt' })}
   ${p.button('Remove stop', { variant: 'danger', ic: 'trash' })}
 </div>
 `));

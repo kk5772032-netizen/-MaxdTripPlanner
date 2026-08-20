@@ -91,7 +91,7 @@ export const lightPalette: Palette = {
   dangerFill: '#D92D20',
   dangerFillPressed: '#B42318',
   under: '#099250',
-  near: '#DC6803',
+  near: '#B54708',
   over: '#F04438',
   unset: '#98A2B3',
   underSoft: '#ECFDF3',
@@ -103,11 +103,13 @@ export const lightPalette: Palette = {
   unsetText: '#667085',
   overlay: 'rgba(12, 17, 29, 0.45)',
   onDarkAccent: '#93B4FD',
+  // Lodging is teal rather than green: it is the biggest slice on the dashboard
+  // donut, which sits on the same screen as a green "under budget" bar.
   categories: {
     food: '#DC6803',
     activity: '#2E90FA',
     transport: '#9E33D6',
-    lodging: '#039855',
+    lodging: '#0E7C6B',
     other: '#7A8595',
   },
 };
@@ -148,7 +150,7 @@ export const darkPalette: Palette = {
     food: '#F79009',
     activity: '#63A6FF',
     transport: '#C07DEE',
-    lodging: '#2BC77F',
+    lodging: '#4FD1C5',
     other: '#97A2B2',
   },
 };

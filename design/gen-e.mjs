@@ -10,9 +10,9 @@ const routeArt = `<svg width="240" height="200" viewBox="0 0 240 200" fill="none
   <rect x="8" y="18" width="224" height="164" rx="14" fill="${C.sunken}"/>
   <path d="M8 92h224M8 138h224M74 18v164M158 18v164" stroke="#E7EBF0" stroke-width="7"/>
   <path d="M52 150 L118 106 L186 62" stroke="${C.primary}" stroke-width="3.5" stroke-dasharray="9 7" stroke-linecap="round"/>
-  <circle cx="52" cy="150" r="13" fill="${C.primary}"/><text x="52" y="155" font-size="13" font-weight="700" fill="#fff" text-anchor="middle" font-family="system-ui">1</text>
-  <circle cx="118" cy="106" r="13" fill="${C.primary}"/><text x="118" y="111" font-size="13" font-weight="700" fill="#fff" text-anchor="middle" font-family="system-ui">2</text>
-  <circle cx="186" cy="62" r="13" fill="${C.primary}"/><text x="186" y="67" font-size="13" font-weight="700" fill="#fff" text-anchor="middle" font-family="system-ui">3</text>
+  <circle cx="52" cy="150" r="13" fill="${C.accent}"/><text x="52" y="155" font-size="13" font-weight="700" fill="#fff" text-anchor="middle" font-family="system-ui">1</text>
+  <circle cx="118" cy="106" r="13" fill="${C.accent}"/><text x="118" y="111" font-size="13" font-weight="700" fill="#fff" text-anchor="middle" font-family="system-ui">2</text>
+  <circle cx="186" cy="62" r="13" fill="${C.accent}"/><text x="186" y="67" font-size="13" font-weight="700" fill="#fff" text-anchor="middle" font-family="system-ui">3</text>
 </svg>`;
 
 const budgetArt = `<svg width="240" height="200" viewBox="0 0 240 200" fill="none">
@@ -37,7 +37,7 @@ const trackArt = `<svg width="240" height="200" viewBox="0 0 240 200" fill="none
   <circle cx="120" cy="86" r="56" fill="none" stroke="${C.activity}" stroke-width="26" stroke-dasharray="70 282" stroke-dashoffset="-234"/>
   <circle cx="120" cy="86" r="56" fill="none" stroke="${C.lodging}" stroke-width="26" stroke-dasharray="52 300" stroke-dashoffset="-308"/>
   <rect x="60" y="164" width="120" height="30" rx="15" fill="${C.nearSoft}"/>
-  <text x="120" y="184" font-size="13" font-weight="600" fill="${C.near}" text-anchor="middle" font-family="system-ui">Close to cap</text>
+  <text x="120" y="184" font-size="13" font-weight="600" fill="${C.nearText}" text-anchor="middle" font-family="system-ui">Close to cap</text>
 </svg>`;
 
 const panel = (svg, title, body, dot, last) => dc(`
@@ -93,7 +93,7 @@ const setRow = (ic, label, { value, chev = true, sub, sw, danger, action } = {})
 <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;min-height:56px">
   ${icon(ic, 20, danger ? C.over : C.muted)}
   <div style="flex:1;display:flex;flex-direction:column;gap:1px">
-    <span style="${T.body};color:${danger ? C.over : C.text}">${label}</span>
+    <span style="${T.body};color:${danger ? C.overText : C.text}">${label}</span>
     ${sub ? `<span style="${T.caption};color:${C.muted}">${sub}</span>` : ''}
   </div>
   ${value ? `<span style="${T.body};color:${C.muted}">${value}</span>` : ''}
@@ -115,24 +115,27 @@ w('Settings.dc.html', dc(`
 ${p.header('Settings')}
 <div style="flex:1;padding:16px;display:flex;flex-direction:column;gap:20px;overflow:hidden">
   ${section('Defaults', [
-    setRow('wallet', 'Currency', { value: 'INR ₹' }),
-    setRow('calendar', 'Start week on', { value: 'Monday' }),
+    setRow('wallet', 'Currency', { value: 'INR ₹', sub: 'Pre-selected on a new trip' }),
+  ])}
+  ${section('Appearance', [
+    `<div style="padding:12px 16px">${p.segmented([
+      { label: 'System', ic: 'phone' }, { label: 'Light', ic: 'sun' }, { label: 'Dark', ic: 'moon', on: true },
+    ])}</div>`,
   ])}
   ${section('Notifications', [
-    setRow('bell', 'Budget alerts', { sw: true, chev: false }),
-    setRow('clock', 'Daily expense reminder', { sw: true, chev: false, sub: 'Every day at 8:00 PM while a trip is running' }),
-    setRow('map', 'Trip starting soon', { sw: true, chev: false }),
+    setRow('bell', 'Budget alerts', { sw: true, chev: false, sub: 'When a stop or the trip nears its cap' }),
+    setRow('clock', 'Daily expense reminder', { sw: true, chev: false, sub: 'Every day at 20:00 while a trip is running' }),
+    setRow('dots', 'All notification settings', {}),
   ])}
   ${section('Place search', [
     `<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;min-height:56px">
       <div style="width:8px;height:8px;border-radius:4px;background:${C.under};margin:0 6px"></div>
       <span style="flex:1;${T.body};color:${C.text}">Places API connected</span>${icon('chevron', 18, C.faint)}</div>`,
-    setRow('dots', 'Cached place data', { value: '1.2 MB', chev: false, action: 'Clear' }),
+    setRow('dots', 'Cached place data', { value: '1.2 MB', chev: false, action: 'Clear',
+      sub: 'Reused for 30 days to keep the Places bill down' }),
   ])}
   ${section('Your data', [
-    setRow('share', 'Export trips as CSV', {}),
-    setRow('share', 'Export trips as JSON', {}),
-    setRow('trash', 'Delete all data', { chev: false, danger: true }),
+    setRow('trash', 'Delete all data', { danger: true }),
   ])}
   <span style="${T.caption};color:${C.faint};text-align:center;padding:8px 24px;text-wrap:pretty">Waypoint 1.0.0 ·
     Everything is stored on this device. No account, no sync.</span>

@@ -1,33 +1,37 @@
+import { readFileSync } from 'node:fs';
+
 /**
  * Shared vocabulary for the Waypoint design canvas.
  *
- * Values are lifted from src/theme.ts verbatim — this canvas has to be
- * indistinguishable from the shipped app, so nothing here is eyeballed or
- * rounded to a grid.
+ * Nothing here is eyeballed or rounded to a grid — this canvas has to be
+ * indistinguishable from the shipped app, so colour is read straight out of
+ * the app's palette and the rest is lifted from src/tokens.ts verbatim.
  */
 
-export const C = {
-  bg: '#F6F7F9', surface: '#FFFFFF', sunken: '#F2F4F7',
-  border: '#E4E7EC', borderStrong: '#D0D5DD',
-  text: '#0C111D', muted: '#5D6B82', faint: '#98A2B3', onPrimary: '#FFFFFF',
-  primary: '#2563EB', primaryPressed: '#1D4FD7', primarySoft: '#EFF4FF',
-  under: '#12B76A', near: '#F79009', over: '#F04438', unset: '#98A2B3',
-  underSoft: '#ECFDF3', nearSoft: '#FFFAEB', overSoft: '#FEF3F2',
-  food: '#DC6803', activity: '#2E90FA', transport: '#9E33D6',
-  lodging: '#039855', other: '#8D97A5',
-};
+/**
+ * The palettes are read out of src/theme/palette.ts at generation time rather
+ * than copied here. They were copied here once, and by the time the app grew a
+ * dark theme the copy had drifted — the canvas was still drawing the old
+ * greens and greys. A canvas whose whole claim is "this is the shipped app"
+ * cannot afford a second source of colour.
+ */
+function palette(name) {
+  const src = readFileSync(new URL('../src/theme/palette.ts', import.meta.url), 'utf8');
+  const start = src.indexOf(`export const ${name}: Palette = {`);
+  const body = src.slice(start, src.indexOf('\n};', start));
+  const out = {};
+  for (const m of body.matchAll(/(\w+):\s*'([^']+)'/g)) out[m[1]] = m[2];
+  // The generators use shorter names for the three most-typed tokens.
+  out.sunken = out.surfaceSunken;
+  out.raised = out.surfaceRaised;
+  out.muted = out.textMuted;
+  out.faint = out.textFaint;
+  out.onPrimary = out.textOnPrimary;
+  return out;
+}
 
-/** Dark theme from prompt X01 — re-derived, not inverted. */
-export const D = {
-  bg: '#0B0F17', surface: '#141A24', sunken: '#1C232F',
-  border: '#263041', borderStrong: '#334054',
-  text: '#F2F5F9', muted: '#9AA8BD', faint: '#6B7A90', onPrimary: '#FFFFFF',
-  primary: '#4E86F7', primaryPressed: '#3D72E0', primarySoft: '#16233C',
-  under: '#2BC77F', near: '#FDB022', over: '#FF6B5E', unset: '#6B7A90',
-  underSoft: '#10251C', nearSoft: '#2A1F0C', overSoft: '#2B1512',
-  food: '#F79009', activity: '#63A6FF', transport: '#C07DEE',
-  lodging: '#2BC77F', other: '#97A2B2',
-};
+export const C = palette('lightPalette');
+export const D = palette('darkPalette');
 
 export const FONT =
   "system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
@@ -90,6 +94,9 @@ const P = {
   filter: '<path d="M4 6h16M7 12h10M10 18h4"/>',
   cloudOff: '<path d="M3 3l18 18"/><path d="M7.5 18h9.2a3.8 3.8 0 0 0 .9-7.5A6 6 0 0 0 8.6 7.7"/><path d="M5.4 9.6A3.8 3.8 0 0 0 6 18"/>',
   undo: '<path d="M4 9h9.5a5.5 5.5 0 1 1 0 11H7"/><path d="M8 5 4 9l4 4"/>',
+  phone: '<rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M10.5 5.5h3"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.2 5.2l1.4 1.4M17.4 17.4l1.4 1.4M18.8 5.2l-1.4 1.4M6.6 17.4l-1.4 1.4"/>',
+  moon: '<path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/>',
   pin: '<path d="M12 21s6-5 6-10a6 6 0 1 0-12 0c0 5 6 10 6 10Z"/>',
 };
 
