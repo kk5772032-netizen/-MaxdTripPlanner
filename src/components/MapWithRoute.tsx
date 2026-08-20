@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { Platform, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
 
-import { colors, radius, spacing } from '../theme';
+import { makeStyles, radius, spacing, useTheme } from '../theme';
 import type { Stop } from '../types';
 
 /**
@@ -21,6 +21,8 @@ export function MapWithRoute({
   onPressStop: (stop: Stop) => void;
   style?: ViewStyle;
 }) {
+  const styles = useStyles();
+  const t = useTheme();
   const located = useMemo(
     () =>
       stops
@@ -74,7 +76,7 @@ export function MapWithRoute({
       >
         <Polyline
           coordinates={located.map((s) => ({ latitude: s.lat, longitude: s.lng }))}
-          strokeColor={colors.primary}
+          strokeColor={t.primary}
           strokeWidth={3}
           lineDashPattern={[8, 6]}
         />
@@ -106,22 +108,22 @@ export function MapWithRoute({
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: { backgroundColor: colors.border, overflow: 'hidden' },
+const useStyles = makeStyles((t) => ({
+  wrap: { backgroundColor: t.border, overflow: 'hidden' },
   placeholder: {
-    backgroundColor: colors.surface,
+    backgroundColor: t.surface,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
+    borderColor: t.border,
     borderRadius: radius.lg,
     padding: spacing.xl,
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
   },
-  placeholderTitle: { fontSize: 15, fontWeight: '600', color: colors.text },
+  placeholderTitle: { fontSize: 15, fontWeight: '600', color: t.text },
   placeholderBody: {
     fontSize: 13,
-    color: colors.textMuted,
+    color: t.textMuted,
     textAlign: 'center',
     lineHeight: 19,
   },
@@ -129,7 +131,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: colors.primary,
+    backgroundColor: t.accent,
     borderWidth: 2,
     borderColor: '#fff',
     alignItems: 'center',
@@ -141,10 +143,10 @@ const styles = StyleSheet.create({
     left: spacing.md,
     right: spacing.md,
     bottom: spacing.md,
-    backgroundColor: colors.surface,
+    backgroundColor: t.surface,
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
-  noticeText: { fontSize: 12, color: colors.textMuted },
-});
+  noticeText: { fontSize: 12, color: t.textMuted },
+}));

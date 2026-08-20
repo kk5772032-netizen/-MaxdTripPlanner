@@ -13,15 +13,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 
-import {
-  HIT_SLOP,
-  MIN_TAP,
-  colors,
-  elevation,
-  radius,
-  spacing,
-  type,
-} from '../theme';
+import { HIT_SLOP, MIN_TAP, elevation, makeStyles, radius, spacing, type, useTheme } from '../theme';
 
 /** Shared primitives, so screens are about behaviour rather than padding. */
 
@@ -47,6 +39,7 @@ export function Card({
   style?: ViewStyle;
   raised?: boolean;
 }) {
+  const styles = useStyles();
   return (
     <View style={[styles.card, raised && elevation.sm, style]}>{children}</View>
   );
@@ -69,9 +62,11 @@ export function Button({
   loading?: boolean;
   style?: ViewStyle;
 }) {
+  const styles = useStyles();
+  const t = useTheme();
   const isDisabled = disabled || loading;
   const tint =
-    variant === 'primary' || variant === 'danger' ? colors.textOnPrimary : colors.primary;
+    variant === 'primary' || variant === 'danger' ? t.textOnPrimary : t.primary;
 
   return (
     <Pressable
@@ -119,6 +114,7 @@ export function Field({
   hint?: string;
   children: ReactNode;
 }) {
+  const styles = useStyles();
   return (
     <View style={styles.field}>
       <Text style={styles.fieldLabel}>{label}</Text>
@@ -129,9 +125,11 @@ export function Field({
 }
 
 export function Input(props: TextInputProps) {
+  const styles = useStyles();
+  const t = useTheme();
   return (
     <TextInput
-      placeholderTextColor={colors.textFaint}
+      placeholderTextColor={t.textFaint}
       {...props}
       style={[styles.input, props.style]}
     />
@@ -146,6 +144,8 @@ export function SectionHeader({
   title: string;
   action?: { label: string; icon?: IconName; onPress: () => void };
 }) {
+  const styles = useStyles();
+  const t = useTheme();
   return (
     <View style={styles.sectionHeader}>
       <Text style={styles.sectionTitle}>{title}</Text>
@@ -160,7 +160,7 @@ export function SectionHeader({
           style={({ pressed }) => [styles.sectionAction, pressed && styles.pressedSoft]}
         >
           {action.icon ? (
-            <Ionicons name={action.icon} size={15} color={colors.primary} />
+            <Ionicons name={action.icon} size={15} color={t.primary} />
           ) : null}
           <Text style={styles.sectionActionText}>{action.label}</Text>
         </Pressable>
@@ -180,10 +180,12 @@ export function EmptyState({
   body: string;
   action?: ReactNode;
 }) {
+  const styles = useStyles();
+  const t = useTheme();
   return (
     <View style={styles.empty}>
       <View style={styles.emptyIcon}>
-        <Ionicons name={icon} size={26} color={colors.primary} />
+        <Ionicons name={icon} size={26} color={t.primary} />
       </View>
       <Text style={styles.emptyTitle}>{title}</Text>
       <Text style={styles.emptyBody}>{body}</Text>
@@ -193,9 +195,11 @@ export function EmptyState({
 }
 
 export function Loading({ label }: { label?: string }) {
+  const styles = useStyles();
+  const t = useTheme();
   return (
     <View style={styles.loading}>
-      <ActivityIndicator color={colors.primary} />
+      <ActivityIndicator color={t.primary} />
       {label ? <Text style={styles.loadingLabel}>{label}</Text> : null}
     </View>
   );
@@ -209,6 +213,7 @@ export function Loading({ label }: { label?: string }) {
  * when the data lands.
  */
 export function SkeletonList({ rows = 3 }: { rows?: number }) {
+  const styles = useStyles();
   return (
     <View style={styles.skeletonWrap}>
       {Array.from({ length: rows }).map((_, i) => (
@@ -236,6 +241,8 @@ export function SegmentedControl<T extends string>({
   onChange: (value: T) => void;
   style?: ViewStyle;
 }) {
+  const styles = useStyles();
+  const t = useTheme();
   return (
     <View style={[styles.segmented, style]}>
       {options.map((option) => {
@@ -256,7 +263,7 @@ export function SegmentedControl<T extends string>({
               <Ionicons
                 name={option.icon}
                 size={15}
-                color={active ? colors.text : colors.textMuted}
+                color={active ? t.text : t.textMuted}
               />
             ) : null}
             <Text
@@ -289,7 +296,9 @@ export function Chip({
   color?: string;
   style?: ViewStyle;
 }) {
-  const tint = color ?? colors.primary;
+  const styles = useStyles();
+  const t = useTheme();
+  const tint = color ?? t.primary;
   return (
     <Pressable
       accessibilityRole="button"
@@ -310,7 +319,7 @@ export function Chip({
       ]}
     >
       {icon ? (
-        <Ionicons name={icon} size={14} color={selected ? tint : colors.textMuted} />
+        <Ionicons name={icon} size={14} color={selected ? tint : t.textMuted} />
       ) : null}
       <Text
         numberOfLines={1}
@@ -334,7 +343,9 @@ export function HeaderAction({
   onPress: () => void;
   tone?: 'primary' | 'danger';
 }) {
-  const tint = tone === 'danger' ? colors.over : colors.primary;
+  const styles = useStyles();
+  const t = useTheme();
+  const tint = tone === 'danger' ? t.over : t.primary;
   return (
     <Pressable
       accessibilityRole="button"
@@ -364,6 +375,8 @@ export function Fab({
   icon?: IconName;
   offsetBottom?: number;
 }) {
+  const styles = useStyles();
+  const t = useTheme();
   return (
     <Pressable
       accessibilityRole="button"
@@ -379,7 +392,7 @@ export function Fab({
         pressed && styles.fabPressed,
       ]}
     >
-      <Ionicons name={icon} size={26} color={colors.textOnPrimary} />
+      <Ionicons name={icon} size={26} color={t.textOnPrimary} />
     </Pressable>
   );
 }
@@ -398,8 +411,10 @@ export function IconButton({
   tone?: 'muted' | 'primary' | 'danger';
   size?: number;
 }) {
+  const styles = useStyles();
+  const t = useTheme();
   const tint =
-    tone === 'danger' ? colors.over : tone === 'primary' ? colors.primary : colors.textMuted;
+    tone === 'danger' ? t.over : tone === 'primary' ? t.primary : t.textMuted;
   return (
     <Pressable
       accessibilityRole="button"
@@ -432,10 +447,12 @@ export function Notice({
   title?: string;
   body: string;
 }) {
+  const styles = useStyles();
+  const t = useTheme();
   const tint =
-    tone === 'danger' ? colors.over : tone === 'warning' ? colors.near : colors.primary;
+    tone === 'danger' ? t.over : tone === 'warning' ? t.near : t.primary;
   const bg =
-    tone === 'danger' ? colors.overSoft : tone === 'warning' ? colors.nearSoft : colors.primarySoft;
+    tone === 'danger' ? t.overSoft : tone === 'warning' ? t.nearSoft : t.primarySoft;
   const defaultIcon: IconName =
     tone === 'danger' ? 'alert-circle' : tone === 'warning' ? 'warning' : 'information-circle';
 
@@ -450,12 +467,12 @@ export function Notice({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((t) => ({
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: t.surface,
     borderRadius: radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
+    borderColor: t.border,
     padding: spacing.lg,
   },
   pressedSoft: { opacity: 0.6 },
@@ -468,31 +485,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   buttonInner: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  buttonPrimary: { backgroundColor: colors.primary },
-  buttonPrimaryPressed: { backgroundColor: colors.primaryPressed },
+  buttonPrimary: { backgroundColor: t.accent },
+  buttonPrimaryPressed: { backgroundColor: t.accentPressed },
   buttonSecondary: {
-    backgroundColor: colors.surface,
+    backgroundColor: t.surface,
     borderWidth: 1,
-    borderColor: colors.borderStrong,
+    borderColor: t.borderStrong,
   },
   buttonGhost: { backgroundColor: 'transparent' },
-  buttonDanger: { backgroundColor: colors.over },
+  buttonDanger: { backgroundColor: t.dangerFill },
   buttonDisabled: { opacity: 0.45 },
   buttonText: { ...type.bodyStrong },
 
   field: { marginBottom: spacing.lg },
-  fieldLabel: { ...type.label, color: colors.textMuted, marginBottom: spacing.sm },
-  fieldHint: { ...type.caption, color: colors.textFaint, marginTop: spacing.xs },
+  fieldLabel: { ...type.label, color: t.textMuted, marginBottom: spacing.sm },
+  fieldHint: { ...type.caption, color: t.textFaint, marginTop: spacing.xs },
   input: {
-    backgroundColor: colors.surface,
+    backgroundColor: t.surface,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: t.border,
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
     minHeight: MIN_TAP,
     ...type.body,
-    color: colors.text,
+    color: t.text,
   },
 
   sectionHeader: {
@@ -501,26 +518,26 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: spacing.md,
   },
-  sectionTitle: { ...type.heading, color: colors.text, flex: 1 },
+  sectionTitle: { ...type.heading, color: t.text, flex: 1 },
   sectionAction: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  sectionActionText: { ...type.label, color: colors.primary },
+  sectionActionText: { ...type.label, color: t.primary },
 
   empty: { alignItems: 'center', paddingVertical: spacing.xxl, paddingHorizontal: spacing.xl },
   emptyIcon: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: colors.primarySoft,
+    backgroundColor: t.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.lg,
   },
-  emptyTitle: { ...type.heading, color: colors.text, marginBottom: spacing.xs },
-  emptyBody: { ...type.body, color: colors.textMuted, textAlign: 'center' },
+  emptyTitle: { ...type.heading, color: t.text, marginBottom: spacing.xs },
+  emptyBody: { ...type.body, color: t.textMuted, textAlign: 'center' },
   emptyAction: { marginTop: spacing.xl, alignSelf: 'stretch' },
 
   loading: { paddingVertical: spacing.xxl, alignItems: 'center', gap: spacing.md },
-  loadingLabel: { ...type.caption, color: colors.textMuted },
+  loadingLabel: { ...type.caption, color: t.textMuted },
 
   skeletonWrap: { padding: spacing.lg, gap: spacing.md },
   skeletonCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
@@ -528,14 +545,14 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.surfaceSunken,
+    backgroundColor: t.surfaceSunken,
   },
   skeletonLines: { flex: 1, gap: spacing.sm },
-  skeletonLine: { height: 12, borderRadius: 6, backgroundColor: colors.surfaceSunken },
+  skeletonLine: { height: 12, borderRadius: 6, backgroundColor: t.surfaceSunken },
 
   segmented: {
     flexDirection: 'row',
-    backgroundColor: colors.surfaceSunken,
+    backgroundColor: t.surfaceSunken,
     borderRadius: radius.md,
     padding: 4,
     gap: 4,
@@ -550,9 +567,9 @@ const styles = StyleSheet.create({
     minHeight: MIN_TAP,
     borderRadius: radius.sm,
   },
-  segmentActive: { backgroundColor: colors.surface },
-  segmentText: { ...type.label, color: colors.textMuted },
-  segmentTextActive: { color: colors.text },
+  segmentActive: { backgroundColor: t.surfaceRaised },
+  segmentText: { ...type.label, color: t.textMuted },
+  segmentTextActive: { color: t.text },
 
   chip: {
     flexDirection: 'row',
@@ -562,12 +579,12 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     minHeight: 36,
     borderRadius: radius.pill,
-    backgroundColor: colors.surface,
+    backgroundColor: t.surface,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: t.border,
     maxWidth: 190,
   },
-  chipText: { ...type.label, color: colors.textMuted },
+  chipText: { ...type.label, color: t.textMuted },
 
   headerAction: {
     flexDirection: 'row',
@@ -587,16 +604,16 @@ const styles = StyleSheet.create({
     width: 58,
     height: 58,
     borderRadius: 29,
-    backgroundColor: colors.primary,
+    backgroundColor: t.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  fabPressed: { backgroundColor: colors.primaryPressed, transform: [{ scale: 0.96 }] },
+  fabPressed: { backgroundColor: t.accentPressed, transform: [{ scale: 0.96 }] },
 
   iconButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surfaceSunken,
+    backgroundColor: t.surfaceSunken,
   },
 
   notice: {
@@ -608,5 +625,5 @@ const styles = StyleSheet.create({
   noticeIcon: { marginTop: 1 },
   noticeBody: { flex: 1, gap: 2 },
   noticeTitle: { ...type.label },
-  noticeText: { ...type.caption, color: colors.textMuted, lineHeight: 18 },
-});
+  noticeText: { ...type.caption, color: t.textMuted, lineHeight: 18 },
+}));

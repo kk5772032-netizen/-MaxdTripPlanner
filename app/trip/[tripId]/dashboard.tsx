@@ -9,9 +9,10 @@ import { CategoryPie } from '../../../src/components/charts/CategoryPie';
 import { PlannedVsActualChart } from '../../../src/components/charts/PlannedVsActualChart';
 import { Button, Card, EmptyState, Notice, SkeletonList } from '../../../src/components/ui';
 import { useTripStore } from '../../../src/state/tripStore';
-import { colors, elevation, radius, spacing, type } from '../../../src/theme';
+import { elevation, makeStyles, radius, spacing, type } from '../../../src/theme';
 
 export default function DashboardScreen() {
+  const styles = useStyles();
   const router = useRouter();
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   const { trip, stops, activities, foodPlans, expenses, loading, open } = useTripStore();
@@ -107,6 +108,7 @@ export default function DashboardScreen() {
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
+  const styles = useStyles();
   return (
     <View style={styles.stat}>
       <Text style={styles.statLabel}>{label}</Text>
@@ -115,27 +117,27 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((t) => ({
   content: { padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xxl },
   hero: { gap: spacing.sm },
-  heroLabel: { ...type.label, color: colors.textMuted },
-  heroValue: { ...type.display, fontSize: 34, lineHeight: 40, color: colors.text },
-  heroValueOver: { color: colors.over },
+  heroLabel: { ...type.label, color: t.textMuted },
+  heroValue: { ...type.display, fontSize: 34, lineHeight: 40, color: t.text },
+  heroValueOver: { color: t.overText },
   heroBar: { marginTop: spacing.sm },
   statRow: { flexDirection: 'row', gap: spacing.md },
   stat: {
     flex: 1,
-    backgroundColor: colors.surface,
+    backgroundColor: t.surface,
     borderRadius: radius.md,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
+    borderColor: t.border,
     padding: spacing.md,
     gap: 2,
     ...elevation.sm,
   },
-  statLabel: { ...type.captionStrong, color: colors.textMuted },
-  statValue: { ...type.heading, color: colors.text },
+  statLabel: { ...type.captionStrong, color: t.textMuted },
+  statValue: { ...type.heading, color: t.text },
   section: { gap: spacing.lg },
-  sectionTitle: { ...type.heading, color: colors.text },
-  footnote: { ...type.caption, color: colors.textFaint },
-});
+  sectionTitle: { ...type.heading, color: t.text },
+  footnote: { ...type.caption, color: t.textFaint },
+}));

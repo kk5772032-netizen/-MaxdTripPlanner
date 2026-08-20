@@ -6,7 +6,7 @@ import ReorderableList, {
   useReorderableDrag,
 } from 'react-native-reorderable-list';
 
-import { colors, spacing } from '../theme';
+import { makeStyles, spacing, useTheme } from '../theme';
 import type { Stop } from '../types';
 import { StopCard } from './StopCard';
 
@@ -33,6 +33,7 @@ export function StopList({
   ListEmptyComponent?: ReactNode;
   contentContainerStyle?: object;
 }) {
+  const styles = useStyles();
   return (
     <ReorderableList
       data={stops}
@@ -72,6 +73,8 @@ function DraggableStop({
   footer?: ReactNode;
   onPress: () => void;
 }) {
+  const styles = useStyles();
+  const t = useTheme();
   // These hooks only work inside a ReorderableList item, which is why the row
   // lives here rather than in StopCard.
   const drag = useReorderableDrag();
@@ -96,7 +99,7 @@ function DraggableStop({
             hitSlop={8}
             style={styles.handle}
           >
-            <Ionicons name="reorder-two" size={22} color={colors.textFaint} />
+            <Ionicons name="reorder-two" size={22} color={t.textFaint} />
           </Pressable>
         }
       />
@@ -104,8 +107,8 @@ function DraggableStop({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((t) => ({
   content: { padding: spacing.lg, paddingBottom: 120 },
   item: { marginBottom: spacing.md },
   handle: { paddingHorizontal: spacing.xs, paddingVertical: spacing.sm },
-});
+}));

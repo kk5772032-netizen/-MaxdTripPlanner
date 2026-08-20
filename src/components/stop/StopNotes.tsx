@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { useTripStore } from '../../state/tripStore';
-import { colors, radius, spacing, type } from '../../theme';
+import { makeStyles, radius, spacing, type } from '../../theme';
 import type { Stop } from '../../types';
 import { Input } from '../ui';
 
@@ -18,6 +18,7 @@ const SAVE_DELAY_MS = 600;
  * it protects.
  */
 export function StopNotes({ stop }: { stop: Stop }) {
+  const styles = useStyles();
   const updateStop = useTripStore((s) => s.updateStop);
   const [text, setText] = useState(stop.notes ?? '');
   const [saved, setSaved] = useState(false);
@@ -64,10 +65,10 @@ export function StopNotes({ stop }: { stop: Stop }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((t) => ({
   wrap: { gap: spacing.xs },
   head: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
-  label: { ...type.label, color: colors.textMuted },
-  saved: { ...type.captionStrong, color: colors.under },
+  label: { ...type.label, color: t.textMuted },
+  saved: { ...type.captionStrong, color: t.underText },
   input: { minHeight: 60, textAlignVertical: 'top', borderRadius: radius.md },
-});
+}));

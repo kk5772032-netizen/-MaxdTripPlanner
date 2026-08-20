@@ -11,7 +11,7 @@ import {
 
 import { PlacesError, autocomplete, hasApiKey, newSessionToken } from '../api/places';
 import { Notice } from './ui';
-import { colors, radius, spacing, type } from '../theme';
+import { makeStyles, radius, spacing, type, useTheme } from '../theme';
 import type { PlaceSuggestion } from '../types';
 
 const DEBOUNCE_MS = 300;
@@ -34,6 +34,8 @@ export function PlaceSearchInput({
   onSelect: (suggestion: PlaceSuggestion, sessionToken: string) => void;
   autoFocus?: boolean;
 }) {
+  const styles = useStyles();
+  const t = useTheme();
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
@@ -108,18 +110,18 @@ export function PlaceSearchInput({
   return (
     <View>
       <View style={styles.inputRow}>
-        <Ionicons name="search" size={17} color={colors.textFaint} style={styles.searchIcon} />
+        <Ionicons name="search" size={17} color={t.textFaint} style={styles.searchIcon} />
         <TextInput
           value={query}
           onChangeText={setQuery}
           placeholder={placeholder}
-          placeholderTextColor={colors.textFaint}
+          placeholderTextColor={t.textFaint}
           autoFocus={autoFocus}
           autoCorrect={false}
           returnKeyType="search"
           style={styles.input}
         />
-        {loading ? <ActivityIndicator style={styles.spinner} color={colors.textFaint} /> : null}
+        {loading ? <ActivityIndicator style={styles.spinner} color={t.textFaint} /> : null}
       </View>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -153,35 +155,35 @@ export function PlaceSearchInput({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((t) => ({
   inputRow: { justifyContent: 'center' },
   input: {
-    backgroundColor: colors.surface,
+    backgroundColor: t.surface,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
+    borderColor: t.border,
     borderRadius: radius.md,
     paddingVertical: spacing.md,
     paddingLeft: 40,
     paddingRight: 40,
     minHeight: 48,
     ...type.body,
-    color: colors.text,
+    color: t.text,
   },
   searchIcon: { position: 'absolute', left: spacing.md, zIndex: 1 },
   spinner: { position: 'absolute', right: spacing.md },
-  error: { ...type.caption, color: colors.over, marginTop: spacing.sm },
+  error: { ...type.caption, color: t.overText, marginTop: spacing.sm },
   dropdown: {
     marginTop: spacing.sm,
-    backgroundColor: colors.surface,
+    backgroundColor: t.surface,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
+    borderColor: t.border,
     borderRadius: radius.md,
     overflow: 'hidden',
   },
   row: { paddingHorizontal: spacing.md, paddingVertical: spacing.md, minHeight: 56, justifyContent: 'center' },
-  rowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
-  rowPressed: { backgroundColor: colors.primarySoft },
-  rowPrimary: { ...type.bodyStrong, color: colors.text },
-  rowSecondary: { ...type.caption, color: colors.textMuted, marginTop: 1 },
+  rowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: t.border },
+  rowPressed: { backgroundColor: t.primarySoft },
+  rowPrimary: { ...type.bodyStrong, color: t.text },
+  rowSecondary: { ...type.caption, color: t.textMuted, marginTop: 1 },
 
-});
+}));

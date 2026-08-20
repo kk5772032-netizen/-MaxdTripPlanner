@@ -27,16 +27,7 @@ import {
 } from '../../../src/components/ui';
 import { todayIso } from '../../../src/dates';
 import { useTripStore } from '../../../src/state/tripStore';
-import {
-  categoryColors,
-  categoryIcons,
-  categoryLabels,
-  colors,
-  elevation,
-  radius,
-  spacing,
-  type,
-} from '../../../src/theme';
+import { categoryIcons, categoryLabels, elevation, makeStyles, radius, spacing, type, useTheme } from '../../../src/theme';
 import { EXPENSE_CATEGORIES, type Expense, type ExpenseCategory } from '../../../src/types';
 
 /**
@@ -46,6 +37,7 @@ import { EXPENSE_CATEGORIES, type Expense, type ExpenseCategory } from '../../..
  * so arriving from a stop's Budget tab lands somewhere useful.
  */
 export default function ExpensesScreen() {
+  const styles = useStyles();
   const { tripId, stopId: initialStopId } = useLocalSearchParams<{
     tripId: string;
     stopId?: string;
@@ -224,6 +216,8 @@ function ExpenseForm({
   editing: Expense | null;
   onDone: () => void;
 }) {
+  const styles = useStyles();
+  const t = useTheme();
   const { addExpense, updateExpense } = useTripStore();
 
   const [amountText, setAmountText] = useState(
@@ -280,7 +274,7 @@ function ExpenseForm({
               key={value}
               label={categoryLabels[value]}
               icon={categoryIcons[value] as never}
-              color={categoryColors[value]}
+              color={t.categories[value]}
               selected={value === category}
               onPress={() => setCategory(value)}
             />
@@ -342,6 +336,7 @@ function FilterRow({
   value: string;
   onChange: (value: string) => void;
 }) {
+  const styles = useStyles();
   return (
     <View style={styles.filterRow}>
       <Text style={styles.filterLabel}>{label}</Text>
@@ -359,8 +354,8 @@ function FilterRow({
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.bg },
+const useStyles = makeStyles((t) => ({
+  flex: { flex: 1, backgroundColor: t.bg },
   content: { padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xxl },
   // native-stack renders headerRight flush with the screen edge, so the inset
   // has to live on the element itself.
@@ -370,18 +365,18 @@ const styles = StyleSheet.create({
   flexButton: { flex: 1 },
   filters: { gap: spacing.md },
   filterRow: { gap: spacing.sm },
-  filterLabel: { ...type.label, color: colors.textMuted },
+  filterLabel: { ...type.label, color: t.textMuted },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
-  totalLabel: { ...type.label, color: colors.textMuted },
-  totalValue: { ...type.title, color: colors.text },
+  totalLabel: { ...type.label, color: t.textMuted },
+  totalValue: { ...type.title, color: t.text },
   list: {
-    backgroundColor: colors.surface,
+    backgroundColor: t.surface,
     borderRadius: radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
+    borderColor: t.border,
     overflow: 'hidden',
     ...elevation.sm,
   },
-  hint: { ...type.caption, color: colors.textFaint, textAlign: 'center' },
-});
+  hint: { ...type.caption, color: t.textFaint, textAlign: 'center' },
+}));

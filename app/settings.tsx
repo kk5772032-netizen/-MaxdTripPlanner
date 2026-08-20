@@ -4,7 +4,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { SUPPORTED_CURRENCIES, currencySymbol } from '../src/budget/money';
 import { SettingsRow, SettingsSection } from '../src/components/SettingsRow';
-import { Chip, Notice } from '../src/components/ui';
+import { Chip, Notice, SegmentedControl } from '../src/components/ui';
 import { confirmDestructive } from '../src/confirm';
 import { getDb } from '../src/db/client';
 import * as settingsRepo from '../src/db/repositories/settings';
@@ -13,9 +13,11 @@ import { cancelAll } from '../src/notifications';
 import { useSettingsStore } from '../src/state/settingsStore';
 import { useToastStore } from '../src/state/toastStore';
 import { useTripsStore } from '../src/state/tripsStore';
-import { colors, spacing, type } from '../src/theme';
+import { makeStyles, spacing, type, useTheme } from '../src/theme';
 
 export default function SettingsScreen() {
+  const styles = useStyles();
+  const t = useTheme();
   const router = useRouter();
   const s = useSettingsStore();
   const loadTrips = useTripsStore((t) => t.load);
@@ -87,6 +89,20 @@ export default function SettingsScreen() {
         ) : null}
       </SettingsSection>
 
+      <SettingsSection title="Appearance">
+        <View style={styles.themeRow}>
+          <SegmentedControl
+            value={s.theme}
+            onChange={(v) => void s.set('theme', v)}
+            options={[
+              { value: 'system', label: 'System', icon: 'phone-portrait-outline' },
+              { value: 'light', label: 'Light', icon: 'sunny-outline' },
+              { value: 'dark', label: 'Dark', icon: 'moon-outline' },
+            ]}
+          />
+        </View>
+      </SettingsSection>
+
       <SettingsSection title="Notifications">
         <SettingsRow
           icon="notifications-outline"
@@ -143,8 +159,9 @@ export default function SettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((t) => ({
   content: { padding: spacing.lg, gap: spacing.xl, paddingBottom: spacing.xxl },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, padding: spacing.lg, paddingTop: 0 },
-  footer: { ...type.caption, color: colors.textFaint, textAlign: 'center' },
-});
+  themeRow: { padding: spacing.lg },
+  footer: { ...type.caption, color: t.textFaint, textAlign: 'center' },
+}));

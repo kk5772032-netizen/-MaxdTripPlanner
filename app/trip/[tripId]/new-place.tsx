@@ -24,7 +24,7 @@ import {
   notifySuccess,
 } from '../../../src/components/ui';
 import { useTripStore } from '../../../src/state/tripStore';
-import { colors, radius, spacing, type } from '../../../src/theme';
+import { makeStyles, radius, spacing, type, useTheme } from '../../../src/theme';
 import type { PlaceDetails } from '../../../src/types';
 
 /**
@@ -35,6 +35,8 @@ import type { PlaceDetails } from '../../../src/types';
  * missing or the network is down.
  */
 export default function NewPlaceScreen() {
+  const styles = useStyles();
+  const t = useTheme();
   const router = useRouter();
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   const addStop = useTripStore((s) => s.addStop);
@@ -142,7 +144,7 @@ export default function NewPlaceScreen() {
             ) : null}
             {candidate.rating != null ? (
               <View style={styles.previewRatingRow}>
-                <Ionicons name="star" size={13} color={colors.near} />
+                <Ionicons name="star" size={13} color={t.near} />
                 <Text style={styles.previewRating}>{candidate.rating.toFixed(1)}</Text>
               </View>
             ) : null}
@@ -214,8 +216,8 @@ export default function NewPlaceScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.bg },
+const useStyles = makeStyles((t) => ({
+  flex: { flex: 1, backgroundColor: t.bg },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.lg },
 
   preview: { gap: spacing.xs },
@@ -224,16 +226,16 @@ const styles = StyleSheet.create({
     height: 140,
     borderRadius: radius.md,
     marginBottom: spacing.sm,
-    backgroundColor: colors.bg,
+    backgroundColor: t.bg,
   },
-  previewName: { ...type.heading, color: colors.text },
-  previewAddress: { ...type.caption, color: colors.textMuted },
+  previewName: { ...type.heading, color: t.text },
+  previewAddress: { ...type.caption, color: t.textMuted },
   previewRatingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: 2 },
-  previewRating: { ...type.captionStrong, color: colors.textMuted },
+  previewRating: { ...type.captionStrong, color: t.textMuted },
   previewActions: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.md },
   flexButton: { flex: 1 },
   manualToggle: { alignSelf: 'flex-start', paddingVertical: spacing.sm },
-  manualToggleText: { ...type.label, color: colors.primary },
+  manualToggleText: { ...type.label, color: t.primary },
   manual: { gap: 0 },
   notes: { minHeight: 72, textAlignVertical: 'top' },
-});
+}));

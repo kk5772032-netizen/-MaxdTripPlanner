@@ -3,7 +3,7 @@ import { StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
 import { progressRatio, statusFor } from '../budget/engine';
 import { formatMoney } from '../budget/money';
-import { colors, radius, spacing, statusColor, type } from '../theme';
+import { makeStyles, radius, spacing, statusColorOf, type, useTheme } from '../theme';
 import type { BudgetStatus } from '../types';
 
 /**
@@ -32,9 +32,11 @@ export function BudgetBar({
   compact?: boolean;
   style?: ViewStyle;
 }) {
+  const styles = useStyles();
+  const t = useTheme();
   const status: BudgetStatus = statusFor(actual, cap);
   const ratio = progressRatio(actual, cap);
-  const color = statusColor[status];
+  const color = statusColorOf(t, status);
 
   // The planned marker only means something inside the bar's own scale.
   const plannedRatio =
@@ -86,7 +88,7 @@ export function BudgetBar({
       ) : null}
       {over ? (
         <View style={styles.overRow}>
-          <Ionicons name="alert-circle" size={13} color={colors.over} />
+          <Ionicons name="alert-circle" size={13} color={t.over} />
           <Text style={[styles.note, styles.noteOver]}>
             {formatMoney(actual - cap!, currency, { compact: true })} over budget
           </Text>
@@ -96,20 +98,20 @@ export function BudgetBar({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((t) => ({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'baseline',
     marginBottom: spacing.xs,
   },
-  label: { ...type.label, color: colors.textMuted },
-  amounts: { ...type.label, color: colors.text },
-  amountsCompact: { ...type.caption, color: colors.textMuted },
+  label: { ...type.label, color: t.textMuted },
+  amounts: { ...type.label, color: t.text },
+  amountsCompact: { ...type.caption, color: t.textMuted },
   track: {
     height: 10,
     borderRadius: radius.pill,
-    backgroundColor: colors.surfaceSunken,
+    backgroundColor: t.surfaceSunken,
     overflow: 'hidden',
     justifyContent: 'center',
   },
@@ -117,7 +119,7 @@ const styles = StyleSheet.create({
   trackUnset: {
     height: '100%',
     width: '100%',
-    backgroundColor: colors.border,
+    backgroundColor: t.border,
     opacity: 0.6,
   },
   fill: { height: '100%', borderRadius: radius.pill },
@@ -125,10 +127,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 2,
     height: '100%',
-    backgroundColor: colors.text,
+    backgroundColor: t.text,
     opacity: 0.35,
   },
-  note: { ...type.caption, color: colors.textFaint, marginTop: spacing.xs },
+  note: { ...type.caption, color: t.textFaint, marginTop: spacing.xs },
   overRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.xs },
-  noteOver: { color: colors.over, fontWeight: '600', marginTop: 0 },
-});
+  noteOver: { color: t.overText, fontWeight: '600', marginTop: 0 },
+}));

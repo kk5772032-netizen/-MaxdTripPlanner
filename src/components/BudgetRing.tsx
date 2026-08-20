@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
 import { progressRatio, statusFor } from '../budget/engine';
-import { colors, statusColor } from '../theme';
+import { makeStyles, radius, statusColorOf, statusTextOf, useTheme } from '../theme';
 
 /**
  * Small circular progress: spend against a budget, coloured by the same
@@ -19,6 +19,8 @@ export function BudgetRing({
   size?: number;
   strokeWidth?: number;
 }) {
+  const styles = useStyles();
+  const t = useTheme();
   const status = statusFor(actual, cap);
   const ratio = progressRatio(actual, cap);
   const radius = (size - strokeWidth) / 2;
@@ -32,7 +34,7 @@ export function BudgetRing({
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke={colors.border}
+          stroke={t.border}
           strokeWidth={strokeWidth}
           fill="none"
         />
@@ -41,7 +43,7 @@ export function BudgetRing({
             cx={size / 2}
             cy={size / 2}
             r={radius}
-            stroke={statusColor[status]}
+            stroke={statusColorOf(t, status)}
             strokeWidth={strokeWidth}
             strokeDasharray={`${circumference * ratio} ${circumference}`}
             strokeLinecap="round"
@@ -52,19 +54,19 @@ export function BudgetRing({
         ) : null}
       </Svg>
 
-      <Text style={[styles.label, percent !== null && { color: statusColor[status] }]}>
+      <Text style={[styles.label, percent !== null && { color: statusTextOf(t, status) }]}>
         {percent === null ? '—' : `${percent}%`}
       </Text>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((t) => ({
   wrap: { alignItems: 'center', justifyContent: 'center' },
   label: {
     position: 'absolute',
     fontSize: 11,
     fontWeight: '700',
-    color: colors.textFaint,
+    color: t.textFaint,
   },
-});
+}));

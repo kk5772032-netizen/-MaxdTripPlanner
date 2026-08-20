@@ -4,7 +4,7 @@ import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-nativ
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useToastStore } from '../state/toastStore';
-import { colors, elevation, radius, spacing, type } from '../theme';
+import { elevation, makeStyles, radius, spacing, type, useTheme } from '../theme';
 
 /**
  * Renders the current toast above everything else.
@@ -14,6 +14,8 @@ import { colors, elevation, radius, spacing, type } from '../theme';
  * toast.
  */
 export function ToastHost({ offsetBottom = 0 }: { offsetBottom?: number }) {
+  const styles = useStyles();
+  const t = useTheme();
   const toast = useToastStore((s) => s.toast);
   const dismiss = useToastStore((s) => s.dismiss);
   const insets = useSafeAreaInsets();
@@ -61,7 +63,7 @@ export function ToastHost({ offsetBottom = 0 }: { offsetBottom?: number }) {
         <Ionicons
           name={toast.icon}
           size={20}
-          color={toast.tone === 'danger' ? colors.over : '#fff'}
+          color={toast.tone === 'danger' ? t.over : '#fff'}
         />
         <Text style={styles.message} numberOfLines={2}>
           {toast.message}
@@ -95,7 +97,7 @@ export function ToastHost({ offsetBottom = 0 }: { offsetBottom?: number }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((t) => ({
   wrap: { position: 'absolute', left: spacing.lg, right: spacing.lg },
   toast: {
     flexDirection: 'row',
@@ -113,4 +115,4 @@ const styles = StyleSheet.create({
     position: 'absolute', left: 0, bottom: 0, height: 2,
     backgroundColor: '#93B4FD', opacity: 0.7,
   },
-});
+}));

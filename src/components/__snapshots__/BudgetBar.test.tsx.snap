@@ -26,7 +26,7 @@ exports[`BudgetBar renders amber from 80% to the cap 1`] = `
     <Text
       style={
         {
-          "color": "#5D6B82",
+          "color": "#475467",
           "fontSize": 13,
           "fontWeight": "600",
           "lineHeight": 18,
@@ -73,7 +73,7 @@ exports[`BudgetBar renders amber from 80% to the cap 1`] = `
             "height": "100%",
           },
           {
-            "backgroundColor": "#F79009",
+            "backgroundColor": "#DC6803",
             "width": "80%",
           },
         ]
@@ -119,7 +119,7 @@ exports[`BudgetBar renders compact without the explanatory note 1`] = `
             "height": "100%",
           },
           {
-            "backgroundColor": "#12B76A",
+            "backgroundColor": "#099250",
             "width": "50%",
           },
         ]
@@ -155,7 +155,7 @@ exports[`BudgetBar renders green under 80% 1`] = `
     <Text
       style={
         {
-          "color": "#5D6B82",
+          "color": "#475467",
           "fontSize": 13,
           "fontWeight": "600",
           "lineHeight": 18,
@@ -202,7 +202,7 @@ exports[`BudgetBar renders green under 80% 1`] = `
             "height": "100%",
           },
           {
-            "backgroundColor": "#12B76A",
+            "backgroundColor": "#099250",
             "width": "50%",
           },
         ]
@@ -238,7 +238,7 @@ exports[`BudgetBar renders red over the cap, with the overage spelled out 1`] = 
     <Text
       style={
         {
-          "color": "#5D6B82",
+          "color": "#475467",
           "fontSize": 13,
           "fontWeight": "600",
           "lineHeight": 18,
@@ -307,14 +307,14 @@ exports[`BudgetBar renders red over the cap, with the overage spelled out 1`] = 
       style={
         [
           {
-            "color": "#98A2B3",
+            "color": "#626D80",
             "fontSize": 12,
             "fontWeight": "400",
             "lineHeight": 16,
             "marginTop": 4,
           },
           {
-            "color": "#F04438",
+            "color": "#B42318",
             "fontWeight": "600",
             "marginTop": 0,
           },
@@ -354,7 +354,7 @@ exports[`BudgetBar renders the no-budget variant when there is no cap 1`] = `
     <Text
       style={
         {
-          "color": "#5D6B82",
+          "color": "#475467",
           "fontSize": 13,
           "fontWeight": "600",
           "lineHeight": 18,
@@ -407,7 +407,7 @@ exports[`BudgetBar renders the no-budget variant when there is no cap 1`] = `
   <Text
     style={
       {
-        "color": "#98A2B3",
+        "color": "#626D80",
         "fontSize": 12,
         "fontWeight": "400",
         "lineHeight": 16,

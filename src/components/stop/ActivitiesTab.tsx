@@ -4,7 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { formatMoney, parseMoney, sumMinor } from '../../budget/money';
 import { useTripStore } from '../../state/tripStore';
-import { colors, elevation, radius, spacing, type } from '../../theme';
+import { elevation, makeStyles, radius, spacing, type } from '../../theme';
 import type { Activity, Stop } from '../../types';
 import { AmountInput } from '../AmountInput';
 import { Button, Card, EmptyState, IconButton, Input, notifySuccess } from '../ui';
@@ -19,6 +19,7 @@ export function ActivitiesTab({
   currency: string;
   activities: Activity[];
 }) {
+  const styles = useStyles();
   const { addActivity, updateActivity, removeActivity } = useTripStore();
 
   const [title, setTitle] = useState('');
@@ -133,18 +134,18 @@ export function ActivitiesTab({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((t) => ({
   content: { padding: spacing.lg, paddingTop: 0, gap: spacing.lg, paddingBottom: spacing.xxl },
   form: { gap: spacing.md },
   formRow: { flexDirection: 'row', gap: spacing.md, alignItems: 'center' },
   amount: { flex: 1 },
   summary: { flexDirection: 'row', justifyContent: 'space-between' },
-  summaryText: { ...type.label, color: colors.textMuted },
+  summaryText: { ...type.label, color: t.textMuted },
   list: {
-    backgroundColor: colors.surface,
+    backgroundColor: t.surface,
     borderRadius: radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
+    borderColor: t.border,
     overflow: 'hidden',
     ...elevation.sm,
   },
@@ -156,21 +157,21 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     minHeight: 56,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
+    borderBottomColor: t.border,
   },
-  itemPressed: { backgroundColor: colors.bg },
+  itemPressed: { backgroundColor: t.bg },
   checkbox: {
     width: 24,
     height: 24,
     borderRadius: radius.sm,
     borderWidth: 1.5,
-    borderColor: colors.borderStrong,
+    borderColor: t.borderStrong,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  checkboxDone: { backgroundColor: colors.under, borderColor: colors.under },
-  itemTitle: { flex: 1, ...type.body, color: colors.text },
-  itemTitleDone: { color: colors.textFaint, textDecorationLine: 'line-through' },
-  itemCost: { ...type.label, color: colors.textMuted },
-  hint: { ...type.caption, color: colors.textFaint, textAlign: 'center' },
-});
+  checkboxDone: { backgroundColor: t.under, borderColor: t.under },
+  itemTitle: { flex: 1, ...type.body, color: t.text },
+  itemTitleDone: { color: t.textFaint, textDecorationLine: 'line-through' },
+  itemCost: { ...type.label, color: t.textMuted },
+  hint: { ...type.caption, color: t.textFaint, textAlign: 'center' },
+}));

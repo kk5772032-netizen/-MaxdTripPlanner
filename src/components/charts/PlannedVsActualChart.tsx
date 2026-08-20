@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Rect } from 'react-native-svg';
 
 import { formatMoney } from '../../budget/money';
-import { colors, spacing, statusColor } from '../../theme';
+import { makeStyles, spacing, statusColorOf, useTheme } from '../../theme';
 import type { StopSummary } from '../../budget/engine';
 
 /**
@@ -24,13 +24,15 @@ export function PlannedVsActualChart({
   stops: StopSummary[];
   currency: string;
 }) {
+  const styles = useStyles();
+  const t = useTheme();
   const max = Math.max(1, ...stops.flatMap((s) => [s.planned, s.actual]));
 
   return (
     <View style={styles.wrap}>
       <View style={styles.legend}>
-        <LegendSwatch color={colors.textFaint} label="Planned" />
-        <LegendSwatch color={colors.primary} label="Actual" note="coloured by budget status" />
+        <LegendSwatch color={t.textFaint} label="Planned" />
+        <LegendSwatch color={t.primary} label="Actual" note="coloured by budget status" />
       </View>
 
       {stops.map((summary) => (
@@ -57,7 +59,7 @@ export function PlannedVsActualChart({
               width={`${(summary.planned / max) * 100}%`}
               height={8}
               rx={4}
-              fill={colors.border}
+              fill={t.border}
             />
             <Rect
               x={0}
@@ -67,8 +69,8 @@ export function PlannedVsActualChart({
               rx={4}
               fill={
                 summary.status === 'unset'
-                  ? colors.primary
-                  : statusColor[summary.status]
+                  ? t.primary
+                  : statusColorOf(t, summary.status)
               }
             />
           </Svg>
@@ -94,6 +96,7 @@ function LegendSwatch({
   label: string;
   note?: string;
 }) {
+  const styles = useStyles();
   return (
     <View style={styles.legendItem}>
       <View style={[styles.swatch, { backgroundColor: color }]} />
@@ -105,17 +108,17 @@ function LegendSwatch({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((t) => ({
   wrap: { gap: spacing.lg },
   legend: { gap: spacing.xs },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   swatch: { width: 10, height: 10, borderRadius: 3 },
-  legendText: { fontSize: 12, color: colors.textMuted },
-  legendNote: { color: colors.textFaint },
+  legendText: { fontSize: 12, color: t.textMuted },
+  legendNote: { color: t.textFaint },
   row: { gap: 2 },
   rowHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
-  stopName: { flex: 1, fontSize: 13, fontWeight: '600', color: colors.text },
-  stopValue: { fontSize: 13, fontWeight: '600', color: colors.text },
-  stopValueOver: { color: colors.over },
-  rowMeta: { fontSize: 11, color: colors.textFaint },
-});
+  stopName: { flex: 1, fontSize: 13, fontWeight: '600', color: t.text },
+  stopValue: { fontSize: 13, fontWeight: '600', color: t.text },
+  stopValueOver: { color: t.overText },
+  rowMeta: { fontSize: 11, color: t.textFaint },
+}));

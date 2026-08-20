@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { formatDate, isValidIsoDate, toIsoDate } from '../dates';
-import { colors, radius, spacing } from '../theme';
+import { makeStyles, radius, spacing } from '../theme';
 
 /**
  * Start/end date pair.
@@ -20,6 +20,7 @@ export function DateRangeField({
   end: string | null;
   onChange: (start: string | null, end: string | null) => void;
 }) {
+  const styles = useStyles();
   const [open, setOpen] = useState<'start' | 'end' | null>(null);
 
   const toDate = (iso: string | null): Date =>
@@ -94,6 +95,7 @@ function DateButton({
   onPress: () => void;
   active: boolean;
 }) {
+  const styles = useStyles();
   return (
     <Pressable
       accessibilityRole="button"
@@ -109,30 +111,30 @@ function DateButton({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((t) => ({
   row: { flexDirection: 'row', gap: spacing.md },
   dateButton: {
     flex: 1,
-    backgroundColor: colors.surface,
+    backgroundColor: t.surface,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
+    borderColor: t.border,
     borderRadius: radius.md,
     padding: spacing.md,
   },
-  dateButtonActive: { borderColor: colors.primary },
-  dateLabel: { fontSize: 12, color: colors.textMuted, marginBottom: 2 },
-  dateValue: { fontSize: 15, color: colors.text, fontWeight: '500' },
-  datePlaceholder: { color: colors.textFaint, fontWeight: '400' },
+  dateButtonActive: { borderColor: t.primary },
+  dateLabel: { fontSize: 12, color: t.textMuted, marginBottom: 2 },
+  dateValue: { fontSize: 15, color: t.text, fontWeight: '500' },
+  datePlaceholder: { color: t.textFaint, fontWeight: '400' },
   pickerWrap: {
     marginTop: spacing.md,
-    backgroundColor: colors.surface,
+    backgroundColor: t.surface,
     borderRadius: radius.md,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
+    borderColor: t.border,
     overflow: 'hidden',
   },
   done: { alignItems: 'flex-end', padding: spacing.md },
-  doneText: { color: colors.primary, fontWeight: '600' },
+  doneText: { color: t.primary, fontWeight: '600' },
   clear: { marginTop: spacing.sm, alignSelf: 'flex-start' },
-  clearText: { color: colors.textMuted, fontSize: 13 },
-});
+  clearText: { color: t.textMuted, fontSize: 13 },
+}));

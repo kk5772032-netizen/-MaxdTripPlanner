@@ -15,7 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BudgetArt, RouteArt, TrackArt } from '../src/components/onboarding/art';
 import { Button } from '../src/components/ui';
 import { useSettingsStore } from '../src/state/settingsStore';
-import { colors, spacing, type } from '../src/theme';
+import { makeStyles, spacing, type } from '../src/theme';
 
 const PANELS = [
   {
@@ -39,6 +39,7 @@ const PANELS = [
 ] as const;
 
 export default function OnboardingScreen() {
+  const styles = useStyles();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const setSetting = useSettingsStore((s) => s.set);
@@ -114,17 +115,17 @@ export default function OnboardingScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.surface },
+const useStyles = makeStyles((t) => ({
+  screen: { flex: 1, backgroundColor: t.surface },
   skipRow: { height: 44, justifyContent: 'center', alignItems: 'flex-end', paddingHorizontal: spacing.lg },
-  skip: { ...type.body, color: colors.textMuted },
+  skip: { ...type.body, color: t.textMuted },
   pager: { flex: 1 },
   art: { alignItems: 'center', justifyContent: 'center' },
   footer: { paddingHorizontal: spacing.xl, gap: spacing.md, alignItems: 'center' },
-  title: { ...type.title, color: colors.text, textAlign: 'center' },
-  body: { ...type.body, color: colors.textMuted, textAlign: 'center' },
+  title: { ...type.title, color: t.text, textAlign: 'center' },
+  body: { ...type.body, color: t.textMuted, textAlign: 'center' },
   dots: { flexDirection: 'row', gap: 6, marginTop: spacing.md, marginBottom: spacing.xs },
-  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.borderStrong },
-  dotActive: { width: 20, backgroundColor: colors.primary },
+  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: t.borderStrong },
+  dotActive: { width: 20, backgroundColor: t.primary },
   cta: { alignSelf: 'stretch' },
-});
+}));

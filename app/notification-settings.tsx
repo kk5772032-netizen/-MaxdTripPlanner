@@ -9,11 +9,12 @@ import {
   requestNotificationPermission,
 } from '../src/notifications';
 import { useSettingsStore } from '../src/state/settingsStore';
-import { spacing } from '../src/theme';
+import { makeStyles, spacing } from '../src/theme';
 
 const TIMES = ['18:00', '20:00', '21:00'] as const;
 
 export default function NotificationSettingsScreen() {
+  const styles = useStyles();
   const s = useSettingsStore();
   const [granted, setGranted] = useState<boolean | null>(null);
 
@@ -128,9 +129,9 @@ function label12h(hhmm: string): string {
   return m ? `${hour}:${String(m).padStart(2, '0')} ${suffix}` : `${hour} ${suffix}`;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((t) => ({
   content: { padding: spacing.lg, gap: spacing.xl, paddingBottom: spacing.xxl },
   inset: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md },
   // Disabled sub-rows dim rather than disappear, so the structure stays stable.
   dimmed: { opacity: 0.45 },
-});
+}));

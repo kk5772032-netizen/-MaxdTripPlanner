@@ -1,7 +1,7 @@
 import { StyleSheet, Text, TextInput, View, type ViewStyle } from 'react-native';
 
 import { currencySymbol } from '../budget/money';
-import { colors, radius, spacing } from '../theme';
+import { makeStyles, radius, spacing, useTheme } from '../theme';
 
 /** Currency-prefixed numeric field. The caller owns parsing to minor units. */
 export function AmountInput({
@@ -21,6 +21,8 @@ export function AmountInput({
   autoFocus?: boolean;
   accessibilityLabel?: string;
 }) {
+  const styles = useStyles();
+  const t = useTheme();
   return (
     <View style={[styles.wrap, style]}>
       <Text style={styles.symbol}>{currencySymbol(currency)}</Text>
@@ -28,7 +30,7 @@ export function AmountInput({
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={colors.textFaint}
+        placeholderTextColor={t.textFaint}
         keyboardType="decimal-pad"
         autoFocus={autoFocus}
         accessibilityLabel={accessibilityLabel}
@@ -38,16 +40,16 @@ export function AmountInput({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((t) => ({
   wrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
+    backgroundColor: t.surface,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
+    borderColor: t.border,
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
   },
-  symbol: { fontSize: 15, color: colors.textMuted, marginRight: spacing.xs },
-  input: { flex: 1, paddingVertical: spacing.md, fontSize: 15, color: colors.text },
-});
+  symbol: { fontSize: 15, color: t.textMuted, marginRight: spacing.xs },
+  input: { flex: 1, paddingVertical: spacing.md, fontSize: 15, color: t.text },
+}));

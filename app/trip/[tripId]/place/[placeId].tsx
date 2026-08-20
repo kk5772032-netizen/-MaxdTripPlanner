@@ -26,11 +26,12 @@ import {
   notifySuccess,
 } from '../../../../src/components/ui';
 import { useTripStore } from '../../../../src/state/tripStore';
-import { colors, radius, spacing, type } from '../../../../src/theme';
+import { makeStyles, spacing, type } from '../../../../src/theme';
 
 type Tab = 'activities' | 'food' | 'budget';
 
 export default function StopDetailScreen() {
+  const styles = useStyles();
   const router = useRouter();
   const { tripId, placeId } = useLocalSearchParams<{ tripId: string; placeId: string }>();
   const [tab, setTab] = useState<Tab>('activities');
@@ -156,6 +157,7 @@ function BudgetTab({
   expenseCount: number;
   onOpenExpenses: () => void;
 }) {
+  const styles = useStyles();
   const updateStop = useTripStore((s) => s.updateStop);
   const [capText, setCapText] = useState(
     toDecimalString(summary.stop.plannedBudgetMinor, currency),
@@ -246,6 +248,7 @@ function Row({
   value: string;
   emphasis?: 'over';
 }) {
+  const styles = useStyles();
   return (
     <View style={styles.row}>
       <Text style={styles.rowLabel}>{label}</Text>
@@ -254,16 +257,16 @@ function Row({
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.bg },
+const useStyles = makeStyles((t) => ({
+  flex: { flex: 1, backgroundColor: t.bg },
   tabBar: { padding: spacing.lg, paddingBottom: spacing.md, gap: spacing.md },
   content: { padding: spacing.lg, paddingTop: 0, gap: spacing.lg, paddingBottom: spacing.xxl },
   gapped: { gap: spacing.md },
   rows: { gap: spacing.sm },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  rowLabel: { ...type.body, color: colors.textMuted },
-  rowValue: { ...type.amount, color: colors.text },
-  rowValueOver: { color: colors.over },
-  plannedNote: { ...type.caption, color: colors.textFaint },
+  rowLabel: { ...type.body, color: t.textMuted },
+  rowValue: { ...type.amount, color: t.text },
+  rowValueOver: { color: t.overText },
+  plannedNote: { ...type.caption, color: t.textFaint },
   missing: { flex: 1, justifyContent: 'center' },
-});
+}));

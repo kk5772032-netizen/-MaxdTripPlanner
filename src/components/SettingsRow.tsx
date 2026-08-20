@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
-import { colors, elevation, radius, spacing, type } from '../theme';
+import { elevation, makeStyles, radius, spacing, type, useTheme } from '../theme';
 import type { IconName } from './ui';
 
 /** Grouped-list row: value + chevron, a switch, or a destructive action. */
@@ -28,7 +28,9 @@ export function SettingsRow({
   danger?: boolean;
   disabled?: boolean;
 }) {
-  const tint = danger ? colors.over : colors.textMuted;
+  const styles = useStyles();
+  const t = useTheme();
+  const tint = danger ? t.over : t.textMuted;
   const isSwitch = onToggle !== undefined;
 
   const body = (
@@ -52,13 +54,13 @@ export function SettingsRow({
           value={!!toggled}
           onValueChange={onToggle}
           disabled={disabled}
-          trackColor={{ true: colors.primary, false: colors.borderStrong }}
+          trackColor={{ true: t.primary, false: t.borderStrong }}
           thumbColor="#fff"
         />
       ) : null}
 
       {onPress && !isSwitch && !action ? (
-        <Ionicons name="chevron-forward" size={18} color={colors.textFaint} />
+        <Ionicons name="chevron-forward" size={18} color={t.textFaint} />
       ) : null}
     </View>
   );
@@ -83,6 +85,7 @@ export function SettingsSection({
   title: string;
   children: React.ReactNode;
 }) {
+  const styles = useStyles();
   const rows = Array.isArray(children) ? children.filter(Boolean) : [children];
   return (
     <View style={styles.section}>
@@ -98,7 +101,7 @@ export function SettingsSection({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((t) => ({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -108,21 +111,21 @@ const styles = StyleSheet.create({
     minHeight: 56,
   },
   disabled: { opacity: 0.45 },
-  pressed: { backgroundColor: colors.bg },
+  pressed: { backgroundColor: t.bg },
   text: { flex: 1, gap: 1 },
-  label: { ...type.body, color: colors.text },
-  danger: { color: colors.over },
-  sub: { ...type.caption, color: colors.textMuted },
-  value: { ...type.body, color: colors.textMuted },
-  action: { ...type.label, color: colors.primary },
+  label: { ...type.body, color: t.text },
+  danger: { color: t.overText },
+  sub: { ...type.caption, color: t.textMuted },
+  value: { ...type.body, color: t.textMuted },
+  action: { ...type.label, color: t.primary },
   section: { gap: spacing.sm },
-  sectionTitle: { ...type.label, color: colors.textMuted, paddingLeft: spacing.xs },
+  sectionTitle: { ...type.label, color: t.textMuted, paddingLeft: spacing.xs },
   group: {
-    backgroundColor: colors.surface,
+    backgroundColor: t.surface,
     borderRadius: radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
+    borderColor: t.border,
     overflow: 'hidden',
   },
-  divided: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
-});
+  divided: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: t.border },
+}));

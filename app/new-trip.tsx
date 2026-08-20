@@ -23,13 +23,14 @@ import * as tripsRepo from '../src/db/repositories/trips';
 import { NotificationPriming } from '../src/components/NotificationPriming';
 import { useSettingsStore } from '../src/state/settingsStore';
 import { useTripsStore } from '../src/state/tripsStore';
-import { colors, spacing, type } from '../src/theme';
+import { makeStyles, spacing, type } from '../src/theme';
 
 /**
  * Create *and* edit — passing `?tripId=` switches it to edit mode. Same fields
  * either way, so a second screen would only be duplication.
  */
 export default function NewTripScreen() {
+  const styles = useStyles();
   const router = useRouter();
   const { tripId } = useLocalSearchParams<{ tripId?: string }>();
   const isEdit = !!tripId;
@@ -194,12 +195,12 @@ export default function NewTripScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.bg },
+const useStyles = makeStyles((t) => ({
+  flex: { flex: 1, backgroundColor: t.bg },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
   currencyRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   amountRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  amountSymbol: { ...type.heading, color: colors.textMuted, minWidth: 20 },
+  amountSymbol: { ...type.heading, color: t.textMuted, minWidth: 20 },
   amountInput: { flex: 1 },
   delete: { marginTop: spacing.md },
-});
+}));

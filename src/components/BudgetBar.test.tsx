@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react-native';
 
 import { BudgetBar } from './BudgetBar';
-import { colors } from '../theme';
+import { lightPalette } from '../theme';
 
 /**
  * The bar's whole job is to say the right number and show the right colour, so
@@ -64,16 +64,16 @@ describe('BudgetBar', () => {
     };
 
     it('is green below 80%', () => {
-      expect(fillColor(79_900, CAP)).toBe(colors.under);
+      expect(fillColor(79_900, CAP)).toBe(lightPalette.under);
     });
 
     it('is amber at exactly 80% and at exactly the cap', () => {
-      expect(fillColor(80_000, CAP)).toBe(colors.near);
-      expect(fillColor(CAP, CAP)).toBe(colors.near);
+      expect(fillColor(80_000, CAP)).toBe(lightPalette.near);
+      expect(fillColor(CAP, CAP)).toBe(lightPalette.near);
     });
 
     it('is red one paisa past the cap', () => {
-      expect(fillColor(CAP + 1, CAP)).toBe(colors.over);
+      expect(fillColor(CAP + 1, CAP)).toBe(lightPalette.over);
     });
   });
 

@@ -9,16 +9,7 @@ import { CategoryPie } from '../../../src/components/charts/CategoryPie';
 import { Button, Card, EmptyState, SkeletonList } from '../../../src/components/ui';
 import { dayCount, formatDateRange } from '../../../src/dates';
 import { useTripStore } from '../../../src/state/tripStore';
-import {
-  categoryColors,
-  categoryIcons,
-  colors,
-  elevation,
-  radius,
-  spacing,
-  statusColor,
-  type,
-} from '../../../src/theme';
+import { categoryIcons, elevation, makeStyles, radius, spacing, statusColorOf, type, useTheme } from '../../../src/theme';
 
 /**
  * What the trip actually cost, after it's over.
@@ -28,6 +19,8 @@ import {
  * not information.
  */
 export default function TripRecapScreen() {
+  const styles = useStyles();
+  const t = useTheme();
   const router = useRouter();
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   const { trip, stops, activities, foodPlans, expenses, loading, open } = useTripStore();
@@ -117,12 +110,12 @@ export default function TripRecapScreen() {
             <Text style={styles.cardLabel}>Biggest single expense</Text>
             <View style={styles.biggest}>
               <View
-                style={[styles.catTile, { backgroundColor: `${categoryColors[biggest.category]}18` }]}
+                style={[styles.catTile, { backgroundColor: `${t.categories[biggest.category]}18` }]}
               >
                 <Ionicons
                   name={categoryIcons[biggest.category] as never}
                   size={18}
-                  color={categoryColors[biggest.category]}
+                  color={t.categories[biggest.category]}
                 />
               </View>
               <View style={styles.biggestText}>
@@ -156,7 +149,7 @@ export default function TripRecapScreen() {
                   </View>
                   <View style={styles.track}>
                     <View
-                      style={[styles.fill, { width: `${pct}%`, backgroundColor: statusColor[s.status] }]}
+                      style={[styles.fill, { width: `${pct}%`, backgroundColor: statusColorOf(t, s.status) }]}
                     />
                   </View>
                 </View>
@@ -177,6 +170,7 @@ export default function TripRecapScreen() {
 }
 
 function Stat({ value, label }: { value: string; label: string }) {
+  const styles = useStyles();
   return (
     <View style={[styles.stat, elevation.sm]}>
       <Text style={styles.statValue}>{value}</Text>
@@ -185,11 +179,11 @@ function Stat({ value, label }: { value: string; label: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((t) => ({
   content: { paddingBottom: spacing.xxl },
   blank: { flex: 1, justifyContent: 'center' },
   hero: {
-    backgroundColor: colors.primary,
+    backgroundColor: t.accent,
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.lg,
     paddingBottom: spacing.xl,
@@ -204,28 +198,28 @@ const styles = StyleSheet.create({
   statRow: { flexDirection: 'row', gap: spacing.md },
   stat: {
     flex: 1,
-    backgroundColor: colors.surface,
+    backgroundColor: t.surface,
     borderRadius: radius.md,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
+    borderColor: t.border,
     padding: spacing.md,
     gap: 2,
   },
-  statValue: { ...type.heading, color: colors.text },
-  statLabel: { ...type.captionStrong, color: colors.textMuted },
+  statValue: { ...type.heading, color: t.text },
+  statLabel: { ...type.captionStrong, color: t.textMuted },
   card: { gap: spacing.lg },
-  cardTitle: { ...type.heading, color: colors.text },
-  cardLabel: { ...type.label, color: colors.textMuted },
+  cardTitle: { ...type.heading, color: t.text },
+  cardLabel: { ...type.label, color: t.textMuted },
   biggest: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   catTile: { width: 38, height: 38, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
   biggestText: { flex: 1, gap: 1 },
-  biggestTitle: { ...type.bodyStrong, color: colors.text },
-  biggestMeta: { ...type.caption, color: colors.textMuted },
-  biggestAmount: { ...type.amount, color: colors.text },
+  biggestTitle: { ...type.bodyStrong, color: t.text },
+  biggestMeta: { ...type.caption, color: t.textMuted },
+  biggestAmount: { ...type.amount, color: t.text },
   stopRow: { gap: 5 },
   stopHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: spacing.sm },
-  stopName: { ...type.label, color: colors.text, flex: 1 },
-  stopFigures: { ...type.caption, color: colors.textMuted },
-  track: { height: 6, borderRadius: 3, backgroundColor: colors.surfaceSunken, overflow: 'hidden' },
+  stopName: { ...type.label, color: t.text, flex: 1 },
+  stopFigures: { ...type.caption, color: t.textMuted },
+  track: { height: 6, borderRadius: 3, backgroundColor: t.surfaceSunken, overflow: 'hidden' },
   fill: { height: '100%', borderRadius: 3 },
-});
+}));

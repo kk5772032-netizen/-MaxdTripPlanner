@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { requestNotificationPermission } from '../notifications';
 import { useSettingsStore } from '../state/settingsStore';
-import { colors, elevation, radius, spacing, type } from '../theme';
+import { elevation, makeStyles, radius, spacing, type, useTheme } from '../theme';
 import { Button } from './ui';
 
 /**
@@ -21,6 +21,8 @@ export function NotificationPriming({
   visible: boolean;
   onClose: () => void;
 }) {
+  const styles = useStyles();
+  const t = useTheme();
   const insets = useSafeAreaInsets();
   const setSetting = useSettingsStore((s) => s.set);
 
@@ -45,7 +47,7 @@ export function NotificationPriming({
       <View style={styles.backdrop}>
         <View style={[styles.sheet, elevation.lg, { paddingBottom: spacing.xl + insets.bottom }]}>
           <View style={styles.badge}>
-            <Ionicons name="notifications-outline" size={26} color={colors.primary} />
+            <Ionicons name="notifications-outline" size={26} color={t.primary} />
           </View>
 
           <Text style={styles.title}>Know before you overspend</Text>
@@ -77,9 +79,11 @@ function Row({
   label: string;
   sub: string;
 }) {
+  const styles = useStyles();
+  const t = useTheme();
   return (
     <View style={styles.row}>
-      <Ionicons name={icon} size={20} color={colors.textMuted} style={styles.rowIcon} />
+      <Ionicons name={icon} size={20} color={t.textMuted} style={styles.rowIcon} />
       <View style={styles.rowText}>
         <Text style={styles.rowLabel}>{label}</Text>
         <Text style={styles.rowSub}>{sub}</Text>
@@ -88,10 +92,10 @@ function Row({
   );
 }
 
-const styles = StyleSheet.create({
-  backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.overlay },
+const useStyles = makeStyles((t) => ({
+  backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: t.overlay },
   sheet: {
-    backgroundColor: colors.surface,
+    backgroundColor: t.surface,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
     paddingHorizontal: spacing.xl,
@@ -100,14 +104,14 @@ const styles = StyleSheet.create({
   },
   badge: {
     width: 56, height: 56, borderRadius: 28,
-    backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: t.primarySoft, alignItems: 'center', justifyContent: 'center',
   },
-  title: { ...type.title, color: colors.text },
-  body: { ...type.body, color: colors.textMuted },
+  title: { ...type.title, color: t.text },
+  body: { ...type.body, color: t.textMuted },
   rows: { gap: 14, marginVertical: spacing.xs },
   row: { flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' },
   rowIcon: { marginTop: 1 },
   rowText: { flex: 1, gap: 1 },
-  rowLabel: { ...type.bodyStrong, color: colors.text },
-  rowSub: { ...type.caption, color: colors.textMuted },
-});
+  rowLabel: { ...type.bodyStrong, color: t.text },
+  rowSub: { ...type.caption, color: t.textMuted },
+}));

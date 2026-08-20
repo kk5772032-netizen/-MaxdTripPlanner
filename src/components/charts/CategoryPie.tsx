@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import Svg, { G, Path } from 'react-native-svg';
 
 import { formatMoney } from '../../budget/money';
-import { categoryColors, categoryLabels, colors, spacing } from '../../theme';
+import { categoryLabels, makeStyles, radius, spacing, useTheme } from '../../theme';
 import type { ExpenseCategory } from '../../types';
 
 /**
@@ -23,6 +23,8 @@ export function CategoryPie({
   currency: string;
   size?: number;
 }) {
+  const styles = useStyles();
+  const t = useTheme();
   const entries = (Object.entries(totals) as [ExpenseCategory, number][])
     .filter(([, amount]) => amount > 0)
     .sort((a, b) => b[1] - a[1]);
@@ -63,7 +65,7 @@ export function CategoryPie({
       <Svg width={size} height={size}>
         <G>
           {slices.map((slice) => (
-            <Path key={slice.category} d={slice.path} fill={categoryColors[slice.category]} />
+            <Path key={slice.category} d={slice.path} fill={t.categories[slice.category]} />
           ))}
         </G>
       </Svg>
@@ -72,7 +74,7 @@ export function CategoryPie({
         {slices.map((slice) => (
           <View key={slice.category} style={styles.legendRow}>
             <View
-              style={[styles.swatch, { backgroundColor: categoryColors[slice.category] }]}
+              style={[styles.swatch, { backgroundColor: t.categories[slice.category] }]}
             />
             <Text style={styles.legendLabel} numberOfLines={1}>
               {categoryLabels[slice.category]}
@@ -121,13 +123,13 @@ function polar(cx: number, cy: number, r: number, deg: number): { x: number; y: 
   return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((t) => ({
   wrap: { alignItems: 'center', gap: spacing.lg },
   legend: { alignSelf: 'stretch', gap: spacing.sm },
   legendRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   swatch: { width: 10, height: 10, borderRadius: 3 },
-  legendLabel: { flex: 1, fontSize: 13, color: colors.text },
-  legendValue: { fontSize: 13, fontWeight: '600', color: colors.text },
-  legendShare: { fontSize: 12, color: colors.textFaint, width: 38, textAlign: 'right' },
-  empty: { fontSize: 13, color: colors.textMuted, lineHeight: 19 },
-});
+  legendLabel: { flex: 1, fontSize: 13, color: t.text },
+  legendValue: { fontSize: 13, fontWeight: '600', color: t.text },
+  legendShare: { fontSize: 12, color: t.textFaint, width: 38, textAlign: 'right' },
+  empty: { fontSize: 13, color: t.textMuted, lineHeight: 19 },
+}));

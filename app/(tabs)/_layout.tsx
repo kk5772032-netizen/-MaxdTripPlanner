@@ -3,7 +3,7 @@ import { Tabs, useRouter } from 'expo-router';
 
 import { HeaderAction } from '../../src/components/ui';
 
-import { colors, elevation, type } from '../../src/theme';
+import { elevation, type, useTheme } from '../../src/theme';
 
 /**
  * A single tab today. The group exists because the trip list is the app's home
@@ -11,21 +11,22 @@ import { colors, elevation, type } from '../../src/theme';
  * moving routes around.
  */
 export default function TabsLayout() {
+  const t = useTheme();
   const router = useRouter();
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textFaint,
+        tabBarActiveTintColor: t.primary,
+        tabBarInactiveTintColor: t.textFaint,
         tabBarLabelStyle: type.captionStrong,
         tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
+          backgroundColor: t.surface,
+          borderTopColor: t.border,
         },
-        headerStyle: { backgroundColor: colors.surface, ...elevation.none },
+        headerStyle: { backgroundColor: t.surface },
         headerShadowVisible: false,
-        headerTitleStyle: { ...type.title, color: colors.text },
-        sceneStyle: { backgroundColor: colors.bg },
+        headerTitleStyle: { ...type.title, color: t.text },
+        sceneStyle: { backgroundColor: t.bg },
       }}
     >
       <Tabs.Screen

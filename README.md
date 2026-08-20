@@ -205,6 +205,9 @@ src/
   db/repositories/          one module per table
   state/tripStore.ts        the open trip and everything under it
   state/tripsStore.ts       the trip list
+  theme/palette.ts          the two palettes, light and dark
+  theme/index.tsx           ThemeProvider + makeStyles
+  tokens.ts                 spacing, radii, type scale, elevation
   components/               BudgetBar, StopCard, MapWithRoute, charts, …
 ```
 
@@ -212,6 +215,45 @@ State is zustand. Actions write to SQLite first, then update local state — the
 database is the source of truth and the store is what's on screen. The open
 trip's whole graph is loaded at once, which is a few milliseconds of SQLite and
 lets every budget selector be a plain synchronous function over arrays.
+
+### Theming
+
+Appearance follows the system by default and can be pinned to light or dark in
+Settings. Colour lives in `src/theme/palette.ts`; everything that isn't colour
+(spacing, radii, the type scale, elevation) lives in `src/tokens.ts` and is
+shared by both palettes.
+
+Styles are written with `makeStyles`, which mirrors `StyleSheet.create` but
+takes the palette:
+
+```ts
+const useStyles = makeStyles((t) => ({
+  card: { backgroundColor: t.surface, borderColor: t.border },
+  title: { ...type.heading, color: t.text },
+}));
+```
+
+Sheets are built once per palette and cached, so switching themes rebuilds them
+and re-rendering does not.
+
+The dark palette is derived rather than inverted, and a few tokens exist only
+because inverting would have been wrong:
+
+- **`primary` vs `accent`.** `primary` is the tint for links and icons on the
+  app's own ground, so in dark it has to be light. `accent` is the ground
+  *under* white text — buttons, the FAB, the recap hero — so in dark it has to
+  be darker. One token could not be both: white on the dark theme's link blue
+  measures 3.4:1.
+- **`under`/`near`/`over` vs `underText`/`nearText`/`overText`.** A green
+  bright enough to read as a bar on white is too light to read as a word on
+  white.
+- **`surfaceRaised`.** The selected pill in a segmented control. Using the card
+  surface would have made it *darker* than the track it sits in — it read as
+  the unselected half.
+
+`src/theme/palette.test.ts` checks every one of those pairings against WCAG AA
+in both palettes, so a token change that looks fine but fails contrast fails
+the build instead.
 
 ### Tests
 
@@ -228,6 +270,9 @@ npm test
   constraints are the point of those tests and a fake would assert nothing
   about them.
 - `src/api/placesCache.test.ts` — TTL, stale fallback, invalidation.
+- `src/theme/palette.test.ts` — contrast for every token pairing the app
+  actually renders, in both palettes: 4.5:1 for text, 3:1 for the graphics you
+  have to read (bars, arcs, pie slices).
 - `src/components/BudgetBar.test.tsx` — snapshots per status colour, plus
   explicit assertions on the colour and the label, since a snapshot alone would
   happily record a green bar at 150%.
@@ -238,7 +283,8 @@ npm test
 Beyond Jest, the app is driven end to end in a real browser (`npm run web` plus
 Playwright): 23 checks covering trip CRUD, stops, reordering, activities, food
 plans, stop caps, expense add/edit/filter, the roll-ups, the dashboard, the map
-and the delete cascades.
+and the delete cascades, plus a theme pass that walks all seven screens in each
+appearance and asserts on the colour actually painted.
 
 ### Deliberate choices worth knowing about
 

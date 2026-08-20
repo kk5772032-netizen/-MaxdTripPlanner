@@ -3,15 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { formatMoney } from '../budget/money';
 import { formatDate } from '../dates';
-import {
-  categoryColors,
-  categoryIcons,
-  categoryLabels,
-  colors,
-  radius,
-  spacing,
-  type,
-} from '../theme';
+import { categoryIcons, categoryLabels, makeStyles, radius, spacing, type, useTheme } from '../theme';
 import type { Expense } from '../types';
 
 /** One line in the expense log. */
@@ -29,6 +21,8 @@ export function ExpenseRow({
   onPress?: () => void;
   onLongPress?: () => void;
 }) {
+  const styles = useStyles();
+  const t = useTheme();
   const meta = [
     stopName ?? 'Whole trip',
     formatDate(expense.spentAt),
@@ -45,12 +39,12 @@ export function ExpenseRow({
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
     >
       <View
-        style={[styles.icon, { backgroundColor: `${categoryColors[expense.category]}18` }]}
+        style={[styles.icon, { backgroundColor: `${t.categories[expense.category]}18` }]}
       >
         <Ionicons
           name={categoryIcons[expense.category] as never}
           size={16}
-          color={categoryColors[expense.category]}
+          color={t.categories[expense.category]}
         />
       </View>
 
@@ -68,7 +62,7 @@ export function ExpenseRow({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((t) => ({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -76,10 +70,10 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-    backgroundColor: colors.surface,
+    borderBottomColor: t.border,
+    backgroundColor: t.surface,
   },
-  pressed: { backgroundColor: colors.bg },
+  pressed: { backgroundColor: t.bg },
   icon: {
     width: 34,
     height: 34,
@@ -88,7 +82,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   main: { flex: 1, gap: 1 },
-  title: { ...type.bodyStrong, color: colors.text },
-  meta: { ...type.caption, color: colors.textMuted },
-  amount: { ...type.amount, color: colors.text },
-});
+  title: { ...type.bodyStrong, color: t.text },
+  meta: { ...type.caption, color: t.textMuted },
+  amount: { ...type.amount, color: t.text },
+}));

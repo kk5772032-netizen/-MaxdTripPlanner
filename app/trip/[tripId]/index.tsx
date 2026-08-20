@@ -20,11 +20,13 @@ import {
 } from '../../../src/components/ui';
 import { formatDateRange } from '../../../src/dates';
 import { useTripStore } from '../../../src/state/tripStore';
-import { colors, elevation, radius, spacing, type } from '../../../src/theme';
+import { elevation, makeStyles, radius, spacing, type, useTheme } from '../../../src/theme';
 
 type ViewMode = 'list' | 'map';
 
 export default function TripDetailScreen() {
+  const styles = useStyles();
+  const t = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
@@ -79,7 +81,7 @@ export default function TripDetailScreen() {
   const header = (
     <View style={styles.header}>
       <View style={styles.datesRow}>
-        <Ionicons name="calendar-outline" size={14} color={colors.textFaint} />
+        <Ionicons name="calendar-outline" size={14} color={t.textFaint} />
         <Text style={styles.dates}>{formatDateRange(trip.startDate, trip.endDate)}</Text>
       </View>
 
@@ -187,7 +189,7 @@ export default function TripDetailScreen() {
             onPress={() => router.push(`/trip/${tripId}/expenses`)}
             style={({ pressed }) => [styles.footerLink, pressed && styles.pressed]}
           >
-            <Ionicons name="receipt-outline" size={15} color={colors.primary} />
+            <Ionicons name="receipt-outline" size={15} color={t.primary} />
             <Text style={styles.footerLinkText}>
               {expenses.length === 0
                 ? 'Log an expense'
@@ -207,7 +209,7 @@ export default function TripDetailScreen() {
                 ? `Planned ${formatMoney(totals.totalPlanned, trip.currency, { compact: true })}`
                 : `${formatMoney(totals.remainingBudget, trip.currency, { compact: true })} left`}
             </Text>
-            <Ionicons name="stats-chart" size={15} color={colors.primary} />
+            <Ionicons name="stats-chart" size={15} color={t.primary} />
           </Pressable>
         </View>
       </View>
@@ -223,12 +225,12 @@ export default function TripDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bg },
+const useStyles = makeStyles((t) => ({
+  screen: { flex: 1, backgroundColor: t.bg },
   header: { paddingBottom: spacing.lg, gap: spacing.md },
   datesRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  dates: { ...type.caption, color: colors.textMuted },
-  hint: { ...type.caption, color: colors.textFaint },
+  dates: { ...type.caption, color: t.textMuted },
+  hint: { ...type.caption, color: t.textFaint },
   mapMode: { flex: 1 },
   mapHeader: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg },
   map: { flex: 1, marginHorizontal: spacing.lg, borderRadius: radius.lg },
@@ -237,17 +239,17 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: colors.surface,
+    backgroundColor: t.surface,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
+    borderTopColor: t.border,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
     gap: spacing.sm,
   },
   footerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   footerLink: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingVertical: 2 },
-  footerLinkText: { ...type.label, color: colors.primary },
-  footerRemaining: { ...type.label, color: colors.primary },
+  footerLinkText: { ...type.label, color: t.primary },
+  footerRemaining: { ...type.label, color: t.primary },
   pressed: { opacity: 0.6 },
   missing: { flex: 1, justifyContent: 'center' },
-});
+}));

@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors, elevation, radius, spacing, type } from '../theme';
+import { elevation, makeStyles, radius, spacing, type, useTheme } from '../theme';
 import type { Stop } from '../types';
 
 /**
@@ -30,6 +30,8 @@ export const StopCard = memo(function StopCard({
   onPress?: () => void;
   onLongPress?: () => void;
 }) {
+  const styles = useStyles();
+  const t = useTheme();
   return (
     <Pressable
       accessibilityRole="button"
@@ -62,7 +64,7 @@ export const StopCard = memo(function StopCard({
 
         {stop.rating != null ? (
           <View style={styles.rating}>
-            <Ionicons name="star" size={11} color={colors.near} />
+            <Ionicons name="star" size={11} color={t.near} />
             <Text style={styles.ratingText}>{stop.rating.toFixed(1)}</Text>
           </View>
         ) : null}
@@ -75,30 +77,30 @@ export const StopCard = memo(function StopCard({
   );
 });
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((t) => ({
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: t.surface,
     borderRadius: radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
+    borderColor: t.border,
     padding: spacing.lg,
   },
   pressed: { opacity: 0.92 },
-  dragging: { borderColor: colors.primary, transform: [{ scale: 1.02 }] },
+  dragging: { borderColor: t.primary, transform: [{ scale: 1.02 }] },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   index: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: colors.primarySoft,
+    backgroundColor: t.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  indexText: { ...type.captionStrong, color: colors.primary },
+  indexText: { ...type.captionStrong, color: t.primary },
   titleBlock: { flex: 1, gap: 1 },
-  name: { ...type.bodyStrong, color: colors.text },
-  address: { ...type.caption, color: colors.textMuted },
-  subtitle: { ...type.caption, color: colors.textFaint, marginTop: 2 },
+  name: { ...type.bodyStrong, color: t.text },
+  address: { ...type.caption, color: t.textMuted },
+  subtitle: { ...type.caption, color: t.textFaint, marginTop: 2 },
   rating: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -106,8 +108,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: 3,
     borderRadius: radius.sm,
-    backgroundColor: colors.surfaceSunken,
+    backgroundColor: t.surfaceSunken,
   },
-  ratingText: { ...type.captionStrong, color: colors.textMuted },
+  ratingText: { ...type.captionStrong, color: t.textMuted },
   footer: { marginTop: spacing.md },
-});
+}));

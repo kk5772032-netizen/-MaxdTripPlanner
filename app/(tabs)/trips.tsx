@@ -17,18 +17,12 @@ import {
 } from '../../src/components/ui';
 import { dayCount, formatDateRange } from '../../src/dates';
 import { useTripsStore } from '../../src/state/tripsStore';
-import {
-  colors,
-  elevation,
-  radius,
-  spacing,
-  statusColor,
-  statusSoftColor,
-  type,
-} from '../../src/theme';
+import { elevation, makeStyles, radius, spacing, statusSoftOf, statusTextOf, type, useTheme } from '../../src/theme';
 import type { Trip } from '../../src/types';
 
 export default function TripsScreen() {
+  const styles = useStyles();
+  const t = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { trips, actualByTrip, stopCountByTrip, loading, error, load, remove } =
@@ -116,6 +110,8 @@ function TripCard({
   onPress: () => void;
   onLongPress: () => void;
 }) {
+  const styles = useStyles();
+  const t = useTheme();
   const status = statusFor(actual, trip.totalBudgetMinor);
   const days = dayCount(trip.startDate, trip.endDate);
 
@@ -134,7 +130,7 @@ function TripCard({
           </Text>
 
           <View style={styles.metaRow}>
-            <Ionicons name="calendar-outline" size={13} color={colors.textFaint} />
+            <Ionicons name="calendar-outline" size={13} color={t.textFaint} />
             <Text style={styles.cardMeta} numberOfLines={1}>
               {formatDateRange(trip.startDate, trip.endDate)}
               {days ? ` · ${days}d` : ''}
@@ -142,7 +138,7 @@ function TripCard({
           </View>
 
           <View style={styles.metaRow}>
-            <Ionicons name="location-outline" size={13} color={colors.textFaint} />
+            <Ionicons name="location-outline" size={13} color={t.textFaint} />
             <Text style={styles.cardMeta}>
               {stopCount === 1 ? '1 stop' : `${stopCount} stops`}
             </Text>
@@ -160,8 +156,8 @@ function TripCard({
         </Text>
 
         {status !== 'unset' ? (
-          <View style={[styles.badge, { backgroundColor: statusSoftColor[status] }]}>
-            <Text style={[styles.badgeText, { color: statusColor[status] }]}>
+          <View style={[styles.badge, { backgroundColor: statusSoftOf(t, status) }]}>
+            <Text style={[styles.badgeText, { color: statusTextOf(t, status) }]}>
               {status === 'over' ? 'Over budget' : status === 'near' ? 'Close to cap' : 'On track'}
             </Text>
           </View>
@@ -173,39 +169,39 @@ function TripCard({
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bg },
+const useStyles = makeStyles((t) => ({
+  screen: { flex: 1, backgroundColor: t.bg },
   listContent: { padding: spacing.lg, gap: spacing.md },
   listEmpty: { flexGrow: 1, justifyContent: 'center' },
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: t.surface,
     borderRadius: radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
+    borderColor: t.border,
     padding: spacing.lg,
     gap: spacing.md,
   },
   cardPressed: { opacity: 0.92, transform: [{ scale: 0.995 }] },
   cardTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   cardBody: { flex: 1, gap: spacing.xs },
-  cardTitle: { ...type.heading, color: colors.text },
+  cardTitle: { ...type.heading, color: t.text },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  cardMeta: { ...type.caption, color: colors.textMuted, flexShrink: 1 },
+  cardMeta: { ...type.caption, color: t.textMuted, flexShrink: 1 },
   cardFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: spacing.sm,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
+    borderTopColor: t.border,
     paddingTop: spacing.md,
   },
-  cardSpend: { ...type.label, color: colors.text },
+  cardSpend: { ...type.label, color: t.text },
   badge: {
     paddingHorizontal: spacing.sm,
     paddingVertical: 3,
     borderRadius: radius.pill,
   },
   badgeText: { ...type.captionStrong },
-  noBudget: { ...type.caption, color: colors.textFaint },
-});
+  noBudget: { ...type.caption, color: t.textFaint },
+}));

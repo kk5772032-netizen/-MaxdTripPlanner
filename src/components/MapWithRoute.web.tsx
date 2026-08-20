@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
-import { colors, radius, spacing } from '../theme';
+import { makeStyles, radius, spacing } from '../theme';
 import type { Stop } from '../types';
 
 /**
@@ -23,6 +23,7 @@ export function MapWithRoute({
   onPressStop: (stop: Stop) => void;
   style?: ViewStyle;
 }) {
+  const styles = useStyles();
   const located = stops
     .filter((s): s is Stop & { lat: number; lng: number } => s.lat != null && s.lng != null)
     .sort((a, b) => a.sequence - b.sequence);
@@ -63,19 +64,19 @@ export function MapWithRoute({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((t) => ({
   wrap: {
-    backgroundColor: colors.surface,
+    backgroundColor: t.surface,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
+    borderColor: t.border,
     borderRadius: radius.lg,
     padding: spacing.lg,
     gap: spacing.sm,
   },
-  title: { fontSize: 15, fontWeight: '600', color: colors.text },
-  body: { fontSize: 13, color: colors.textMuted, lineHeight: 19 },
-  empty: { fontSize: 13, color: colors.textFaint, marginTop: spacing.sm },
+  title: { fontSize: 15, fontWeight: '600', color: t.text },
+  body: { fontSize: 13, color: t.textMuted, lineHeight: 19 },
+  empty: { fontSize: 13, color: t.textFaint, marginTop: spacing.sm },
   list: { marginTop: spacing.sm, gap: spacing.sm },
-  row: { fontSize: 14, color: colors.text },
-  coords: { fontSize: 12, color: colors.textFaint },
-});
+  row: { fontSize: 14, color: t.text },
+  coords: { fontSize: 12, color: t.textFaint },
+}));

@@ -4,7 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { PlacesError, hasApiKey, nearbyRestaurants } from '../../api/places';
 import { formatMoney, parseMoney, sumMinor, toDecimalString } from '../../budget/money';
 import { useTripStore } from '../../state/tripStore';
-import { colors, elevation, radius, spacing, type } from '../../theme';
+import { elevation, makeStyles, radius, spacing, type } from '../../theme';
 import type { FoodPlan, NearbyRestaurant, Stop } from '../../types';
 import { AmountInput } from '../AmountInput';
 import {
@@ -34,6 +34,7 @@ export function FoodTab({
   currency: string;
   foodPlans: FoodPlan[];
 }) {
+  const styles = useStyles();
   const { addFoodPlan, removeFoodPlan } = useTripStore();
 
   const [nearby, setNearby] = useState<NearbyRestaurant[]>([]);
@@ -203,6 +204,7 @@ function PlanRow({
   currency: string;
   onRemove: () => void;
 }) {
+  const styles = useStyles();
   const updateFoodPlan = useTripStore((s) => s.updateFoodPlan);
   const [costText, setCostText] = useState(
     toDecimalString(plan.estimatedCostMinor, currency),
@@ -258,6 +260,7 @@ function NearbyRow({
   added: boolean;
   onAdd: () => void;
 }) {
+  const styles = useStyles();
   return (
     <View style={styles.item}>
       <View style={styles.itemMain}>
@@ -299,6 +302,7 @@ function ManualFoodForm({
   currency: string;
   onDone: () => void;
 }) {
+  const styles = useStyles();
   const addFoodPlan = useTripStore((s) => s.addFoodPlan);
   const [name, setName] = useState('');
   const [cuisine, setCuisine] = useState('');
@@ -342,17 +346,17 @@ function ManualFoodForm({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((t) => ({
   content: { padding: spacing.lg, paddingTop: 0, gap: spacing.xl, paddingBottom: spacing.xxl },
   section: { gap: spacing.md },
   sectionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sectionTitle: { ...type.heading, color: colors.text },
-  sectionMeta: { ...type.label, color: colors.textMuted },
+  sectionTitle: { ...type.heading, color: t.text },
+  sectionMeta: { ...type.label, color: t.textMuted },
   list: {
-    backgroundColor: colors.surface,
+    backgroundColor: t.surface,
     borderRadius: radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
+    borderColor: t.border,
     overflow: 'hidden',
     ...elevation.sm,
   },
@@ -362,11 +366,11 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     padding: spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
+    borderBottomColor: t.border,
   },
   itemMain: { flex: 1, gap: 1 },
-  itemTitle: { ...type.bodyStrong, color: colors.text },
-  itemMeta: { ...type.caption, color: colors.textMuted },
+  itemTitle: { ...type.bodyStrong, color: t.text },
+  itemMeta: { ...type.caption, color: t.textMuted },
   itemAmount: { width: 104 },
   addButton: {
     paddingHorizontal: spacing.md,
@@ -374,14 +378,14 @@ const styles = StyleSheet.create({
     minHeight: 44,
     justifyContent: 'center',
     borderRadius: radius.pill,
-    backgroundColor: colors.primarySoft,
+    backgroundColor: t.primarySoft,
   },
-  addButtonDone: { backgroundColor: colors.surfaceSunken },
-  addButtonText: { ...type.label, color: colors.primary },
-  addButtonTextDone: { color: colors.textFaint },
+  addButtonDone: { backgroundColor: t.surfaceSunken },
+  addButtonText: { ...type.label, color: t.primary },
+  addButtonTextDone: { color: t.textFaint },
   manualToggle: { alignSelf: 'flex-start', paddingVertical: spacing.sm },
-  manualToggleText: { ...type.label, color: colors.primary },
+  manualToggleText: { ...type.label, color: t.primary },
   form: { gap: spacing.md },
   formRow: { flexDirection: 'row', gap: spacing.md, alignItems: 'center' },
   amount: { flex: 1 },
-});
+}));
