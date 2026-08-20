@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { PlacesError, hasApiKey, nearbyRestaurants } from '../../api/places';
-import { confirmDestructive } from '../../confirm';
 import { formatMoney, parseMoney, sumMinor, toDecimalString } from '../../budget/money';
 import { useTripStore } from '../../state/tripStore';
 import { colors, elevation, radius, spacing, type } from '../../theme';
@@ -100,14 +99,7 @@ export function FoodTab({
     });
   };
 
-  const confirmRemove = async (plan: FoodPlan) => {
-    const ok = await confirmDestructive({
-      title: 'Remove from food plan?',
-      message: `"${plan.name}" will be removed.`,
-      confirmLabel: 'Remove',
-    });
-    if (ok) await removeFoodPlan(plan.id);
-  };
+  const remove = (plan: FoodPlan) => void removeFoodPlan(plan.id);
 
   return (
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -126,7 +118,7 @@ export function FoodTab({
                 key={plan.id}
                 plan={plan}
                 currency={currency}
-                onRemove={() => void confirmRemove(plan)}
+                onRemove={() => remove(plan)}
               />
             ))}
           </View>
@@ -379,7 +371,7 @@ const styles = StyleSheet.create({
   addButton: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    minHeight: 34,
+    minHeight: 44,
     justifyContent: 'center',
     borderRadius: radius.pill,
     backgroundColor: colors.primarySoft,

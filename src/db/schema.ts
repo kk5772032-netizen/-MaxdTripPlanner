@@ -73,6 +73,13 @@ CREATE TABLE IF NOT EXISTS places_cache (
   fetched_at INTEGER NOT NULL   -- epoch ms
 );
 
+-- Key/value app settings. Kept here rather than in a separate store so the
+-- app has exactly one persistence layer to reason about and back up.
+CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL          -- JSON
+);
+
 CREATE INDEX IF NOT EXISTS idx_stops_trip_sequence ON stops(trip_id, sequence);
 CREATE INDEX IF NOT EXISTS idx_expenses_trip_stop ON expenses(trip_id, stop_id);
 CREATE INDEX IF NOT EXISTS idx_activities_stop ON activities(stop_id);

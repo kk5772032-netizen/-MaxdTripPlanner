@@ -133,6 +133,30 @@ export async function deleteStop(id: string): Promise<void> {
 }
 
 /**
+ * Puts a deleted stop back where it was.
+ *
+ * `deleteStop` closes the sequence gap behind it, so restoring has to reopen
+ * that gap before re-inserting — otherwise the restored stop collides with
+ * whichever stop slid into its place.
+ */
+export async function restoreStop(stop: Stop): Promise<void> {
+  const db = await getDb();
+  await db.withExclusiveTransactionAsync(async (tx) => {
+    await tx.runAsync(
+      `UPDATE stops SET sequence = sequence + 1 WHERE trip_id = ? AND sequence >= ?`,
+      stop.tripId, stop.sequence,
+    );
+    await tx.runAsync(
+      `INSERT OR REPLACE INTO stops
+         (id, trip_id, google_place_id, name, address, lat, lng, rating, photo_ref, sequence, planned_budget, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      stop.id, stop.tripId, stop.googlePlaceId, stop.name, stop.address, stop.lat,
+      stop.lng, stop.rating, stop.photoRef, stop.sequence, stop.plannedBudgetMinor, stop.notes,
+    );
+  });
+}
+
+/**
  * Rewrites `sequence` for a trip to match the given id order.
  *
  * Sequence has no UNIQUE constraint, so a straight rewrite is safe and avoids

@@ -11,7 +11,6 @@ import {
 } from 'react-native';
 
 import { formatMoney, parseMoney, toDecimalString } from '../../../src/budget/money';
-import { confirmDestructive } from '../../../src/confirm';
 import { AmountInput } from '../../../src/components/AmountInput';
 import { DateField } from '../../../src/components/DateField';
 import { ExpenseRow } from '../../../src/components/ExpenseRow';
@@ -87,13 +86,8 @@ export default function ExpensesScreen() {
     [filtered],
   );
 
-  const confirmDelete = async (expense: Expense) => {
-    const ok = await confirmDestructive({
-      title: 'Delete expense?',
-      message: 'This expense will be removed from the trip.',
-    });
-    if (ok) await removeExpense(expense.id);
-  };
+  // Deleting is undoable from the toast, so it happens on the gesture.
+  const deleteExpense = (expense: Expense) => void removeExpense(expense.id);
 
   if ((loading && !ready) || !trip) return <SkeletonList rows={3} />;
 
@@ -176,7 +170,19 @@ export default function ExpensesScreen() {
             action={
               expenses.length === 0 ? (
                 <Button title="Add an expense" icon="add" onPress={() => setFormOpen(true)} />
-              ) : undefined
+              ) : (
+                // An empty state with no way forward is a dead end — the
+                // filters that caused it are the thing to undo.
+                <Button
+                  title="Clear filters"
+                  icon="close"
+                  variant="secondary"
+                  onPress={() => {
+                    setFilterStop('all');
+                    setFilterCategory('all');
+                  }}
+                />
+              )
             }
           />
         ) : (
@@ -191,7 +197,7 @@ export default function ExpensesScreen() {
                   setFormOpen(false);
                   setEditing(expense);
                 }}
-                onLongPress={() => void confirmDelete(expense)}
+                onLongPress={() => deleteExpense(expense)}
               />
             ))}
           </View>

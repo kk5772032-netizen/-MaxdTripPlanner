@@ -295,6 +295,9 @@ export function Chip({
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ selected }}
+      // The pill is 36pt tall for density; hitSlop takes the touch target to
+      // the 44pt minimum without changing the layout.
+      hitSlop={{ top: 4, bottom: 4, left: 0, right: 0 }}
       onPress={() => {
         tap(Haptics.ImpactFeedbackStyle.Soft);
         onPress();
@@ -544,7 +547,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing.xs,
     paddingVertical: spacing.sm,
-    minHeight: 38,
+    minHeight: MIN_TAP,
     borderRadius: radius.sm,
   },
   segmentActive: { backgroundColor: colors.surface },

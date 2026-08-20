@@ -10,7 +10,6 @@ import {
 } from 'react-native';
 
 import { stopSummary } from '../../../../src/budget/engine';
-import { confirmDestructive } from '../../../../src/confirm';
 import { formatMoney, parseMoney, toDecimalString } from '../../../../src/budget/money';
 import { ActivitiesTab } from '../../../../src/components/stop/ActivitiesTab';
 import { FoodTab } from '../../../../src/components/stop/FoodTab';
@@ -71,14 +70,10 @@ export default function StopDetailScreen() {
     [stop, activities, foodPlans, expenses],
   );
 
-  const confirmRemove = async () => {
+  const removeThisStop = async () => {
     if (!stop) return;
-    const ok = await confirmDestructive({
-      title: 'Remove stop?',
-      message: `"${stop.name}", its activities and its food plan will be removed. Expenses logged against it are kept as trip-level expenses.`,
-      confirmLabel: 'Remove',
-    });
-    if (!ok) return;
+    // No dialog: removal is fully reversible for a few seconds via the toast,
+    // which is faster than confirming and safer than a silent delete.
     await removeStop(stop.id);
     router.back();
   };
@@ -139,7 +134,7 @@ export default function StopDetailScreen() {
         <BudgetTab
           currency={trip.currency}
           summary={summary}
-          onRemoveStop={() => void confirmRemove()}
+          onRemoveStop={() => void removeThisStop()}
           expenseCount={expenses.length}
           onOpenExpenses={() => router.push(`/trip/${tripId}/expenses?stopId=${stop.id}`)}
         />

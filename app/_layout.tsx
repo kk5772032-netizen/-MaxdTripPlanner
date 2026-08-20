@@ -1,4 +1,4 @@
-import { Stack } from 'expo-router';
+import { Redirect, Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -6,6 +6,9 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { prune } from '../src/api/placesCache';
+import { installNotificationHandler } from '../src/notifications';
+import { useSettingsStore } from '../src/state/settingsStore';
+import { ToastHost } from '../src/components/ToastHost';
 import { Button, Loading } from '../src/components/ui';
 import { getDb } from '../src/db/client';
 import { colors, elevation, spacing, type } from '../src/theme';
@@ -16,6 +19,10 @@ export default function RootLayout() {
   const [dbState, setDbState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const loadSettings = useSettingsStore((s) => s.load);
+  const settingsLoaded = useSettingsStore((s) => s.loaded);
+  const onboarded = useSettingsStore((s) => s.onboarded);
+  const pathname = usePathname();
 
   useEffect(() => {
     let cancelled = false;
@@ -24,19 +31,36 @@ export default function RootLayout() {
       .then(() => {
         if (cancelled) return;
         setDbState('ready');
+        installNotificationHandler();
+        void loadSettings();
         // Housekeeping, not correctness — `read` already treats expired rows as
         // misses. Fire and forget so it never delays the first screen.
         void prune().catch(() => {});
       })
       .catch((e: unknown) => {
         if (cancelled) return;
-        setError(e instanceof Error ? e.message : String(e));
+        console.warn('[db] open failed', e);
+        setError(
+          'Waypoint could not open its local database. Restarting the app usually fixes this.',
+        );
         setDbState('error');
       });
     return () => {
       cancelled = true;
     };
-  }, [attempt]);
+  }, [attempt, loadSettings]);
+
+  // Wait for settings before deciding on onboarding — routing to /trips and
+  // then bouncing to /onboarding a frame later is a visible flash.
+  if (dbState === 'ready' && !settingsLoaded) {
+    return (
+      <SafeAreaProvider>
+        <View style={styles.center}>
+          <Loading />
+        </View>
+      </SafeAreaProvider>
+    );
+  }
 
   if (dbState !== 'ready') {
     return (
@@ -66,6 +90,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
         <StatusBar style="dark" />
+        {!onboarded && pathname !== '/onboarding' ? <Redirect href="/onboarding" /> : null}
         <Stack
           screenOptions={{
             headerStyle: { backgroundColor: colors.surface, ...elevation.none },
@@ -86,7 +111,15 @@ export default function RootLayout() {
           <Stack.Screen name="trip/[tripId]/place/[placeId]" options={{ title: 'Stop' }} />
           <Stack.Screen name="trip/[tripId]/expenses" options={{ title: 'Expenses' }} />
           <Stack.Screen name="trip/[tripId]/dashboard" options={{ title: 'Dashboard' }} />
+          <Stack.Screen name="trip/[tripId]/recap" options={{ title: 'Trip recap' }} />
+          <Stack.Screen name="settings" options={{ title: 'Settings' }} />
+          <Stack.Screen
+            name="notification-settings"
+            options={{ title: 'Notifications' }}
+          />
+          <Stack.Screen name="onboarding" options={{ headerShown: false }} />
         </Stack>
+        <ToastHost />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

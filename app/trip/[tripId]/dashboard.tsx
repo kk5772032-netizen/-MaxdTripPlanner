@@ -1,4 +1,4 @@
-import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -7,11 +7,12 @@ import { formatMoney } from '../../../src/budget/money';
 import { BudgetBar } from '../../../src/components/BudgetBar';
 import { CategoryPie } from '../../../src/components/charts/CategoryPie';
 import { PlannedVsActualChart } from '../../../src/components/charts/PlannedVsActualChart';
-import { Card, EmptyState, Notice, SkeletonList } from '../../../src/components/ui';
+import { Button, Card, EmptyState, Notice, SkeletonList } from '../../../src/components/ui';
 import { useTripStore } from '../../../src/state/tripStore';
 import { colors, elevation, radius, spacing, type } from '../../../src/theme';
 
 export default function DashboardScreen() {
+  const router = useRouter();
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   const { trip, stops, activities, foodPlans, expenses, loading, open } = useTripStore();
   const [ready, setReady] = useState(false);
@@ -94,6 +95,13 @@ export default function DashboardScreen() {
           </Text>
         ) : null}
       </Card>
+
+      <Button
+        title="See trip recap"
+        variant="secondary"
+        icon="ribbon-outline"
+        onPress={() => router.push(`/trip/${tripId}/recap`)}
+      />
     </ScrollView>
   );
 }

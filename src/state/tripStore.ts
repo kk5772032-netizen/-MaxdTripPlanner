@@ -5,7 +5,10 @@ import * as expensesRepo from '../db/repositories/expenses';
 import * as foodPlansRepo from '../db/repositories/foodPlans';
 import * as stopsRepo from '../db/repositories/stops';
 import * as tripsRepo from '../db/repositories/trips';
+import { notifyBudgetCrossing } from '../notifications';
 import type { Activity, Expense, FoodPlan, Stop, Trip } from '../types';
+import { useSettingsStore } from './settingsStore';
+import { useToastStore } from './toastStore';
 
 /**
  * The currently open trip and everything under it.
@@ -34,6 +37,7 @@ interface TripState {
 
   addStop: (input: Omit<stopsRepo.NewStop, 'tripId'>) => Promise<Stop | null>;
   updateStop: (id: string, patch: Partial<Omit<Stop, 'id' | 'tripId'>>) => Promise<void>;
+  /** Removes a stop and offers an undo toast that puts it back whole. */
   removeStop: (id: string) => Promise<void>;
   reorderStops: (orderedIds: string[]) => Promise<void>;
 
@@ -86,7 +90,8 @@ export const useTripStore = create<TripState>((set, get) => ({
       if (get().tripId !== tripId) return;
       set({ trip, stops, activities, foodPlans, expenses, loading: false });
     } catch (e) {
-      set({ error: e instanceof Error ? e.message : String(e), loading: false });
+      console.warn('[trip] open failed', e);
+      set({ error: 'Could not open this trip. Go back and try again.', loading: false });
     }
   },
 
@@ -123,18 +128,31 @@ export const useTripStore = create<TripState>((set, get) => ({
   },
 
   removeStop: async (id) => {
-    await stopsRepo.deleteStop(id);
-    const { tripId } = get();
+    const { tripId, stops, activities, foodPlans, expenses } = get();
     if (!tripId) return;
-    // Deleting a stop cascades to its activities and food plans and nulls the
-    // stop on its expenses, so re-read rather than filtering locally.
-    const [stops, activities, foodPlans, expenses] = await Promise.all([
-      stopsRepo.listStops(tripId),
-      activitiesRepo.listActivitiesForTrip(tripId),
-      foodPlansRepo.listFoodPlansForTrip(tripId),
-      expensesRepo.listExpenses(tripId),
-    ]);
-    set({ stops, activities, foodPlans, expenses });
+
+    // Capture the whole subtree first. Deleting cascades to activities and food
+    // plans and detaches expenses, so undo has to put all four back — a toast
+    // that only restores the stop would silently lose its contents.
+    const stop = stops.find((s) => s.id === id);
+    if (!stop) return;
+    const itsActivities = activities.filter((a) => a.stopId === id);
+    const itsFoodPlans = foodPlans.filter((f) => f.stopId === id);
+    const detachedExpenses = expenses.filter((e) => e.stopId === id);
+
+    await stopsRepo.deleteStop(id);
+    await get().reload();
+
+    useToastStore.getState().show({
+      message: `${stop.name} removed`,
+      undo: async () => {
+        await stopsRepo.restoreStop(stop);
+        for (const a of itsActivities) await activitiesRepo.restoreActivity(a);
+        for (const f of itsFoodPlans) await foodPlansRepo.restoreFoodPlan(f);
+        for (const e of detachedExpenses) await expensesRepo.restoreExpense(e);
+        await get().reload();
+      },
+    });
   },
 
   reorderStops: async (orderedIds) => {
@@ -155,7 +173,8 @@ export const useTripStore = create<TripState>((set, get) => ({
     try {
       await stopsRepo.reorderStops(tripId, orderedIds);
     } catch (e) {
-      set({ error: e instanceof Error ? e.message : String(e), stops });
+      console.warn('[trip] reorder failed', e);
+      set({ error: "Couldn't save the new order.", stops });
     }
   },
 
@@ -173,8 +192,17 @@ export const useTripStore = create<TripState>((set, get) => ({
   },
 
   removeActivity: async (id) => {
+    const activity = get().activities.find((a) => a.id === id);
     await activitiesRepo.deleteActivity(id);
     set({ activities: get().activities.filter((a) => a.id !== id) });
+    if (!activity) return;
+    useToastStore.getState().show({
+      message: `"${activity.title}" removed`,
+      undo: async () => {
+        await activitiesRepo.restoreActivity(activity);
+        set({ activities: [...get().activities, activity] });
+      },
+    });
   },
 
   /* ------------------------------------------------------------ food plans */
@@ -191,17 +219,52 @@ export const useTripStore = create<TripState>((set, get) => ({
   },
 
   removeFoodPlan: async (id) => {
+    const plan = get().foodPlans.find((f) => f.id === id);
     await foodPlansRepo.deleteFoodPlan(id);
     set({ foodPlans: get().foodPlans.filter((f) => f.id !== id) });
+    if (!plan) return;
+    useToastStore.getState().show({
+      message: `${plan.name} removed from your food plan`,
+      undo: async () => {
+        await foodPlansRepo.restoreFoodPlan(plan);
+        set({ foodPlans: [...get().foodPlans, plan] });
+      },
+    });
   },
 
   /* -------------------------------------------------------------- expenses */
 
   addExpense: async (input) => {
-    const { tripId } = get();
-    if (!tripId) return;
+    const { tripId, trip, stops, expenses } = get();
+    if (!tripId || !trip) return;
+
+    // Totals before the write, so the alert can tell a crossing from a state.
+    const beforeTripActual = expenses.reduce((sum, e) => sum + e.amountMinor, 0);
+    const beforeStopActual = input.stopId
+      ? expenses.filter((e) => e.stopId === input.stopId).reduce((s, e) => s + e.amountMinor, 0)
+      : 0;
+
     const expense = await expensesRepo.createExpense({ ...input, tripId });
     set({ expenses: [expense, ...get().expenses] });
+    useToastStore.getState().show({ message: 'Expense added' });
+
+    const settings = useSettingsStore.getState();
+    const stop = input.stopId ? stops.find((s) => s.id === input.stopId) : undefined;
+
+    if (stop) {
+      void notifyBudgetCrossing({
+        settings, trip, scope: 'stop', name: stop.name,
+        previousActual: beforeStopActual,
+        actual: beforeStopActual + expense.amountMinor,
+        cap: stop.plannedBudgetMinor,
+      });
+    }
+    void notifyBudgetCrossing({
+      settings, trip, scope: 'trip', name: trip.name,
+      previousActual: beforeTripActual,
+      actual: beforeTripActual + expense.amountMinor,
+      cap: trip.totalBudgetMinor,
+    });
   },
 
   updateExpense: async (id, patch) => {
@@ -211,8 +274,17 @@ export const useTripStore = create<TripState>((set, get) => ({
   },
 
   removeExpense: async (id) => {
+    const expense = get().expenses.find((e) => e.id === id);
     await expensesRepo.deleteExpense(id);
     set({ expenses: get().expenses.filter((e) => e.id !== id) });
+    if (!expense) return;
+    useToastStore.getState().show({
+      message: 'Expense deleted',
+      undo: async () => {
+        await expensesRepo.restoreExpense(expense);
+        set({ expenses: [expense, ...get().expenses] });
+      },
+    });
   },
 }));
 

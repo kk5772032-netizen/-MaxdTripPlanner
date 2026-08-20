@@ -308,6 +308,92 @@ describe('expenses repository', () => {
   });
 });
 
+/* ----------------------------------------------------------------- restore */
+
+describe('restore (undo support)', () => {
+  it('puts a deleted middle stop back at its original position', async () => {
+    const trip = await seedTrip();
+    const a = await seedStop(trip.id, 'A');
+    const b = await seedStop(trip.id, 'B');
+    const c = await seedStop(trip.id, 'C');
+
+    await stopsRepo.deleteStop(b.id);
+    expect((await stopsRepo.listStops(trip.id)).map((s) => s.name)).toEqual(['A', 'C']);
+
+    await stopsRepo.restoreStop(b);
+
+    const stops = await stopsRepo.listStops(trip.id);
+    expect(stops.map((s) => s.name)).toEqual(['A', 'B', 'C']);
+    // Dense and in order — restoring has to reopen the gap that delete closed,
+    // or the restored stop collides with whatever slid into its place.
+    expect(stops.map((s) => s.sequence)).toEqual([0, 1, 2]);
+    expect(stops.map((s) => s.id)).toEqual([a.id, b.id, c.id]);
+  });
+
+  it('restores a first and a last stop correctly too', async () => {
+    const trip = await seedTrip();
+    const a = await seedStop(trip.id, 'A');
+    await seedStop(trip.id, 'B');
+    const c = await seedStop(trip.id, 'C');
+
+    await stopsRepo.deleteStop(a.id);
+    await stopsRepo.restoreStop(a);
+    expect((await stopsRepo.listStops(trip.id)).map((s) => s.name)).toEqual(['A', 'B', 'C']);
+
+    await stopsRepo.deleteStop(c.id);
+    await stopsRepo.restoreStop(c);
+    const stops = await stopsRepo.listStops(trip.id);
+    expect(stops.map((s) => s.name)).toEqual(['A', 'B', 'C']);
+    expect(stops.map((s) => s.sequence)).toEqual([0, 1, 2]);
+  });
+
+  it('restores an expense with its original id, so links survive', async () => {
+    const trip = await seedTrip();
+    const stop = await seedStop(trip.id);
+    const expense = await expensesRepo.createExpense({
+      tripId: trip.id, stopId: stop.id, category: 'food',
+      amountMinor: 450_00, note: 'Lunch', spentAt: '2025-11-01',
+    });
+
+    await expensesRepo.deleteExpense(expense.id);
+    expect(await expensesRepo.listExpenses(trip.id)).toHaveLength(0);
+
+    await expensesRepo.restoreExpense(expense);
+    expect(await expensesRepo.listExpenses(trip.id)).toEqual([expense]);
+  });
+
+  it('restores a whole stop subtree — activities, food and detached expenses', async () => {
+    const trip = await seedTrip();
+    const stop = await seedStop(trip.id);
+    const activity = await activitiesRepo.createActivity({
+      stopId: stop.id, title: 'Walk', estimatedCostMinor: 200_00, done: true,
+    });
+    const plan = await foodPlansRepo.createFoodPlan({
+      stopId: stop.id, googlePlaceId: null, name: "Karim's",
+      cuisine: 'Mughlai', estimatedCostMinor: 600_00, notes: null,
+    });
+    const expense = await expensesRepo.createExpense({
+      tripId: trip.id, stopId: stop.id, category: 'food',
+      amountMinor: 450_00, note: 'Lunch', spentAt: '2025-11-01',
+    });
+
+    await stopsRepo.deleteStop(stop.id);
+    // The expense survives, detached — that is the ON DELETE SET NULL rule.
+    expect((await expensesRepo.listExpenses(trip.id))[0].stopId).toBeNull();
+
+    await stopsRepo.restoreStop(stop);
+    await activitiesRepo.restoreActivity(activity);
+    await foodPlansRepo.restoreFoodPlan(plan);
+    await expensesRepo.restoreExpense(expense);
+
+    expect(await stopsRepo.getStop(stop.id)).toEqual(stop);
+    expect(await activitiesRepo.listActivities(stop.id)).toEqual([activity]);
+    expect(await foodPlansRepo.listFoodPlans(stop.id)).toEqual([plan]);
+    // Re-attached to the stop it came from.
+    expect((await expensesRepo.listExpenses(trip.id))[0].stopId).toBe(stop.id);
+  });
+});
+
 /* ----------------------------------------------------------------- cascade */
 
 describe('cascade behaviour', () => {

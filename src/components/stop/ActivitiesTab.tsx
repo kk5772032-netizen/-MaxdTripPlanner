@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { formatMoney, parseMoney, sumMinor } from '../../budget/money';
-import { confirmDestructive } from '../../confirm';
 import { useTripStore } from '../../state/tripStore';
 import { colors, elevation, radius, spacing, type } from '../../theme';
 import type { Activity, Stop } from '../../types';
@@ -47,14 +46,7 @@ export function ActivitiesTab({
     }
   };
 
-  const confirmRemove = async (activity: Activity) => {
-    const ok = await confirmDestructive({
-      title: 'Remove activity?',
-      message: `"${activity.title}" will be removed.`,
-      confirmLabel: 'Remove',
-    });
-    if (ok) await removeActivity(activity.id);
-  };
+  const remove = (activity: Activity) => void removeActivity(activity.id);
 
   return (
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -104,7 +96,7 @@ export function ActivitiesTab({
                 accessibilityState={{ checked: activity.done }}
                 accessibilityLabel={activity.title}
                 onPress={() => void updateActivity(activity.id, { done: !activity.done })}
-                onLongPress={() => void confirmRemove(activity)}
+                onLongPress={() => remove(activity)}
                 style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}
               >
                 <View style={[styles.checkbox, activity.done && styles.checkboxDone]}>
@@ -128,7 +120,7 @@ export function ActivitiesTab({
                   label={`Remove ${activity.title}`}
                   tone="danger"
                   size={30}
-                  onPress={() => void confirmRemove(activity)}
+                  onPress={() => remove(activity)}
                 />
               </Pressable>
             ))}

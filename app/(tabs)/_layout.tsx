@@ -1,5 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
+
+import { HeaderAction } from '../../src/components/ui';
 
 import { colors, elevation, type } from '../../src/theme';
 
@@ -9,6 +11,7 @@ import { colors, elevation, type } from '../../src/theme';
  * moving routes around.
  */
 export default function TabsLayout() {
+  const router = useRouter();
   return (
     <Tabs
       screenOptions={{
@@ -29,6 +32,13 @@ export default function TabsLayout() {
         name="trips"
         options={{
           title: 'Trips',
+          headerRight: () => (
+            <HeaderAction
+              label="Settings"
+              icon="settings-outline"
+              onPress={() => router.push('/settings')}
+            />
+          ),
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons name={focused ? 'map' : 'map-outline'} size={size} color={color} />
           ),

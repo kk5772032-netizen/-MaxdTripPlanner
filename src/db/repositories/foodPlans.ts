@@ -43,6 +43,15 @@ export async function createFoodPlan(input: NewFoodPlan): Promise<FoodPlan> {
   return plan;
 }
 
+export async function restoreFoodPlan(f: FoodPlan): Promise<void> {
+  const db = await getDb();
+  await db.runAsync(
+    `INSERT OR REPLACE INTO food_plans (id, stop_id, google_place_id, name, cuisine, estimated_cost, notes)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    f.id, f.stopId, f.googlePlaceId, f.name, f.cuisine, f.estimatedCostMinor, f.notes,
+  );
+}
+
 export async function listFoodPlans(stopId: string): Promise<FoodPlan[]> {
   const db = await getDb();
   const rows = await db.getAllAsync<FoodPlanRow>(

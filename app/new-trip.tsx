@@ -20,6 +20,8 @@ import { confirmDestructive } from '../src/confirm';
 import { DateRangeField } from '../src/components/DateRangeField';
 import { Button, Chip, Field, Input, notifySuccess } from '../src/components/ui';
 import * as tripsRepo from '../src/db/repositories/trips';
+import { NotificationPriming } from '../src/components/NotificationPriming';
+import { useSettingsStore } from '../src/state/settingsStore';
 import { useTripsStore } from '../src/state/tripsStore';
 import { colors, spacing, type } from '../src/theme';
 
@@ -32,6 +34,12 @@ export default function NewTripScreen() {
   const { tripId } = useLocalSearchParams<{ tripId?: string }>();
   const isEdit = !!tripId;
 
+  const trips = useTripsStore((s) => s.trips);
+  const defaultCurrency = useSettingsStore((s) => s.defaultCurrency);
+  const notificationsAsked = useSettingsStore((s) => s.notificationsAsked);
+  const [priming, setPriming] = useState(false);
+  const [createdTripId, setCreatedTripId] = useState<string | null>(null);
+
   const create = useTripsStore((s) => s.create);
   const update = useTripsStore((s) => s.update);
   const remove = useTripsStore((s) => s.remove);
@@ -39,7 +47,7 @@ export default function NewTripScreen() {
   const [name, setName] = useState('');
   const [startDate, setStartDate] = useState<string | null>(null);
   const [endDate, setEndDate] = useState<string | null>(null);
-  const [currency, setCurrency] = useState('INR');
+  const [currency, setCurrency] = useState(defaultCurrency);
   const [budgetText, setBudgetText] = useState('');
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(!isEdit);
@@ -77,6 +85,13 @@ export default function NewTripScreen() {
       } else {
         const trip = await create(input);
         notifySuccess();
+        // Ask about notifications once, here — after a trip exists, so the ask
+        // has something concrete to be about. Never on launch.
+        if (!notificationsAsked && trips.length === 0) {
+          setCreatedTripId(trip.id);
+          setPriming(true);
+          return;
+        }
         // Replace so Back from the trip lands on the list, not this form.
         router.replace(`/trip/${trip.id}`);
       }
@@ -167,6 +182,14 @@ export default function NewTripScreen() {
           />
         ) : null}
       </ScrollView>
+
+      <NotificationPriming
+        visible={priming}
+        onClose={() => {
+          setPriming(false);
+          if (createdTripId) router.replace(`/trip/${createdTripId}`);
+        }}
+      />
     </KeyboardAvoidingView>
   );
 }

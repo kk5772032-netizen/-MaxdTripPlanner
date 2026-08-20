@@ -36,6 +36,15 @@ export async function createActivity(input: NewActivity): Promise<Activity> {
   return activity;
 }
 
+export async function restoreActivity(a: Activity): Promise<void> {
+  const db = await getDb();
+  await db.runAsync(
+    `INSERT OR REPLACE INTO activities (id, stop_id, title, estimated_cost, done)
+     VALUES (?, ?, ?, ?, ?)`,
+    a.id, a.stopId, a.title, a.estimatedCostMinor, a.done ? 1 : 0,
+  );
+}
+
 export async function listActivities(stopId: string): Promise<Activity[]> {
   const db = await getDb();
   const rows = await db.getAllAsync<ActivityRow>(

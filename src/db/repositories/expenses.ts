@@ -43,6 +43,20 @@ export async function createExpense(input: NewExpense): Promise<Expense> {
   return expense;
 }
 
+/**
+ * Re-inserts a deleted expense with its original id, so an undo restores the
+ * exact row rather than a copy.
+ */
+export async function restoreExpense(expense: Expense): Promise<void> {
+  const db = await getDb();
+  await db.runAsync(
+    `INSERT OR REPLACE INTO expenses (id, trip_id, stop_id, category, amount, note, spent_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    expense.id, expense.tripId, expense.stopId, expense.category,
+    expense.amountMinor, expense.note, expense.spentAt,
+  );
+}
+
 export async function listExpenses(tripId: string): Promise<Expense[]> {
   const db = await getDb();
   const rows = await db.getAllAsync<ExpenseRow>(

@@ -44,7 +44,13 @@ export const useTripsStore = create<TripsState>((set, get) => ({
       ]);
       set({ trips, actualByTrip, stopCountByTrip, loading: false });
     } catch (e) {
-      set({ error: e instanceof Error ? e.message : String(e), loading: false });
+      // The underlying message is a SQLite string ("no such table: trips") —
+      // useful in a log, meaningless and alarming on screen.
+      console.warn('[trips] load failed', e);
+      set({
+        error: 'Something went wrong reading your trips from this device. Pull to try again.',
+        loading: false,
+      });
     }
   },
 
