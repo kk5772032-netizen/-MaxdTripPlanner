@@ -11,7 +11,36 @@ no server, no sync.
 
 ## Get the app on your phone
 
-### Option A — build an APK in the cloud (no Android Studio)
+### Option A — let GitHub build it (no account, no Android Studio, no setup)
+
+Open the repo's **Actions** tab → **Android APK** → **Run workflow**. It takes
+around fifteen minutes; when it finishes, the APK is attached to the run as a
+downloadable artifact. Open that link on your phone, install it, and allow
+"install from unknown source" when Android asks — expected for anything that
+didn't come from the Play Store.
+
+Tagging a release builds one too:
+
+```bash
+git tag v1.0.0 && git push --tags
+```
+
+Nothing needs configuring first. The workflow generates the native project
+from `app.json`, so `android/` is never committed and can't drift out of sync
+with the app config.
+
+The APK is signed with the debug keystore Expo's template ships. That is the
+right default for sideloading — it's stable across builds, so updates install
+over the top — but it is **not** suitable for the Play Store, which needs a
+keystore of your own.
+
+Two optional repository secrets get baked in when present:
+`EXPO_PUBLIC_GOOGLE_PLACES_KEY` turns on place search, and
+`EXPO_PUBLIC_GOOGLE_MAPS_KEY` makes the map draw tiles. Without them the app
+still works — stops are added by typing, and the map is the only thing that
+looks empty.
+
+### Option B — build an APK with EAS
 
 [EAS Build](https://docs.expo.dev/build/introduction/) compiles on Expo's
 servers and hands back a download link. A free Expo account is enough.
@@ -31,7 +60,7 @@ non-Play-Store build.
 Nothing else needs configuring: the app runs without API keys, and you can add
 them later.
 
-### Option B — build the APK locally
+### Option C — build the APK locally
 
 Needs the Android SDK (Android Studio, or just the command-line tools) and a
 JDK 17+.
@@ -47,7 +76,7 @@ cd android
 `assembleDebug` is faster and doesn't need a signing key, if you just want to
 try it.
 
-### Option C — run it live while you develop
+### Option D — run it live while you develop
 
 ```bash
 npm install

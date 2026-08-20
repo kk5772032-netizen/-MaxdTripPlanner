@@ -1,0 +1,82 @@
+name: Android APK
+
+# Not on every push: this takes ~15 minutes and the useful moment to run it is
+# when you actually want a build to install, not on every commit.
+on:
+  workflow_dispatch:
+    inputs:
+      variant:
+        description: 'release (smaller, optimised) or debug (faster to build)'
+        type: choice
+        options: [release, debug]
+        default: release
+  push:
+    tags: ['v*']
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # Gradle 9 and AGP need 17; the runner's default can drift.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The native project is generated, never committed — app.json is the
+      # source of truth, so android/ can't drift out of sync with it.
+      - name: Generate the Android project
+        env:
+          EXPO_PUBLIC_GOOGLE_MAPS_KEY: ${{ secrets.EXPO_PUBLIC_GOOGLE_MAPS_KEY }}
+          EXPO_PUBLIC_GOOGLE_PLACES_KEY: ${{ secrets.EXPO_PUBLIC_GOOGLE_PLACES_KEY }}
+        run: npx expo prebuild --platform android --no-install
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build the APK
+        working-directory: android
+        env:
+          EXPO_PUBLIC_GOOGLE_MAPS_KEY: ${{ secrets.EXPO_PUBLIC_GOOGLE_MAPS_KEY }}
+          EXPO_PUBLIC_GOOGLE_PLACES_KEY: ${{ secrets.EXPO_PUBLIC_GOOGLE_PLACES_KEY }}
+          # The template's 2 GB ceiling makes the RN release build thrash.
+          GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx4g
+          # Read through the environment rather than interpolated into the
+          # script, so the input can never be read as shell.
+          VARIANT: ${{ inputs.variant || 'release' }}
+        run: |
+          task="assemble${VARIANT^}"
+          echo "Running ./gradlew $task"
+          ./gradlew "$task" --no-daemon --stacktrace
+
+      - name: Name the APK after the build
+        id: apk
+        run: |
+          src=$(find android/app/build/outputs/apk -name '*.apk' -print -quit)
+          test -n "$src" || { echo 'No APK was produced.' >&2; exit 1; }
+          version=$(node -p "require('./app.json').expo.version")
+          out="waypoint-${version}-${GITHUB_SHA::7}.apk"
+          cp "$src" "$out"
+          echo "path=$out" >> "$GITHUB_OUTPUT"
+          ls -lh "$out"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.apk.outputs.path }}
+          path: ${{ steps.apk.outputs.path }}
+          # Long enough to get it onto a phone without keeping it forever.
+          retention-days: 30
+          if-no-files-found: error

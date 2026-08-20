@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+# A new push supersedes the run in flight for the same branch.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Tests
+        run: npx jest --ci
+
+      # The bundler catches a class of thing tsc doesn't: an import that
+      # resolves at type level but has no runtime module behind it.
+      - name: Bundle for web
+        run: npx expo export --platform web --output-dir /tmp/web-export
+
+      - name: Bundle for Android
+        run: npx expo export --platform android --output-dir /tmp/android-export
