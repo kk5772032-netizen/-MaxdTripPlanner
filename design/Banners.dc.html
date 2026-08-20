@@ -1,0 +1,100 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    body { margin: 0; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #2563EB; text-decoration: none; }
+    a:hover { color: #1D4FD7; }
+    * { box-sizing: border-box; }
+    
+  </style>
+</helmet>
+<div style="width:1080px;height:720px;background:#E9EDF2;color:#0C111D;position:relative;overflow:hidden;display:flex;flex-direction:column">
+
+<div style="padding:32px;display:flex;flex-direction:column;gap:24px;overflow:hidden">
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <span style="font-size:22px;line-height:28px;font-weight:700;letter-spacing:-0.3px;color:#0C111D">Inline notices</span>
+    <span style="font-size:15px;line-height:21px;font-weight:400;color:#5D6B82;max-width:620px">A notice never contains a spinner, and never runs past
+      four lines. Persistent state pushes content down; it does not overlay it.</span>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px">
+    <div style="display:flex;flex-direction:column;gap:12px"><span style="font-size:13px;line-height:18px;font-weight:600;color:#5D6B82;letter-spacing:.06em;text-transform:uppercase">Info</span>
+      <div style="display:flex;gap:12px;padding:12px;border-radius:12px;background:#EFF4FF">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></svg>
+    <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+      <span style="font-size:13px;line-height:18px;font-weight:600;color:#2563EB">Place search is off</span>
+      <span style="font-size:12px;line-height:16px;font-weight:400;color:#5D6B82;line-height:18px">Set a Google Places key to search real places. You can still add stops by typing them below.</span>
+    </div></div>
+      <div style="display:flex;gap:12px;padding:12px;border-radius:12px;background:#EFF4FF">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><rect x="4.5" y="10" width="15" height="10" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+    <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+      <span style="font-size:13px;line-height:18px;font-weight:600;color:#2563EB">Nothing leaves your phone</span>
+      <span style="font-size:12px;line-height:16px;font-weight:400;color:#5D6B82;line-height:18px">Waypoint stores everything on this device.</span>
+    </div></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px"><span style="font-size:13px;line-height:18px;font-weight:600;color:#5D6B82;letter-spacing:.06em;text-transform:uppercase">Warning</span>
+      <div style="display:flex;gap:12px;padding:12px;border-radius:12px;background:#FFFAEB">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F79009" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M12 4 2.8 20h18.4L12 4Z"/><path d="M12 10v4M12 17h.01"/></svg>
+    <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+      
+      <span style="font-size:12px;line-height:16px;font-weight:400;color:#5D6B82;line-height:18px">Connaught Place is over its budget.</span>
+    </div></div>
+      <div style="display:flex;gap:12px;padding:12px;border-radius:12px;background:#FFFAEB">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F79009" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M12 4 2.8 20h18.4L12 4Z"/><path d="M12 10v4M12 17h.01"/></svg>
+    <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+      
+      <span style="font-size:12px;line-height:16px;font-weight:400;color:#5D6B82;line-height:18px">Your plan already costs more than the trip budget.</span>
+    </div></div>
+      <div style="display:flex;gap:12px;padding:12px;border-radius:12px;background:#FFFAEB">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F79009" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M12 4 2.8 20h18.4L12 4Z"/><path d="M12 10v4M12 17h.01"/></svg>
+    <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+      
+      <span style="font-size:12px;line-height:16px;font-weight:400;color:#5D6B82;line-height:18px">Showing a cached list — couldn't reach Google just now.</span>
+    </div></div>
+      <div style="display:flex;gap:12px;padding:12px;border-radius:12px;background:#FFFAEB">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F79009" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M12 4 2.8 20h18.4L12 4Z"/><path d="M12 10v4M12 17h.01"/></svg>
+    <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+      
+      <span style="font-size:12px;line-height:16px;font-weight:400;color:#5D6B82;line-height:18px">This trip is close to its total budget.</span>
+    </div></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px"><span style="font-size:13px;line-height:18px;font-weight:600;color:#5D6B82;letter-spacing:.06em;text-transform:uppercase">Danger</span>
+      <div style="display:flex;gap:12px;padding:12px;border-radius:12px;background:#FEF3F2">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F04438" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5M12 16h.01"/></svg>
+    <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+      <span style="font-size:13px;line-height:18px;font-weight:600;color:#F04438">Couldn't load your trips</span>
+      <span style="font-size:12px;line-height:16px;font-weight:400;color:#5D6B82;line-height:18px">no such table: trips</span>
+    </div></div>
+      <div style="display:flex;gap:12px;padding:12px;border-radius:12px;background:#FEF3F2">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F04438" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5M12 16h.01"/></svg>
+    <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+      <span style="font-size:13px;line-height:18px;font-weight:600;color:#F04438">Couldn't load restaurants</span>
+      <span style="font-size:12px;line-height:16px;font-weight:400;color:#5D6B82;line-height:18px">Check your connection and try Refresh.</span>
+    </div></div>
+    </div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:12px"><span style="font-size:13px;line-height:18px;font-weight:600;color:#5D6B82;letter-spacing:.06em;text-transform:uppercase">Persistent offline bar</span>
+    <div style="width:390px;border:1px solid #E4E7EC;border-radius:12px;overflow:hidden;background:#FFFFFF">
+      <div style="padding:14px 16px;border-bottom:1px solid #E4E7EC;display:flex;align-items:center;gap:12px">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M19 12H5M11 6l-6 6 6 6"/></svg><span style="font-size:17px;line-height:22px;font-weight:600;letter-spacing:-0.2px;color:#0C111D">Delhi weekend</span></div>
+      <div style="height:32px;background:#FFFAEB;display:flex;align-items:center;gap:8px;padding:0 16px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F79009" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M3 3l18 18"/><path d="M7.5 18h9.2a3.8 3.8 0 0 0 .9-7.5A6 6 0 0 0 8.6 7.7"/><path d="M5.4 9.6A3.8 3.8 0 0 0 6 18"/></svg><span style="font-size:12px;line-height:16px;font-weight:600;color:#F79009">Offline — showing saved data</span></div>
+      <div style="height:44px"></div>
+    </div>
+  </div>
+</div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":1080,"height":720}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

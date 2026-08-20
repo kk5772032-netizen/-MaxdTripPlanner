@@ -40,3 +40,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Seeded design canvas — regenerate with design/gen-*.mjs
+design/waypoint-app-design.html

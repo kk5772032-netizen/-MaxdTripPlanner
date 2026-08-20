@@ -1,0 +1,312 @@
+{
+  "artboards": [
+    {
+      "file": "Onboarding1.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "page": "screens"
+    },
+    {
+      "file": "Onboarding2.dc.html",
+      "x": 440,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "page": "screens"
+    },
+    {
+      "file": "Onboarding3.dc.html",
+      "x": 880,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "page": "screens"
+    },
+    {
+      "file": "NotifyPriming.dc.html",
+      "x": 1320,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "page": "screens"
+    },
+    {
+      "file": "Main.dc.html",
+      "x": 0,
+      "y": 924,
+      "w": 390,
+      "h": 844,
+      "page": "screens"
+    },
+    {
+      "file": "TripsEmpty.dc.html",
+      "x": 440,
+      "y": 924,
+      "w": 390,
+      "h": 844,
+      "page": "screens"
+    },
+    {
+      "file": "TripsLoading.dc.html",
+      "x": 880,
+      "y": 924,
+      "w": 390,
+      "h": 844,
+      "page": "screens"
+    },
+    {
+      "file": "NewTrip.dc.html",
+      "x": 1320,
+      "y": 924,
+      "w": 390,
+      "h": 844,
+      "page": "screens"
+    },
+    {
+      "file": "EditTrip.dc.html",
+      "x": 1760,
+      "y": 924,
+      "w": 390,
+      "h": 844,
+      "page": "screens"
+    },
+    {
+      "file": "TripItinerary.dc.html",
+      "x": 0,
+      "y": 1848,
+      "w": 390,
+      "h": 844,
+      "page": "screens"
+    },
+    {
+      "file": "TripMap.dc.html",
+      "x": 440,
+      "y": 1848,
+      "w": 390,
+      "h": 844,
+      "page": "screens"
+    },
+    {
+      "file": "AddStopSearch.dc.html",
+      "x": 880,
+      "y": 1848,
+      "w": 390,
+      "h": 844,
+      "page": "screens"
+    },
+    {
+      "file": "AddStopConfirm.dc.html",
+      "x": 1320,
+      "y": 1848,
+      "w": 390,
+      "h": 844,
+      "page": "screens"
+    },
+    {
+      "file": "AddStopManual.dc.html",
+      "x": 1760,
+      "y": 1848,
+      "w": 390,
+      "h": 844,
+      "page": "screens"
+    },
+    {
+      "file": "StopToDo.dc.html",
+      "x": 0,
+      "y": 2772,
+      "w": 390,
+      "h": 844,
+      "page": "screens"
+    },
+    {
+      "file": "StopFood.dc.html",
+      "x": 440,
+      "y": 2772,
+      "w": 390,
+      "h": 960,
+      "page": "screens"
+    },
+    {
+      "file": "StopBudget.dc.html",
+      "x": 880,
+      "y": 2772,
+      "w": 390,
+      "h": 844,
+      "page": "screens"
+    },
+    {
+      "file": "StopBudgetOver.dc.html",
+      "x": 1320,
+      "y": 2772,
+      "w": 390,
+      "h": 844,
+      "page": "screens"
+    },
+    {
+      "file": "Expenses.dc.html",
+      "x": 0,
+      "y": 3812,
+      "w": 390,
+      "h": 844,
+      "page": "screens"
+    },
+    {
+      "file": "ExpensesEmpty.dc.html",
+      "x": 440,
+      "y": 3812,
+      "w": 390,
+      "h": 844,
+      "page": "screens"
+    },
+    {
+      "file": "ExpenseForm.dc.html",
+      "x": 880,
+      "y": 3812,
+      "w": 390,
+      "h": 844,
+      "page": "screens"
+    },
+    {
+      "file": "Dashboard.dc.html",
+      "x": 1320,
+      "y": 3812,
+      "w": 390,
+      "h": 1180,
+      "page": "screens"
+    },
+    {
+      "file": "TripRecap.dc.html",
+      "x": 0,
+      "y": 5072,
+      "w": 390,
+      "h": 1060,
+      "page": "screens"
+    },
+    {
+      "file": "Settings.dc.html",
+      "x": 440,
+      "y": 5072,
+      "w": 390,
+      "h": 1030,
+      "page": "screens"
+    },
+    {
+      "file": "NotifySettings.dc.html",
+      "x": 880,
+      "y": 5072,
+      "w": 390,
+      "h": 1000,
+      "page": "screens"
+    },
+    {
+      "file": "PushNotifications.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 880,
+      "h": 1120,
+      "page": "messaging"
+    },
+    {
+      "file": "Toasts.dc.html",
+      "x": 0,
+      "y": 1200,
+      "w": 880,
+      "h": 560,
+      "page": "messaging"
+    },
+    {
+      "file": "Banners.dc.html",
+      "x": 0,
+      "y": 1840,
+      "w": 1080,
+      "h": 720,
+      "page": "messaging"
+    },
+    {
+      "file": "Dialogs.dc.html",
+      "x": 0,
+      "y": 2640,
+      "w": 1080,
+      "h": 420,
+      "page": "messaging"
+    },
+    {
+      "file": "DarkTrips.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "page": "system"
+    },
+    {
+      "file": "DarkItinerary.dc.html",
+      "x": 440,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "page": "system"
+    },
+    {
+      "file": "Components.dc.html",
+      "x": 0,
+      "y": 924,
+      "w": 1240,
+      "h": 1560,
+      "page": "system"
+    }
+  ],
+  "pages": [
+    {
+      "id": "screens",
+      "name": "App screens"
+    },
+    {
+      "id": "messaging",
+      "name": "Notifications"
+    },
+    {
+      "id": "system",
+      "name": "Dark & components"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "first-run",
+      "x": 0,
+      "y": -66,
+      "w": 420,
+      "page": "screens",
+      "text": "First run — three panels, then the notification ask AFTER the first trip exists, never on launch."
+    },
+    {
+      "id": "new-work",
+      "x": 1320,
+      "y": -66,
+      "w": 380,
+      "page": "screens",
+      "text": "Onboarding, the permission sheet, settings and the recap are new — the app has none of these today."
+    },
+    {
+      "id": "push-note",
+      "x": 0,
+      "y": -66,
+      "w": 460,
+      "page": "messaging",
+      "text": "Every push carries a real figure. None of them scold. Both platforms drawn so the copy can be checked at its real length."
+    },
+    {
+      "id": "dark-note",
+      "x": 0,
+      "y": -66,
+      "w": 440,
+      "page": "system",
+      "text": "Dark is re-derived, not inverted: primary lifts to #4E86F7 to hold contrast, and elevation becomes surface lightness because shadows vanish on a dark ground."
+    }
+  ],
+  "launch": {
+    "view": "canvas",
+    "page": "screens"
+  }
+}

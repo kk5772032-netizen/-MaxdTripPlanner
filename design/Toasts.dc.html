@@ -1,0 +1,98 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    body { margin: 0; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #2563EB; text-decoration: none; }
+    a:hover { color: #1D4FD7; }
+    * { box-sizing: border-box; }
+    
+  </style>
+</helmet>
+<div style="width:880px;height:560px;background:#E9EDF2;color:#0C111D;position:relative;overflow:hidden;display:flex;flex-direction:column">
+
+<div style="padding:32px;display:flex;flex-direction:column;gap:24px;overflow:hidden">
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <span style="font-size:22px;line-height:28px;font-weight:700;letter-spacing:-0.3px;color:#0C111D">Toasts</span>
+    <span style="font-size:15px;line-height:21px;font-weight:400;color:#5D6B82;max-width:620px">Anything destructive gets an Undo toast instead of a
+      pre-emptive dialog — except deleting a whole trip, which keeps its confirmation.</span>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:32px">
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <span style="font-size:13px;line-height:18px;font-weight:600;color:#5D6B82;letter-spacing:.06em;text-transform:uppercase">Variants</span>
+      
+<div style="background:rgba(12,17,29,.96);border-radius:12px;padding:14px 16px;display:flex;align-items:center;
+  gap:12px;box-shadow:0 8px 20px rgba(12,17,29,.12);position:relative;overflow:hidden">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="m5 13 4 4L19 7"/></svg>
+  <span style="flex:1;font-size:15px;line-height:21px;font-weight:400;color:#fff">Expense added</span>
+  
+  
+</div>
+      
+<div style="background:rgba(12,17,29,.96);border-radius:12px;padding:14px 16px;display:flex;align-items:center;
+  gap:12px;box-shadow:0 8px 20px rgba(12,17,29,.12);position:relative;overflow:hidden">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>
+  <span style="flex:1;font-size:15px;line-height:21px;font-weight:400;color:#fff">Expense deleted</span>
+  <span style="font-size:15px;line-height:21px;font-weight:600;color:#93B4FD">Undo</span>
+  <div style="position:absolute;left:0;bottom:0;height:2px;width:62%;background:#93B4FD;opacity:.7"></div>
+</div>
+      
+<div style="background:rgba(12,17,29,.96);border-radius:12px;padding:14px 16px;display:flex;align-items:center;
+  gap:12px;box-shadow:0 8px 20px rgba(12,17,29,.12);position:relative;overflow:hidden">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>
+  <span style="flex:1;font-size:15px;line-height:21px;font-weight:400;color:#fff">Stop removed</span>
+  <span style="font-size:15px;line-height:21px;font-weight:600;color:#93B4FD">Undo</span>
+  <div style="position:absolute;left:0;bottom:0;height:2px;width:62%;background:#93B4FD;opacity:.7"></div>
+</div>
+      
+<div style="background:rgba(12,17,29,.96);border-radius:12px;padding:14px 16px;display:flex;align-items:center;
+  gap:12px;box-shadow:0 8px 20px rgba(12,17,29,.12);position:relative;overflow:hidden">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M3 3l18 18"/><path d="M7.5 18h9.2a3.8 3.8 0 0 0 .9-7.5A6 6 0 0 0 8.6 7.7"/><path d="M5.4 9.6A3.8 3.8 0 0 0 6 18"/></svg>
+  <span style="flex:1;font-size:15px;line-height:21px;font-weight:400;color:#fff">You're offline. Changes are saved on your phone.</span>
+  
+  
+</div>
+      
+<div style="background:rgba(12,17,29,.96);border-radius:12px;padding:14px 16px;display:flex;align-items:center;
+  gap:12px;box-shadow:0 8px 20px rgba(12,17,29,.12);position:relative;overflow:hidden">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F04438" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5M12 16h.01"/></svg>
+  <span style="flex:1;font-size:15px;line-height:21px;font-weight:400;color:#fff">Couldn't reach Google Places</span>
+  <span style="font-size:15px;line-height:21px;font-weight:600;color:#93B4FD">Retry</span>
+  
+</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <span style="font-size:13px;line-height:18px;font-weight:600;color:#5D6B82;letter-spacing:.06em;text-transform:uppercase">Rules</span>
+      <div style="display:flex;gap:10px;align-items:flex-start">
+  <div style="width:5px;height:5px;border-radius:3px;background:#2563EB;margin-top:8px;flex:none"></div>
+  <span style="font-size:15px;line-height:21px;font-weight:400;color:#5D6B82;text-wrap:pretty">One at a time — a new toast replaces the old rather than stacking.</span></div>
+      <div style="display:flex;gap:10px;align-items:flex-start">
+  <div style="width:5px;height:5px;border-radius:3px;background:#2563EB;margin-top:8px;flex:none"></div>
+  <span style="font-size:15px;line-height:21px;font-weight:400;color:#5D6B82;text-wrap:pretty">Destructive actions get Undo, not a confirmation dialog.</span></div>
+      <div style="display:flex;gap:10px;align-items:flex-start">
+  <div style="width:5px;height:5px;border-radius:3px;background:#2563EB;margin-top:8px;flex:none"></div>
+  <span style="font-size:15px;line-height:21px;font-weight:400;color:#5D6B82;text-wrap:pretty">Never covers the primary action of the screen beneath.</span></div>
+      <div style="display:flex;gap:10px;align-items:flex-start">
+  <div style="width:5px;height:5px;border-radius:3px;background:#2563EB;margin-top:8px;flex:none"></div>
+  <span style="font-size:15px;line-height:21px;font-weight:400;color:#5D6B82;text-wrap:pretty">4 seconds by default, 6 when there is an action to take.</span></div>
+      <div style="display:flex;gap:10px;align-items:flex-start">
+  <div style="width:5px;height:5px;border-radius:3px;background:#2563EB;margin-top:8px;flex:none"></div>
+  <span style="font-size:15px;line-height:21px;font-weight:400;color:#5D6B82;text-wrap:pretty">Sits 16pt above the safe area, or above a sticky bar when one is present.</span></div>
+    </div>
+  </div>
+</div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":880,"height":560}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
