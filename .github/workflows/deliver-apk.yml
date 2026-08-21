@@ -52,7 +52,7 @@ jobs:
       # per delivery.
       - name: Publish it on the apk branch
         run: |
-          src=$(find incoming -name '*.apk' -print -quit)
+          src=$(find incoming -type f -name '*.apk' -print -quit)
           test -n "$src" || { echo 'The artifact contained no APK.' >&2; exit 1; }
           size=$(du -h "$src" | cut -f1)
 
