@@ -13,6 +13,9 @@ on:
   push:
     tags: ['v*']
 
+permissions:
+  contents: write        # the build publishes the APK as a release asset
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -80,3 +83,29 @@ jobs:
           # Long enough to get it onto a phone without keeping it forever.
           retention-days: 30
           if-no-files-found: error
+
+      # A workflow artifact is a zip behind a login, which is the wrong shape
+      # for "install this on my phone". A release asset is a plain file on a
+      # permanent URL, so the phone can just download and open it:
+      #   .../releases/latest/download/waypoint.apk
+      - name: Publish it as the latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APK: ${{ steps.apk.outputs.path }}
+        run: |
+          cp "$APK" waypoint.apk
+          version=$(node -p "require('./app.json').expo.version")
+          notes=$(printf '%s\n' \
+            "Waypoint $version — built from \`${GITHUB_SHA::7}\` on $(date -u '+%d %b %Y')." \
+            "" \
+            "**[Download waypoint.apk](https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/waypoint.apk)** — open it on the phone and allow installs from this source when Android asks." \
+            "" \
+            "Signed with the standard Android debug key, so Play Protect will warn on install; that is expected for a build shared this way and not a sign of anything wrong.")
+          # A moving tag, so the download URL above never changes.
+          gh release delete latest --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag 2>/dev/null || true
+          gh release create latest waypoint.apk \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Waypoint $version" \
+            --notes "$notes"
+          echo "Released: https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/waypoint.apk"
