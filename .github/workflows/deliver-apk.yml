@@ -1,0 +1,80 @@
+name: Deliver APK
+
+# Puts a built APK on a branch, because raw.githubusercontent.com is fetchable
+# from places the release download isn't (a release asset redirects to a signed
+# URL that some networks block outright). Reuses an existing build rather than
+# rebuilding: Gradle takes ~25 minutes and the bytes already exist.
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'Android APK run to take the artifact from (blank = latest successful)'
+        type: string
+        required: false
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  deliver:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Find the build to deliver
+        id: pick
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WANTED: ${{ inputs.run_id }}
+        run: |
+          run="$WANTED"
+          if [ -z "$run" ]; then
+            run=$(gh run list --repo "$GITHUB_REPOSITORY" \
+                    --workflow 'Android APK' --status success \
+                    --limit 1 --json databaseId --jq '.[0].databaseId')
+          fi
+          test -n "$run" || { echo 'No successful Android APK run to take an APK from.' >&2; exit 1; }
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+          echo "Taking the APK from run $run"
+
+      - name: Download it
+        uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ steps.pick.outputs.run }}
+          github-token: ${{ github.token }}
+          path: incoming
+
+      # An orphan branch holding exactly one file, force-pushed each time, so
+      # this never accumulates history — one APK's worth of objects, not one
+      # per delivery.
+      - name: Publish it on the apk branch
+        run: |
+          src=$(find incoming -name '*.apk' -print -quit)
+          test -n "$src" || { echo 'The artifact contained no APK.' >&2; exit 1; }
+          size=$(du -h "$src" | cut -f1)
+
+          work=$(mktemp -d)
+          cp "$src" "$work/waypoint.apk"
+          printf '%s\n' \
+            '# Waypoint APK' \
+            '' \
+            "Built from \`${GITHUB_SHA::7}\`, $size." \
+            '' \
+            'This branch exists only to serve the binary over raw.githubusercontent.com.' \
+            'It holds no source, and it is force-pushed on every delivery.' \
+            > "$work/README.md"
+
+          cd "$work"
+          git init -q
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git checkout -q -b apk
+          git add .
+          git commit -q -m "APK from ${GITHUB_SHA::7}"
+          git push -q --force \
+            "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" apk
+
+          echo "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/apk/waypoint.apk"
