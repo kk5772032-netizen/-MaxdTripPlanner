@@ -39,6 +39,9 @@ function makeStop(overrides: Partial<Stop> = {}): Stop {
     rating: null,
     photoRef: null,
     sequence: 0,
+    dayDate: null,
+    startTime: null,
+    endTime: null,
     plannedBudgetMinor: 1_000_00,
     notes: null,
     ...overrides,
@@ -52,6 +55,9 @@ function makeActivity(overrides: Partial<Activity> = {}): Activity {
     title: 'Walk the memorial',
     estimatedCostMinor: null,
     done: false,
+    startTime: null,
+    durationMin: null,
+    notes: null,
     ...overrides,
   };
 }

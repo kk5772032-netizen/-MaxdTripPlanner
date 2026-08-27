@@ -13,6 +13,9 @@ interface StopRow {
   rating: number | null;
   photo_ref: string | null;
   sequence: number;
+  day_date: string | null;
+  start_time: string | null;
+  end_time: string | null;
   planned_budget: number | null;
   notes: string | null;
 }
@@ -29,13 +32,21 @@ function toStop(row: StopRow): Stop {
     rating: row.rating,
     photoRef: row.photo_ref,
     sequence: row.sequence,
+    dayDate: row.day_date,
+    startTime: row.start_time,
+    endTime: row.end_time,
     plannedBudgetMinor: row.planned_budget,
     notes: row.notes,
   };
 }
 
-/** `sequence` is assigned by the repository — callers never pick it. */
-export type NewStop = Omit<Stop, 'id' | 'sequence'>;
+/**
+ * `sequence` is assigned by the repository — callers never pick it. Scheduling
+ * is optional: a stop is usually collected before anyone decides which day it
+ * belongs to.
+ */
+export type NewStop = Omit<Stop, 'id' | 'sequence' | 'dayDate' | 'startTime' | 'endTime'> &
+  Partial<Pick<Stop, 'dayDate' | 'startTime' | 'endTime'>>;
 
 export async function createStop(input: NewStop): Promise<Stop> {
   const db = await getDb();
@@ -43,11 +54,19 @@ export async function createStop(input: NewStop): Promise<Stop> {
     `SELECT COALESCE(MAX(sequence) + 1, 0) AS next FROM stops WHERE trip_id = ?`,
     input.tripId,
   );
-  const stop: Stop = { ...input, id: newId(), sequence: row?.next ?? 0 };
+  const stop: Stop = {
+    dayDate: null,
+    startTime: null,
+    endTime: null,
+    ...input,
+    id: newId(),
+    sequence: row?.next ?? 0,
+  };
   await db.runAsync(
     `INSERT INTO stops
-       (id, trip_id, google_place_id, name, address, lat, lng, rating, photo_ref, sequence, planned_budget, notes)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, trip_id, google_place_id, name, address, lat, lng, rating, photo_ref, sequence,
+        day_date, start_time, end_time, planned_budget, notes)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     stop.id,
     stop.tripId,
     stop.googlePlaceId,
@@ -58,6 +77,9 @@ export async function createStop(input: NewStop): Promise<Stop> {
     stop.rating,
     stop.photoRef,
     stop.sequence,
+    stop.dayDate,
+    stop.startTime,
+    stop.endTime,
     stop.plannedBudgetMinor,
     stop.notes,
   );
@@ -102,7 +124,8 @@ export async function updateStop(
   await db.runAsync(
     `UPDATE stops
         SET google_place_id = ?, name = ?, address = ?, lat = ?, lng = ?, rating = ?,
-            photo_ref = ?, sequence = ?, planned_budget = ?, notes = ?
+            photo_ref = ?, sequence = ?, day_date = ?, start_time = ?, end_time = ?,
+            planned_budget = ?, notes = ?
       WHERE id = ?`,
     next.googlePlaceId,
     next.name,
@@ -112,6 +135,9 @@ export async function updateStop(
     next.rating,
     next.photoRef,
     next.sequence,
+    next.dayDate,
+    next.startTime,
+    next.endTime,
     next.plannedBudgetMinor,
     next.notes,
     id,
@@ -148,10 +174,12 @@ export async function restoreStop(stop: Stop): Promise<void> {
     );
     await tx.runAsync(
       `INSERT OR REPLACE INTO stops
-         (id, trip_id, google_place_id, name, address, lat, lng, rating, photo_ref, sequence, planned_budget, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         (id, trip_id, google_place_id, name, address, lat, lng, rating, photo_ref, sequence,
+          day_date, start_time, end_time, planned_budget, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       stop.id, stop.tripId, stop.googlePlaceId, stop.name, stop.address, stop.lat,
-      stop.lng, stop.rating, stop.photoRef, stop.sequence, stop.plannedBudgetMinor, stop.notes,
+      stop.lng, stop.rating, stop.photoRef, stop.sequence,
+      stop.dayDate, stop.startTime, stop.endTime, stop.plannedBudgetMinor, stop.notes,
     );
   });
 }

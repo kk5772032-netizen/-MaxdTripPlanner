@@ -48,8 +48,17 @@ export interface Stop {
   lng: number | null;
   rating: number | null;
   photoRef: string | null;
-  /** 0-based order within the trip. */
+  /** 0-based order within the trip. Also orders stops inside a day. */
   sequence: number;
+  /**
+   * ISO date, YYYY-MM-DD. Null means the stop is planned but not yet placed on
+   * a day — a real state, not a missing value: people collect places first and
+   * decide when later.
+   */
+  dayDate: string | null;
+  /** 24-hour local time, HH:MM. Null when the day isn't planned to the hour. */
+  startTime: string | null;
+  endTime: string | null;
   /** The cap for this stop, in minor units. Null means "no cap set". */
   plannedBudgetMinor: number | null;
   notes: string | null;
@@ -61,6 +70,11 @@ export interface Activity {
   title: string;
   estimatedCostMinor: number | null;
   done: boolean;
+  /** 24-hour local time, HH:MM. Null when it's a to-do rather than an event. */
+  startTime: string | null;
+  /** Minutes. Drives how tall the block is drawn on the day timeline. */
+  durationMin: number | null;
+  notes: string | null;
 }
 
 export interface FoodPlan {
@@ -84,6 +98,49 @@ export interface Expense {
   note: string | null;
   /** ISO date, YYYY-MM-DD. */
   spentAt: string;
+}
+
+export type BookingKind =
+  | 'flight'
+  | 'lodging'
+  | 'train'
+  | 'bus'
+  | 'car'
+  | 'restaurant'
+  | 'other';
+
+export const BOOKING_KINDS: BookingKind[] = [
+  'flight',
+  'lodging',
+  'train',
+  'bus',
+  'car',
+  'restaurant',
+  'other',
+];
+
+/**
+ * A reservation: the thing you need to find in ninety seconds at a check-in
+ * desk. Everything except the title is optional, because a half-remembered
+ * booking is still worth writing down.
+ */
+export interface Booking {
+  id: string;
+  tripId: string;
+  kind: BookingKind;
+  title: string;
+  /** Airline record locator, hotel reference, ticket number. */
+  confirmation: string | null;
+  /** ISO datetime, YYYY-MM-DDTHH:MM. Null when only the day is known. */
+  startsAt: string | null;
+  endsAt: string | null;
+  location: string | null;
+  costMinor: number | null;
+  notes: string | null;
+  /** A saved copy of the ticket or voucher, if one was attached. */
+  attachmentUri: string | null;
+  attachmentName: string | null;
+  createdAt: string;
 }
 
 /** A place as returned by the Places API, normalised to what we actually use. */
