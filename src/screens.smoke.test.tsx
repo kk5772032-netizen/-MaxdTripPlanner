@@ -161,9 +161,21 @@ describe('screen smoke tests', () => {
     expect(screen.getByText('₹450 of ₹10,000')).toBeTruthy();
   });
 
-  it('renders trip detail empty state with no stops', async () => {
+  it('shows the trip days when a dated trip has no stops', async () => {
     await stopsRepo.deleteStop(stopId);
     await mountAndSettle(<TripDetailScreen />);
+    // A dated trip with nothing planned is not an empty state: the days are
+    // the invitation, so they stay on screen with somewhere to tap.
+    await waitFor(() => expect(screen.getByText('Day 1')).toBeTruthy());
+    expect(screen.getByText('Sat 1 Nov')).toBeTruthy();
+    expect(screen.getAllByText('Nothing planned — tap to add something.')).toHaveLength(3);
+  });
+
+  it('falls back to the empty state when the trip has no dates either', async () => {
+    await stopsRepo.deleteStop(stopId);
+    await tripsRepo.updateTrip(tripId, { startDate: null, endDate: null });
+    await mountAndSettle(<TripDetailScreen />);
+    // With no days and no stops there is nothing to scaffold, so ask for a stop.
     await waitFor(() => expect(screen.getByText('No stops yet')).toBeTruthy());
   });
 
