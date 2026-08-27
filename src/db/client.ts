@@ -1,5 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 
+import { migrate } from './migrations';
 import { CREATE_TABLES } from './schema';
 
 /**
@@ -16,12 +17,15 @@ const DB_NAME = 'waypoint.db';
 
 let dbPromise: Promise<Db> | null = null;
 
-async function open(name: string): Promise<Db> {
+async function open(name: string, applyMigrations = true): Promise<Db> {
   const db = await SQLite.openDatabaseAsync(name);
   // execAsync runs multiple statements; foreign_keys is per-connection so it
   // has to be set here rather than only in the schema file.
   await db.execAsync(CREATE_TABLES);
   await db.execAsync('PRAGMA foreign_keys = ON;');
+  // CREATE TABLE IF NOT EXISTS builds a new database; migrations are what let
+  // an existing one change shape. Both paths run this.
+  if (applyMigrations) await migrate(db);
   return db;
 }
 
@@ -32,9 +36,20 @@ export function getDb(): Promise<Db> {
   return dbPromise;
 }
 
-/** Opens a fresh in-memory database. Used by repository tests. */
+/** Opens a fresh in-memory database, migrated. Used by repository tests. */
 export async function openTestDb(): Promise<Db> {
   return open(':memory:');
+}
+
+/**
+ * An in-memory database holding the ORIGINAL schema, unmigrated and stamped at
+ * version 1 — what an app installed before migrations existed looks like.
+ * Only the migration tests want this; everything else wants openTestDb.
+ */
+export async function openTestDbAtV1(): Promise<Db> {
+  const db = await open(':memory:', false);
+  await db.execAsync('PRAGMA user_version = 1');
+  return db;
 }
 
 /** Points every repository at `db`. Pass null to restore the real database. */
