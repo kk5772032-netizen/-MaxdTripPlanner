@@ -1,4 +1,4 @@
-import type { Db } from './client';
+import { runInTransaction, type Db } from './client';
 
 /**
  * Ordered schema migrations.
@@ -91,7 +91,7 @@ export async function migrate(db: Db): Promise<{ from: number; to: number }> {
     if (migration.version <= from) continue;
     // Each migration is all-or-nothing: a partial apply would leave a database
     // that no later migration could make sense of.
-    await db.withExclusiveTransactionAsync(async (tx) => {
+    await runInTransaction(db, async (tx) => {
       await tx.execAsync(migration.sql);
     });
     // PRAGMA can't be parameterised, and the value is a literal from this file.

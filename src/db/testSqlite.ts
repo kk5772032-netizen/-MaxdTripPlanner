@@ -59,18 +59,26 @@ export class TestDatabase {
    * expo-sqlite serialises these against other writers; here the database is
    * single-threaded and per-test, so a plain BEGIN/COMMIT with rollback on
    * throw has the same observable behaviour.
+   *
+   * Both shapes are provided because the app uses the non-exclusive one — the
+   * exclusive variant throws outright on web — and a double that only offers
+   * the API the app has stopped calling proves nothing.
    */
-  async withExclusiveTransactionAsync(
-    fn: (tx: TestDatabase) => Promise<void>,
-  ): Promise<void> {
+  async withTransactionAsync(fn: () => Promise<void>): Promise<void> {
     this.db.exec('BEGIN');
     try {
-      await fn(this);
+      await fn();
       this.db.exec('COMMIT');
     } catch (error) {
       this.db.exec('ROLLBACK');
       throw error;
     }
+  }
+
+  async withExclusiveTransactionAsync(
+    fn: (tx: TestDatabase) => Promise<void>,
+  ): Promise<void> {
+    await this.withTransactionAsync(() => fn(this));
   }
 
   async closeAsync(): Promise<void> {

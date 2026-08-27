@@ -1,14 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { stopSummary, tripTotals, tripWarning } from '../../../src/budget/engine';
+import { tripTotals, tripWarning } from '../../../src/budget/engine';
 import { formatMoney } from '../../../src/budget/money';
 import { BudgetBar } from '../../../src/components/BudgetBar';
+import { DayTimeline } from '../../../src/components/itinerary/DayTimeline';
 import { MapWithRoute } from '../../../src/components/MapWithRoute';
-import { StopList } from '../../../src/components/StopList';
 import {
   Button,
   EmptyState,
@@ -19,6 +19,7 @@ import {
   SkeletonList,
 } from '../../../src/components/ui';
 import { formatDateRange } from '../../../src/dates';
+import { tripDays } from '../../../src/itinerary/schedule';
 import { useTripStore } from '../../../src/state/tripStore';
 import { elevation, makeStyles, radius, spacing, type, useTheme } from '../../../src/theme';
 
@@ -31,8 +32,7 @@ export default function TripDetailScreen() {
   const insets = useSafeAreaInsets();
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
 
-  const { trip, stops, activities, foodPlans, expenses, loading, open, reorderStops } =
-    useTripStore();
+  const { trip, stops, activities, foodPlans, expenses, loading, open } = useTripStore();
   const [ready, setReady] = useState(false);
   const [mode, setMode] = useState<ViewMode>('list');
 
@@ -46,12 +46,6 @@ export default function TripDetailScreen() {
     () => (trip ? tripTotals(trip, stops, activities, foodPlans, expenses) : null),
     [trip, stops, activities, foodPlans, expenses],
   );
-
-  const summaryByStop = useMemo(() => {
-    const map = new Map<string, ReturnType<typeof stopSummary>>();
-    for (const summary of totals?.stops ?? []) map.set(summary.stop.id, summary);
-    return map;
-  }, [totals]);
 
   if (loading || !ready) return <SkeletonList rows={3} />;
 
@@ -75,6 +69,9 @@ export default function TripDetailScreen() {
   }
 
   const warning = tripWarning(totals);
+  // A dated trip with no stops still shows its days: empty days are the
+  // invitation to plan, and an empty state there would hide the whole point.
+  const hasPlan = tripDays(trip).length > 0 || stops.length > 0;
   // The sticky footer's own height, so the list and FAB can clear it.
   const footerHeight = 104 + insets.bottom;
 
@@ -96,9 +93,6 @@ export default function TripDetailScreen() {
 
       {warning ? <Notice tone="warning" body={warning} /> : null}
 
-      {mode === 'list' && stops.length > 1 ? (
-        <Text style={styles.hint}>Drag a handle to reorder stops.</Text>
-      ) : null}
     </View>
   );
 
@@ -127,14 +121,19 @@ export default function TripDetailScreen() {
           />
         </View>
       ) : (
-        <StopList
-          stops={stops}
-          ListHeaderComponent={header}
-          ListEmptyComponent={
+        <ScrollView
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: footerHeight + spacing.xl },
+          ]}
+        >
+          {header}
+
+          {!hasPlan ? (
             <EmptyState
               icon="location-outline"
               title="No stops yet"
-              body="Add the places this trip passes through — each one gets its own activities, food plan and budget."
+              body="Add the places this trip passes through — each one gets its own day, things to do and a food plan."
               action={
                 <Button
                   title="Add a stop"
@@ -143,29 +142,21 @@ export default function TripDetailScreen() {
                 />
               }
             />
-          }
-          onPressStop={(stop) => router.push(`/trip/${tripId}/place/${stop.id}`)}
-          onReorder={(ids) => void reorderStops(ids)}
-          renderSubtitle={(stop) => {
-            const activityCount = activities.filter((a) => a.stopId === stop.id).length;
-            const foodCount = foodPlans.filter((f) => f.stopId === stop.id).length;
-            return `${activityCount} ${activityCount === 1 ? 'activity' : 'activities'} · ${foodCount} food ${foodCount === 1 ? 'spot' : 'spots'}`;
-          }}
-          renderFooter={(stop) => {
-            const summary = summaryByStop.get(stop.id);
-            if (!summary) return null;
-            return (
-              <BudgetBar
-                actual={summary.actual}
-                cap={summary.budget}
-                planned={summary.planned}
-                currency={trip.currency}
-                compact
-              />
-            );
-          }}
-          contentContainerStyle={{ paddingBottom: footerHeight + spacing.xl }}
-        />
+          ) : (
+            <DayTimeline
+              trip={trip}
+              stops={stops}
+              activities={activities}
+              foodPlans={foodPlans}
+              onPressStop={(stop) => router.push(`/trip/${tripId}/place/${stop.id}`)}
+              onAddStop={(dayDate) =>
+                router.push(
+                  `/trip/${tripId}/new-place${dayDate ? `?day=${dayDate}` : ''}`,
+                )
+              }
+            />
+          )}
+        </ScrollView>
       )}
 
       <View style={[styles.footer, elevation.lg, { paddingBottom: spacing.lg + insets.bottom }]}>
@@ -228,6 +219,7 @@ export default function TripDetailScreen() {
 const useStyles = makeStyles((t) => ({
   screen: { flex: 1, backgroundColor: t.bg },
   header: { paddingBottom: spacing.lg, gap: spacing.md },
+  listContent: { padding: spacing.lg },
   datesRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   dates: { ...type.caption, color: t.textMuted },
   hint: { ...type.caption, color: t.textFaint },

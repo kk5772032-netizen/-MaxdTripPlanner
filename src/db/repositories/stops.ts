@@ -1,5 +1,5 @@
 import type { Stop } from '../../types';
-import { getDb } from '../client';
+import { getDb, runInTransaction } from '../client';
 import { newId } from '../ids';
 
 interface StopRow {
@@ -167,7 +167,7 @@ export async function deleteStop(id: string): Promise<void> {
  */
 export async function restoreStop(stop: Stop): Promise<void> {
   const db = await getDb();
-  await db.withExclusiveTransactionAsync(async (tx) => {
+  await runInTransaction(db, async (tx) => {
     await tx.runAsync(
       `UPDATE stops SET sequence = sequence + 1 WHERE trip_id = ? AND sequence >= ?`,
       stop.tripId, stop.sequence,
@@ -192,7 +192,7 @@ export async function restoreStop(stop: Stop): Promise<void> {
  */
 export async function reorderStops(tripId: string, orderedIds: string[]): Promise<void> {
   const db = await getDb();
-  await db.withExclusiveTransactionAsync(async (tx) => {
+  await runInTransaction(db, async (tx) => {
     for (let i = 0; i < orderedIds.length; i++) {
       await tx.runAsync(
         `UPDATE stops SET sequence = ? WHERE id = ? AND trip_id = ?`,

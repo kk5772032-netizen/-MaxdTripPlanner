@@ -13,6 +13,7 @@ import { stopSummary } from '../../../../src/budget/engine';
 import { formatMoney, parseMoney, toDecimalString } from '../../../../src/budget/money';
 import { ActivitiesTab } from '../../../../src/components/stop/ActivitiesTab';
 import { FoodTab } from '../../../../src/components/stop/FoodTab';
+import { ScheduleControls } from '../../../../src/components/itinerary/ScheduleControls';
 import { StopNotes } from '../../../../src/components/stop/StopNotes';
 import { BudgetBar } from '../../../../src/components/BudgetBar';
 import { AmountInput } from '../../../../src/components/AmountInput';
@@ -36,7 +37,7 @@ export default function StopDetailScreen() {
   const { tripId, placeId } = useLocalSearchParams<{ tripId: string; placeId: string }>();
   const [tab, setTab] = useState<Tab>('activities');
 
-  const { trip, loading, open, removeStop } = useTripStore();
+  const { trip, loading, open, removeStop, updateStop } = useTripStore();
 
   useFocusEffect(
     useCallback(() => {
@@ -102,6 +103,12 @@ export default function StopDetailScreen() {
       <Stack.Screen options={{ title: stop.name }} />
 
       <View style={styles.tabBar}>
+        <ScheduleControls
+          trip={trip}
+          stop={stop}
+          onChange={(patch) => void updateStop(stop.id, patch)}
+        />
+
         <StopNotes stop={stop} />
 
         <SegmentedControl<Tab>

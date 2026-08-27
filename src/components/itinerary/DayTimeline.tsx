@@ -1,0 +1,282 @@
+import { Ionicons } from '@expo/vector-icons';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+
+import {
+  formatDayLabel,
+  formatDuration,
+  formatSpan,
+  planByDay,
+  plannedMinutes,
+} from '../../itinerary/schedule';
+import { elevation, makeStyles, radius, spacing, type, useTheme } from '../../theme';
+import type { Activity, FoodPlan, Stop, Trip } from '../../types';
+
+/**
+ * The itinerary as a plan rather than a list.
+ *
+ * The old view was a flat run of stop cards, which answered "where am I going?"
+ * but not "what am I doing on Tuesday?" — the question people actually open an
+ * itinerary to ask. Days are the spine here: every day of the trip appears,
+ * including the empty ones, because an empty Tuesday is information and it is
+ * where the invitation to plan something belongs.
+ *
+ * Order within a day comes from the clock, not from dragging. A stop with no
+ * time is "sometime today" and sits below the timed ones.
+ */
+export function DayTimeline({
+  trip,
+  stops,
+  activities,
+  foodPlans,
+  onPressStop,
+  onAddStop,
+}: {
+  trip: Trip;
+  stops: Stop[];
+  activities: Activity[];
+  foodPlans: FoodPlan[];
+  onPressStop: (stop: Stop) => void;
+  onAddStop: (dayDate: string | null) => void;
+}) {
+  const styles = useStyles();
+  const days = planByDay(trip, stops);
+  if (days.length === 0) return null;
+
+  return (
+    <View style={styles.wrap}>
+      {days.map((day) => (
+        <DaySection
+          key={day.date ?? 'unscheduled'}
+          day={day}
+          activities={activities}
+          foodPlans={foodPlans}
+          onPressStop={onPressStop}
+          onAddStop={onAddStop}
+        />
+      ))}
+    </View>
+  );
+}
+
+function DaySection({
+  day,
+  activities,
+  foodPlans,
+  onPressStop,
+  onAddStop,
+}: {
+  day: ReturnType<typeof planByDay>[number];
+  activities: Activity[];
+  foodPlans: FoodPlan[];
+  onPressStop: (stop: Stop) => void;
+  onAddStop: (dayDate: string | null) => void;
+}) {
+  const styles = useStyles();
+  const t = useTheme();
+
+  const ids = new Set(day.stops.map((s) => s.id));
+  const dayActivities = activities.filter((a) => ids.has(a.stopId));
+  const planned = formatDuration(plannedMinutes(dayActivities));
+
+  const unscheduled = day.date === null;
+  const summary = unscheduled
+    ? `${day.stops.length} ${day.stops.length === 1 ? 'place' : 'places'} with no day yet`
+    : [
+        `${day.stops.length} ${day.stops.length === 1 ? 'stop' : 'stops'}`,
+        planned ? `about ${planned} planned` : null,
+      ]
+        .filter(Boolean)
+        .join(' · ');
+
+  return (
+    <View style={styles.section}>
+      <View style={styles.dayHead}>
+        <View style={styles.dayHeadText}>
+          <Text style={styles.dayTitle}>
+            {unscheduled ? 'Not scheduled yet' : `Day ${day.dayNumber ?? '—'}`}
+          </Text>
+          <Text style={styles.daySub}>
+            {unscheduled ? summary : `${formatDayLabel(day.date!)}${day.stops.length ? ` · ${summary}` : ''}`}
+          </Text>
+        </View>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={
+            unscheduled ? 'Add a place' : `Add to ${formatDayLabel(day.date!)}`
+          }
+          hitSlop={8}
+          onPress={() => onAddStop(day.date)}
+          style={({ pressed }) => [styles.dayAdd, pressed && styles.pressed]}
+        >
+          <Ionicons name="add" size={18} color={t.primary} />
+        </Pressable>
+      </View>
+
+      {day.stops.length === 0 ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Nothing planned for ${formatDayLabel(day.date!)}. Add something.`}
+          onPress={() => onAddStop(day.date)}
+          style={({ pressed }) => [styles.emptyDay, pressed && styles.pressed]}
+        >
+          <Text style={styles.emptyDayText}>Nothing planned — tap to add something.</Text>
+        </Pressable>
+      ) : (
+        day.stops.map((stop, i) => (
+          <TimelineRow
+            key={stop.id}
+            stop={stop}
+            last={i === day.stops.length - 1}
+            activities={activities.filter((a) => a.stopId === stop.id)}
+            foodPlans={foodPlans.filter((f) => f.stopId === stop.id)}
+            onPress={() => onPressStop(stop)}
+          />
+        ))
+      )}
+    </View>
+  );
+}
+
+function TimelineRow({
+  stop,
+  last,
+  activities,
+  foodPlans,
+  onPress,
+}: {
+  stop: Stop;
+  last: boolean;
+  activities: Activity[];
+  foodPlans: FoodPlan[];
+  onPress: () => void;
+}) {
+  const styles = useStyles();
+  const t = useTheme();
+  const span = formatSpan(stop);
+  const done = activities.filter((a) => a.done).length;
+
+  const meta = [
+    activities.length
+      ? `${done}/${activities.length} ${activities.length === 1 ? 'thing' : 'things'} to do`
+      : null,
+    foodPlans.length
+      ? `${foodPlans.length} food ${foodPlans.length === 1 ? 'spot' : 'spots'}`
+      : null,
+  ].filter(Boolean);
+
+  return (
+    <View style={styles.row}>
+      {/* The rail: a time, a dot, and a line down to the next stop. */}
+      <View style={styles.rail}>
+        <Text style={[styles.railTime, !span && styles.railTimeMuted]} numberOfLines={1}>
+          {span ? span.split(' – ')[0] : '—'}
+        </Text>
+        <View style={styles.dot} />
+        {!last ? <View style={styles.line} /> : null}
+      </View>
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${stop.name}${span ? `, ${span}` : ''}`}
+        onPress={onPress}
+        style={({ pressed }) => [styles.card, elevation.sm, pressed && styles.pressed]}
+      >
+        <View style={styles.cardTop}>
+          <Text style={styles.stopName} numberOfLines={1}>
+            {stop.name}
+          </Text>
+          {stop.rating != null ? (
+            <View style={styles.rating}>
+              <Ionicons name="star" size={11} color={t.near} />
+              <Text style={styles.ratingText}>{stop.rating.toFixed(1)}</Text>
+            </View>
+          ) : null}
+        </View>
+
+        {stop.address ? (
+          <Text style={styles.address} numberOfLines={1}>
+            {stop.address}
+          </Text>
+        ) : null}
+
+        {span && stop.endTime ? <Text style={styles.span}>{span}</Text> : null}
+
+        {meta.length > 0 ? <Text style={styles.meta}>{meta.join(' · ')}</Text> : null}
+      </Pressable>
+    </View>
+  );
+}
+
+const useStyles = makeStyles((t) => ({
+  wrap: { gap: spacing.xl },
+  section: { gap: spacing.sm },
+
+  dayHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  dayHeadText: { flex: 1, gap: 1 },
+  dayTitle: { ...type.heading, color: t.text },
+  daySub: { ...type.caption, color: t.textMuted },
+  dayAdd: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: t.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  emptyDay: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: t.border,
+    borderStyle: 'dashed',
+    borderRadius: radius.md,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.md,
+    alignItems: 'center',
+  },
+  emptyDayText: { ...type.caption, color: t.textFaint },
+
+  row: { flexDirection: 'row', gap: spacing.sm },
+  rail: { width: 62, alignItems: 'center', paddingTop: 2 },
+  railTime: {
+    ...type.caption,
+    fontWeight: '600',
+    color: t.text,
+    fontVariant: ['tabular-nums'],
+  },
+  railTimeMuted: { color: t.textFaint, fontWeight: '400' },
+  dot: {
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: t.primary,
+    marginTop: 5,
+  },
+  // Reaches past the card's bottom margin so the rail reads as continuous.
+  line: { flex: 1, width: 2, backgroundColor: t.border, marginTop: 2, marginBottom: -spacing.sm },
+
+  card: {
+    flex: 1,
+    backgroundColor: t.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: t.border,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    gap: 2,
+  },
+  cardTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  stopName: { ...type.bodyStrong, color: t.text, flex: 1 },
+  rating: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  ratingText: { ...type.caption, fontWeight: '600', color: t.textMuted },
+  address: { ...type.caption, color: t.textMuted },
+  span: { ...type.caption, color: t.textMuted, fontVariant: ['tabular-nums'] },
+  meta: { ...type.caption, color: t.textFaint, marginTop: 2 },
+
+  pressed: { opacity: 0.7 },
+}));

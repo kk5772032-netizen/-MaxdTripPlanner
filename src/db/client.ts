@@ -57,12 +57,26 @@ export function setDbForTesting(db: Db | null): void {
   dbPromise = db ? Promise.resolve(db) : null;
 }
 
-/** Runs `fn` inside a transaction, rolling back if it throws. */
+/**
+ * Runs `fn` inside a transaction, rolling back if it throws.
+ *
+ * `withTransactionAsync` rather than the exclusive variant: exclusive opens a
+ * second connection and throws outright on web ("not supported on web"), which
+ * silently broke stop reordering and undo there long before anyone noticed.
+ * This app has a single connection, so a plain transaction is the same
+ * guarantee without the platform hole.
+ */
+export async function runInTransaction(db: Db, fn: (tx: Db) => Promise<void>): Promise<void> {
+  await db.withTransactionAsync(async () => {
+    await fn(db);
+  });
+}
+
 export async function withTransaction<T>(fn: (db: Db) => Promise<T>): Promise<T> {
   const db = await getDb();
   let result: T;
-  await db.withExclusiveTransactionAsync(async (tx) => {
-    result = await fn(tx as unknown as Db);
+  await runInTransaction(db, async (tx) => {
+    result = await fn(tx);
   });
   return result!;
 }

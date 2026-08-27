@@ -38,7 +38,9 @@ export default function NewPlaceScreen() {
   const styles = useStyles();
   const t = useTheme();
   const router = useRouter();
-  const { tripId } = useLocalSearchParams<{ tripId: string }>();
+  // `day` arrives when the stop was added from a specific day on the timeline,
+  // so it lands where the user was looking rather than in Unscheduled.
+  const { tripId, day } = useLocalSearchParams<{ tripId: string; day?: string }>();
   const addStop = useTripStore((s) => s.addStop);
 
   const [candidate, setCandidate] = useState<PlaceDetails | null>(null);
@@ -90,6 +92,7 @@ export default function NewPlaceScreen() {
         photoRef: candidate.photoRef,
         plannedBudgetMinor: null,
         notes: null,
+        dayDate: day ?? null,
       });
       notifySuccess();
       router.back();
@@ -112,6 +115,7 @@ export default function NewPlaceScreen() {
         photoRef: null,
         plannedBudgetMinor: null,
         notes: notes.trim() || null,
+        dayDate: day ?? null,
       });
       notifySuccess();
       router.back();
