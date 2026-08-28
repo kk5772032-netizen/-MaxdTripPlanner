@@ -32,7 +32,8 @@ export default function TripDetailScreen() {
   const insets = useSafeAreaInsets();
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
 
-  const { trip, stops, activities, foodPlans, expenses, loading, open } = useTripStore();
+  const { trip, stops, activities, foodPlans, expenses, bookings, loading, open } =
+    useTripStore();
   const [ready, setReady] = useState(false);
   const [mode, setMode] = useState<ViewMode>('list');
 
@@ -90,6 +91,21 @@ export default function TripDetailScreen() {
           { value: 'map', label: 'Map', icon: 'map-outline' },
         ]}
       />
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Open bookings"
+        onPress={() => router.push(`/trip/${tripId}/bookings`)}
+        style={({ pressed }) => [styles.bookingsLink, pressed && styles.pressed]}
+      >
+        <Ionicons name="bookmark-outline" size={16} color={t.primary} />
+        <Text style={styles.bookingsText}>
+          {bookings.length === 0
+            ? 'Flights, hotels and reservations'
+            : `${bookings.length} booking${bookings.length === 1 ? '' : 's'}`}
+        </Text>
+        <Ionicons name="chevron-forward" size={16} color={t.textFaint} />
+      </Pressable>
 
       {warning ? <Notice tone="warning" body={warning} /> : null}
 
@@ -220,6 +236,18 @@ const useStyles = makeStyles((t) => ({
   screen: { flex: 1, backgroundColor: t.bg },
   header: { paddingBottom: spacing.lg, gap: spacing.md },
   listContent: { padding: spacing.lg },
+  bookingsLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    minHeight: 44,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: t.border,
+    backgroundColor: t.surface,
+  },
+  bookingsText: { flex: 1, ...type.label, color: t.text },
   datesRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   dates: { ...type.caption, color: t.textMuted },
   hint: { ...type.caption, color: t.textFaint },

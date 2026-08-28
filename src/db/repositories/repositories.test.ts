@@ -1,5 +1,6 @@
 import { type Db, openTestDb, setDbForTesting } from '../client';
 import * as activitiesRepo from './activities';
+import * as bookingsRepo from './bookings';
 import * as expensesRepo from './expenses';
 import * as foodPlansRepo from './foodPlans';
 import * as stopsRepo from './stops';
@@ -465,5 +466,135 @@ describe('cascade behaviour', () => {
 
   it('refuses a stop pointing at a trip that does not exist', async () => {
     await expect(seedStop('no-such-trip')).rejects.toThrow();
+  });
+});
+
+describe('bookings repository', () => {
+  let tripId: string;
+
+  beforeEach(async () => {
+    tripId = (await seedTrip()).id;
+  });
+
+  it('saves a booking with only the fields you actually know', async () => {
+    // A half-remembered booking is still worth recording; demanding a
+    // confirmation code before saving is how notes end up in another app.
+    const booking = await bookingsRepo.createBooking({
+      tripId,
+      kind: 'lodging',
+      title: 'Some hotel in Karol Bagh',
+      confirmation: null,
+      startsAt: null,
+      endsAt: null,
+      location: null,
+      costMinor: null,
+      notes: null,
+      attachmentUri: null,
+      attachmentName: null,
+    });
+
+    expect(booking.id).toBeTruthy();
+    expect(booking.createdAt).toBeTruthy();
+    const [saved] = await bookingsRepo.listBookings(tripId);
+    expect(saved.title).toBe('Some hotel in Karol Bagh');
+    expect(saved.confirmation).toBeNull();
+  });
+
+  it('orders by start time, with undated bookings last', async () => {
+    const make = (title: string, startsAt: string | null) =>
+      bookingsRepo.createBooking({
+        tripId, kind: 'flight', title, confirmation: null, startsAt,
+        endsAt: null, location: null, costMinor: null, notes: null,
+        attachmentUri: null, attachmentName: null,
+      });
+
+    await make('Sometime', null);
+    await make('Second', '2026-11-09T18:00');
+    await make('First', '2026-11-06T06:30');
+
+    const titles = (await bookingsRepo.listBookings(tripId)).map((b) => b.title);
+    // Undated is the least urgent thing on screen, but still findable.
+    expect(titles).toEqual(['First', 'Second', 'Sometime']);
+  });
+
+  it('round-trips every field', async () => {
+    const created = await bookingsRepo.createBooking({
+      tripId,
+      kind: 'flight',
+      title: 'DEL → BOM',
+      confirmation: 'PNR7Y2Q',
+      startsAt: '2026-11-06T06:30',
+      endsAt: '2026-11-06T08:45',
+      location: 'Terminal 3',
+      costMinor: 6_400_00,
+      notes: 'Window seat booked',
+      attachmentUri: 'file:///tickets/del-bom.pdf',
+      attachmentName: 'del-bom.pdf',
+    });
+
+    const read = await bookingsRepo.getBooking(created.id);
+    expect(read).toEqual(created);
+  });
+
+  it('updates without disturbing the fields left alone', async () => {
+    const created = await bookingsRepo.createBooking({
+      tripId, kind: 'train', title: 'Shatabdi', confirmation: 'ABC123',
+      startsAt: '2026-11-07T09:00', endsAt: null, location: null,
+      costMinor: null, notes: null, attachmentUri: null, attachmentName: null,
+    });
+
+    const updated = await bookingsRepo.updateBooking(created.id, { title: 'Shatabdi Express' });
+    expect(updated?.title).toBe('Shatabdi Express');
+    expect(updated?.confirmation).toBe('ABC123');
+    expect(updated?.startsAt).toBe('2026-11-07T09:00');
+  });
+
+  it('returns null when updating one that is gone', async () => {
+    expect(await bookingsRepo.updateBooking('nope', { title: 'x' })).toBeNull();
+  });
+
+  it('restores a deleted booking with its original id', async () => {
+    const created = await bookingsRepo.createBooking({
+      tripId, kind: 'car', title: 'Airport pickup', confirmation: 'ZX9',
+      startsAt: null, endsAt: null, location: null, costMinor: null,
+      notes: null, attachmentUri: null, attachmentName: null,
+    });
+
+    await bookingsRepo.deleteBooking(created.id);
+    expect(await bookingsRepo.listBookings(tripId)).toHaveLength(0);
+
+    await bookingsRepo.restoreBooking(created);
+    expect(await bookingsRepo.getBooking(created.id)).toEqual(created);
+  });
+
+  it('counts bookings per trip', async () => {
+    const other = await tripsRepo.createTrip({
+      name: 'Kerala', startDate: null, endDate: null,
+      currency: 'INR', totalBudgetMinor: null,
+    });
+    const make = (id: string) =>
+      bookingsRepo.createBooking({
+        tripId: id, kind: 'other', title: 'x', confirmation: null, startsAt: null,
+        endsAt: null, location: null, costMinor: null, notes: null,
+        attachmentUri: null, attachmentName: null,
+      });
+
+    await make(tripId);
+    await make(tripId);
+    await make(other.id);
+
+    const counts = await bookingsRepo.countsByTrip();
+    expect(counts[tripId]).toBe(2);
+    expect(counts[other.id]).toBe(1);
+  });
+
+  it('goes with the trip when the trip is deleted', async () => {
+    await bookingsRepo.createBooking({
+      tripId, kind: 'lodging', title: 'Hotel', confirmation: null, startsAt: null,
+      endsAt: null, location: null, costMinor: null, notes: null,
+      attachmentUri: null, attachmentName: null,
+    });
+    await tripsRepo.deleteTrip(tripId);
+    expect(await bookingsRepo.listBookings(tripId)).toHaveLength(0);
   });
 });

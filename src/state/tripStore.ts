@@ -1,12 +1,13 @@
 import { create } from 'zustand';
 
 import * as activitiesRepo from '../db/repositories/activities';
+import * as bookingsRepo from '../db/repositories/bookings';
 import * as expensesRepo from '../db/repositories/expenses';
 import * as foodPlansRepo from '../db/repositories/foodPlans';
 import * as stopsRepo from '../db/repositories/stops';
 import * as tripsRepo from '../db/repositories/trips';
 import { notifyBudgetCrossing } from '../notifications';
-import type { Activity, Expense, FoodPlan, Stop, Trip } from '../types';
+import type { Activity, Booking, Expense, FoodPlan, Stop, Trip } from '../types';
 import { useSettingsStore } from './settingsStore';
 import { useToastStore } from './toastStore';
 
@@ -27,6 +28,7 @@ interface TripState {
   stops: Stop[];
   activities: Activity[];
   foodPlans: FoodPlan[];
+  bookings: Booking[];
   expenses: Expense[];
   loading: boolean;
   error: string | null;
@@ -52,6 +54,13 @@ interface TripState {
   addExpense: (input: Omit<expensesRepo.NewExpense, 'tripId'>) => Promise<void>;
   updateExpense: (id: string, patch: Partial<Omit<Expense, 'id' | 'tripId'>>) => Promise<void>;
   removeExpense: (id: string) => Promise<void>;
+
+  addBooking: (input: Omit<bookingsRepo.NewBooking, 'tripId'>) => Promise<void>;
+  updateBooking: (
+    id: string,
+    patch: Partial<Omit<Booking, 'id' | 'tripId' | 'createdAt'>>,
+  ) => Promise<void>;
+  removeBooking: (id: string) => Promise<void>;
 }
 
 export const useTripStore = create<TripState>((set, get) => ({
@@ -61,6 +70,7 @@ export const useTripStore = create<TripState>((set, get) => ({
   activities: [],
   foodPlans: [],
   expenses: [],
+  bookings: [],
   loading: false,
   error: null,
 
@@ -73,22 +83,23 @@ export const useTripStore = create<TripState>((set, get) => ({
       loading: switching,
       error: null,
       ...(switching
-        ? { trip: null, stops: [], activities: [], foodPlans: [], expenses: [] }
+        ? { trip: null, stops: [], activities: [], foodPlans: [], expenses: [], bookings: [] }
         : {}),
     });
 
     try {
-      const [trip, stops, activities, foodPlans, expenses] = await Promise.all([
+      const [trip, stops, activities, foodPlans, expenses, bookings] = await Promise.all([
         tripsRepo.getTrip(tripId),
         stopsRepo.listStops(tripId),
         activitiesRepo.listActivitiesForTrip(tripId),
         foodPlansRepo.listFoodPlansForTrip(tripId),
         expensesRepo.listExpenses(tripId),
+        bookingsRepo.listBookings(tripId),
       ]);
       // A slower load for a trip the user has already navigated away from must
       // not overwrite the one now on screen.
       if (get().tripId !== tripId) return;
-      set({ trip, stops, activities, foodPlans, expenses, loading: false });
+      set({ trip, stops, activities, foodPlans, expenses, bookings, loading: false });
     } catch (e) {
       console.warn('[trip] open failed', e);
       set({ error: 'Could not open this trip. Go back and try again.', loading: false });
@@ -108,6 +119,7 @@ export const useTripStore = create<TripState>((set, get) => ({
       activities: [],
       foodPlans: [],
       expenses: [],
+      bookings: [],
       error: null,
     }),
 
@@ -283,6 +295,39 @@ export const useTripStore = create<TripState>((set, get) => ({
       undo: async () => {
         await expensesRepo.restoreExpense(expense);
         set({ expenses: [expense, ...get().expenses] });
+      },
+    });
+  },
+
+  /* ------------------------------------------------------------- bookings */
+
+  addBooking: async (input) => {
+    const { tripId } = get();
+    if (!tripId) return;
+    await bookingsRepo.createBooking({ ...input, tripId });
+    // Re-read rather than append: the list is ordered by start time, and a
+    // booking added last is rarely the one that happens last.
+    set({ bookings: await bookingsRepo.listBookings(tripId) });
+  },
+
+  updateBooking: async (id, patch) => {
+    const { tripId } = get();
+    const updated = await bookingsRepo.updateBooking(id, patch);
+    if (!updated || !tripId) return;
+    set({ bookings: await bookingsRepo.listBookings(tripId) });
+  },
+
+  removeBooking: async (id) => {
+    const booking = get().bookings.find((b) => b.id === id);
+    await bookingsRepo.deleteBooking(id);
+    set({ bookings: get().bookings.filter((b) => b.id !== id) });
+    if (!booking) return;
+    useToastStore.getState().show({
+      message: `${booking.title} removed`,
+      undo: async () => {
+        await bookingsRepo.restoreBooking(booking);
+        const { tripId } = get();
+        if (tripId) set({ bookings: await bookingsRepo.listBookings(tripId) });
       },
     });
   },

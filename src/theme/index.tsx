@@ -13,7 +13,7 @@ import { darkPalette, lightPalette, type Palette } from './palette';
 export * from './palette';
 export {
   elevation, radius, spacing, type,
-  HIT_SLOP, MIN_TAP, categoryIcons, categoryLabels,
+  HIT_SLOP, MIN_TAP, bookingIcons, bookingLabels, categoryIcons, categoryLabels,
 } from '../tokens';
 
 const ThemeContext = createContext<Palette>(lightPalette);
