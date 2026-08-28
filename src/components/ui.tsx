@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import type { ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
+  Animated,
   ActivityIndicator,
   Platform,
   Pressable,
@@ -13,9 +14,13 @@ import {
   type ViewStyle,
 } from 'react-native';
 
+import { SHIMMER_MS, duration, easing, useAnimatedNumber, useReducedMotion } from '../motion';
 import { HIT_SLOP, MIN_TAP, elevation, makeStyles, radius, spacing, type, useTheme } from '../theme';
 
 /** Shared primitives, so screens are about behaviour rather than padding. */
+
+/** Inset of the selected pill from the track's edge. */
+const SEGMENT_PADDING = 4;
 
 export type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -214,14 +219,48 @@ export function Loading({ label }: { label?: string }) {
  */
 export function SkeletonList({ rows = 3 }: { rows?: number }) {
   const styles = useStyles();
+  const reduced = useReducedMotion();
+
+  // A slow, low-contrast pulse: enough to read as "still working", not enough
+  // to draw the eye away from whatever lands next. Under reduce motion the
+  // placeholders simply sit still — they already say "loading" by shape.
+  const pulse = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (reduced) return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, {
+          toValue: 1,
+          duration: SHIMMER_MS / 2,
+          easing: easing.standard,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulse, {
+          toValue: 0,
+          duration: SHIMMER_MS / 2,
+          easing: easing.standard,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [pulse, reduced]);
+
+  const opacity = reduced
+    ? 1
+    : pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 0.45] });
+
   return (
-    <View style={styles.skeletonWrap}>
+    <View style={styles.skeletonWrap} accessibilityLabel="Loading">
       {Array.from({ length: rows }).map((_, i) => (
         <View key={i} style={[styles.card, elevation.sm, styles.skeletonCard]}>
-          <View style={styles.skeletonAvatar} />
+          <Animated.View style={[styles.skeletonAvatar, { opacity }]} />
           <View style={styles.skeletonLines}>
-            <View style={[styles.skeletonLine, { width: '55%' }]} />
-            <View style={[styles.skeletonLine, { width: '35%', height: 10 }]} />
+            <Animated.View style={[styles.skeletonLine, { width: '55%', opacity }]} />
+            <Animated.View
+              style={[styles.skeletonLine, { width: '35%', height: 10, opacity }]}
+            />
           </View>
         </View>
       ))}
@@ -243,8 +282,44 @@ export function SegmentedControl<T extends string>({
 }) {
   const styles = useStyles();
   const t = useTheme();
+  const reduced = useReducedMotion();
+
+  // The selected pill travels to the tapped segment rather than blinking out
+  // and in somewhere else — the movement is what says "this became that".
+  const index = Math.max(0, options.findIndex((o) => o.value === value));
+  const slide = useAnimatedNumber(index, { ms: duration.standard, reduced });
+  const [width, setWidth] = useState(0);
+  const segmentWidth = options.length > 0 ? width / options.length : 0;
+
   return (
-    <View style={[styles.segmented, style]}>
+    <View
+      style={[styles.segmented, style]}
+      onLayout={(e) => setWidth(e.nativeEvent.layout.width - SEGMENT_PADDING * 2)}
+    >
+      {segmentWidth > 0 ? (
+        <Animated.View
+          // Decorative: the selected state is already on each tab.
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          pointerEvents="none"
+          style={[
+            styles.segmentThumb,
+            elevation.sm,
+            {
+              width: segmentWidth,
+              transform: [
+                {
+                  translateX: slide.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, segmentWidth],
+                  }),
+                },
+              ],
+            },
+          ]}
+        />
+      ) : null}
+
       {options.map((option) => {
         const active = option.value === value;
         return (
@@ -257,7 +332,7 @@ export function SegmentedControl<T extends string>({
               if (!active) tap(Haptics.ImpactFeedbackStyle.Soft);
               onChange(option.value);
             }}
-            style={[styles.segment, active && styles.segmentActive, active && elevation.sm]}
+            style={styles.segment}
           >
             {option.icon ? (
               <Ionicons
@@ -554,8 +629,9 @@ const useStyles = makeStyles((t) => ({
     flexDirection: 'row',
     backgroundColor: t.surfaceSunken,
     borderRadius: radius.md,
-    padding: 4,
-    gap: 4,
+    padding: SEGMENT_PADDING,
+    // No gap: the sliding thumb is positioned as a fraction of the track, so
+    // the segments have to tile it exactly.
   },
   segment: {
     flex: 1,
@@ -567,7 +643,14 @@ const useStyles = makeStyles((t) => ({
     minHeight: MIN_TAP,
     borderRadius: radius.sm,
   },
-  segmentActive: { backgroundColor: t.surfaceRaised },
+  segmentThumb: {
+    position: 'absolute',
+    top: SEGMENT_PADDING,
+    left: SEGMENT_PADDING,
+    bottom: SEGMENT_PADDING,
+    borderRadius: radius.sm,
+    backgroundColor: t.surfaceRaised,
+  },
   segmentText: { ...type.label, color: t.textMuted },
   segmentTextActive: { color: t.text },
 

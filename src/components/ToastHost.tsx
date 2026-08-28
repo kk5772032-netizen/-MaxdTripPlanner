@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { duration, easing, useReducedMotion } from '../motion';
 import { useToastStore } from '../state/toastStore';
 import { elevation, makeStyles, radius, spacing, type, useTheme } from '../theme';
 
@@ -20,6 +21,7 @@ export function ToastHost({ offsetBottom = 0 }: { offsetBottom?: number }) {
   const dismiss = useToastStore((s) => s.dismiss);
   const insets = useSafeAreaInsets();
 
+  const reduced = useReducedMotion();
   const slide = useRef(new Animated.Value(0)).current;
   const progress = useRef(new Animated.Value(0)).current;
 
@@ -29,8 +31,13 @@ export function ToastHost({ offsetBottom = 0 }: { offsetBottom?: number }) {
 
     slide.setValue(0);
     progress.setValue(0);
+    // Under reduce motion this becomes a plain cross-fade — the travel is
+    // dropped below, not merely shortened.
     Animated.timing(slide, {
-      toValue: 1, duration: 250, easing: Easing.out(Easing.cubic), useNativeDriver: true,
+      toValue: 1,
+      duration: reduced ? duration.reduced : duration.standard,
+      easing: reduced ? Easing.linear : easing.enter,
+      useNativeDriver: true,
     }).start();
 
     // The bar is the countdown made visible, so it uses the same duration the
@@ -43,7 +50,7 @@ export function ToastHost({ offsetBottom = 0 }: { offsetBottom?: number }) {
 
     const timer = setTimeout(() => dismiss(id), toast.durationMs);
     return () => clearTimeout(timer);
-  }, [toast, dismiss, slide, progress]);
+  }, [toast, dismiss, slide, progress, reduced]);
 
   if (!toast) return null;
 
@@ -55,7 +62,13 @@ export function ToastHost({ offsetBottom = 0 }: { offsetBottom?: number }) {
         { bottom: spacing.lg + offsetBottom + insets.bottom },
         {
           opacity: slide,
-          transform: [{ translateY: slide.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }],
+          transform: [
+            {
+              translateY: reduced
+                ? 0
+                : slide.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }),
+            },
+          ],
         },
       ]}
     >

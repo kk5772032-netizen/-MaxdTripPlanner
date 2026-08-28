@@ -66,19 +66,31 @@ exports[`BudgetBar renders amber from 80% to the cap 1`] = `
     }
   >
     <View
+      collapsable={false}
       style={
-        [
-          {
-            "borderRadius": 999,
-            "height": "100%",
-          },
+        {
+          "backgroundColor": "#B54708",
+          "borderRadius": 999,
+          "height": "100%",
+          "width": "80%",
+        }
+      }
+    >
+      <View
+        collapsable={false}
+        style={
           {
             "backgroundColor": "#B54708",
-            "width": "80%",
-          },
-        ]
-      }
-    />
+            "bottom": 0,
+            "left": 0,
+            "opacity": 1,
+            "position": "absolute",
+            "right": 0,
+            "top": 0,
+          }
+        }
+      />
+    </View>
   </View>
 </View>
 `;
@@ -112,19 +124,31 @@ exports[`BudgetBar renders compact without the explanatory note 1`] = `
     }
   >
     <View
+      collapsable={false}
       style={
-        [
-          {
-            "borderRadius": 999,
-            "height": "100%",
-          },
+        {
+          "backgroundColor": "#099250",
+          "borderRadius": 999,
+          "height": "100%",
+          "width": "50%",
+        }
+      }
+    >
+      <View
+        collapsable={false}
+        style={
           {
             "backgroundColor": "#099250",
-            "width": "50%",
-          },
-        ]
-      }
-    />
+            "bottom": 0,
+            "left": 0,
+            "opacity": 1,
+            "position": "absolute",
+            "right": 0,
+            "top": 0,
+          }
+        }
+      />
+    </View>
   </View>
 </View>
 `;
@@ -195,19 +219,31 @@ exports[`BudgetBar renders green under 80% 1`] = `
     }
   >
     <View
+      collapsable={false}
       style={
-        [
-          {
-            "borderRadius": 999,
-            "height": "100%",
-          },
+        {
+          "backgroundColor": "#099250",
+          "borderRadius": 999,
+          "height": "100%",
+          "width": "50%",
+        }
+      }
+    >
+      <View
+        collapsable={false}
+        style={
           {
             "backgroundColor": "#099250",
-            "width": "50%",
-          },
-        ]
-      }
-    />
+            "bottom": 0,
+            "left": 0,
+            "opacity": 1,
+            "position": "absolute",
+            "right": 0,
+            "top": 0,
+          }
+        }
+      />
+    </View>
   </View>
 </View>
 `;
@@ -278,19 +314,31 @@ exports[`BudgetBar renders red over the cap, with the overage spelled out 1`] = 
     }
   >
     <View
+      collapsable={false}
       style={
-        [
-          {
-            "borderRadius": 999,
-            "height": "100%",
-          },
+        {
+          "backgroundColor": "#F04438",
+          "borderRadius": 999,
+          "height": "100%",
+          "width": "100%",
+        }
+      }
+    >
+      <View
+        collapsable={false}
+        style={
           {
             "backgroundColor": "#F04438",
-            "width": "100%",
-          },
-        ]
-      }
-    />
+            "bottom": 0,
+            "left": 0,
+            "opacity": 1,
+            "position": "absolute",
+            "right": 0,
+            "top": 0,
+          }
+        }
+      />
+    </View>
   </View>
   <View
     style={

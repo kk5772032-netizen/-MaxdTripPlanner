@@ -100,3 +100,28 @@ export const categoryIcons: Record<string, string> = {
   lodging: 'bed',
   other: 'ellipsis-horizontal',
 };
+
+/**
+ * Booking kinds. Each is the recognisable silhouette for its mode of travel —
+ * a reservation list is scanned, not read, so the icon does the sorting before
+ * the title is even parsed.
+ */
+export const bookingIcons: Record<string, string> = {
+  flight: 'airplane',
+  lodging: 'bed',
+  train: 'train',
+  bus: 'bus',
+  car: 'car-sport',
+  restaurant: 'restaurant',
+  other: 'bookmark',
+};
+
+export const bookingLabels: Record<string, string> = {
+  flight: 'Flight',
+  lodging: 'Stay',
+  train: 'Train',
+  bus: 'Bus',
+  car: 'Car',
+  restaurant: 'Table',
+  other: 'Other',
+};

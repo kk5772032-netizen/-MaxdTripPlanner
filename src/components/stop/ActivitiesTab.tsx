@@ -7,6 +7,7 @@ import { useTripStore } from '../../state/tripStore';
 import { elevation, makeStyles, radius, spacing, type } from '../../theme';
 import type { Activity, Stop } from '../../types';
 import { AmountInput } from '../AmountInput';
+import { Checkbox } from '../Checkbox';
 import { Button, Card, EmptyState, IconButton, Input, notifySuccess } from '../ui';
 
 /** Checklist of things to do at a stop, each with an optional estimated cost. */
@@ -100,11 +101,7 @@ export function ActivitiesTab({
                 onLongPress={() => remove(activity)}
                 style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}
               >
-                <View style={[styles.checkbox, activity.done && styles.checkboxDone]}>
-                  {activity.done ? (
-                    <Ionicons name="checkmark" size={14} color="#fff" />
-                  ) : null}
-                </View>
+                <Checkbox checked={activity.done} />
                 <Text
                   style={[styles.itemTitle, activity.done && styles.itemTitleDone]}
                   numberOfLines={2}
@@ -160,16 +157,6 @@ const useStyles = makeStyles((t) => ({
     borderBottomColor: t.border,
   },
   itemPressed: { backgroundColor: t.bg },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: radius.sm,
-    borderWidth: 1.5,
-    borderColor: t.borderStrong,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkboxDone: { backgroundColor: t.under, borderColor: t.under },
   itemTitle: { flex: 1, ...type.body, color: t.text },
   itemTitleDone: { color: t.textFaint, textDecorationLine: 'line-through' },
   itemCost: { ...type.label, color: t.textMuted },

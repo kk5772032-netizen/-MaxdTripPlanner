@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { Animated, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
 import { progressRatio, statusFor } from '../budget/engine';
 import { formatMoney } from '../budget/money';
+import { animateTo, duration, useAnimatedNumber, useReducedMotion } from '../motion';
 import { makeStyles, radius, spacing, statusColorOf, type, useTheme } from '../theme';
 import type { BudgetStatus } from '../types';
 
@@ -34,9 +36,27 @@ export function BudgetBar({
 }) {
   const styles = useStyles();
   const t = useTheme();
+  const reduced = useReducedMotion();
   const status: BudgetStatus = statusFor(actual, cap);
   const ratio = progressRatio(actual, cap);
   const color = statusColorOf(t, status);
+
+  // The bar redraws itself when an expense lands, rather than teleporting: the
+  // movement is the feedback that the money went somewhere.
+  const width = useAnimatedNumber(ratio, { reduced });
+
+  // Colour is cross-faded through a second, overlaid fill. Interpolating
+  // between two hex strings would pass through whatever sits between them,
+  // which for green→red is a muddy brown that means nothing.
+  const previousColor = useRef(color);
+  const fade = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    if (previousColor.current === color) return;
+    fade.setValue(0);
+    const animation = animateTo(fade, 1, { ms: duration.large, reduced });
+    previousColor.current = color;
+    return () => animation.stop();
+  }, [color, fade, reduced]);
 
   // The planned marker only means something inside the bar's own scale.
   const plannedRatio =
@@ -70,12 +90,22 @@ export function BudgetBar({
           <View style={styles.trackUnset} />
         ) : (
           <>
-            <View
+            <Animated.View
               style={[
                 styles.fill,
-                { width: `${ratio * 100}%`, backgroundColor: color },
+                {
+                  width: width.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ['0%', '100%'],
+                  }),
+                  backgroundColor: previousColor.current,
+                },
               ]}
-            />
+            >
+              <Animated.View
+                style={[StyleSheet.absoluteFill, { backgroundColor: color, opacity: fade }]}
+              />
+            </Animated.View>
             {plannedRatio !== null && plannedRatio > 0 && plannedRatio < 1 ? (
               <View style={[styles.plannedTick, { left: `${plannedRatio * 100}%` }]} />
             ) : null}
