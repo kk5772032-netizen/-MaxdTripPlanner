@@ -152,13 +152,16 @@ describe('screen smoke tests', () => {
     expect(screen.getByText('Delete trip')).toBeTruthy();
   });
 
-  it('renders trip detail with the itinerary and trip total', async () => {
+  it('renders trip detail with four peer sections, planning first', async () => {
     await mountAndSettle(<TripDetailScreen />);
     await waitFor(() => expect(screen.getByText('India Gate')).toBeTruthy());
-    expect(screen.getByText('Itinerary')).toBeTruthy();
-    expect(screen.getByText('Map')).toBeTruthy();
-    // Trip footer: ₹450 spent of a ₹10,000 budget.
-    expect(screen.getByText('₹450 of ₹10,000')).toBeTruthy();
+    for (const label of ['Plan', 'Map', 'Booked', 'Money']) {
+      expect(screen.getByText(label)).toBeTruthy();
+    }
+    // The sticky trip total is gone: money is a section you visit, not a bar
+    // pinned over the plan. Its figures live under Money.
+    expect(screen.queryByText('₹450 of ₹10,000')).toBeNull();
+    expect(screen.queryByText('Trip total')).toBeNull();
   });
 
   it('shows the trip days when a dated trip has no stops', async () => {

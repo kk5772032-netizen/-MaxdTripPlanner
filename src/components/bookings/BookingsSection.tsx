@@ -1,13 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { formatMoney } from '../../../src/budget/money';
-import { BookingForm } from '../../../src/components/bookings/BookingForm';
-import { EmptyState, HeaderAction, SkeletonList, type IconName } from '../../../src/components/ui';
-import { formatDayLabel, formatTime } from '../../../src/itinerary/schedule';
-import { useTripStore } from '../../../src/state/tripStore';
+import { formatMoney } from '../../budget/money';
+import { formatDayLabel, formatTime } from '../../itinerary/schedule';
+import { useTripStore } from '../../state/tripStore';
 import {
   bookingIcons,
   bookingLabels,
@@ -17,31 +14,25 @@ import {
   spacing,
   type,
   useTheme,
-} from '../../../src/theme';
-import type { Booking } from '../../../src/types';
+} from '../../theme';
+import type { Booking, Trip } from '../../types';
+import { Button, EmptyState, type IconName } from '../ui';
+import { BookingForm } from './BookingForm';
 
 /**
  * Everything already booked, in the order it happens.
  *
- * This is a lookup screen before it is a planning one: the moment it matters is
+ * A lookup surface before it is a planning one: the moment it matters is
  * standing at a desk being asked for a reference number, so the confirmation
- * code is the most prominent thing on a row after the title, and it is
- * selectable rather than something to squint at and retype.
+ * code sits directly under the title and is selectable rather than something
+ * to squint at and retype.
  */
-export default function BookingsScreen() {
+export function BookingsSection({ trip }: { trip: Trip }) {
   const styles = useStyles();
-  const { tripId } = useLocalSearchParams<{ tripId: string }>();
-  const { trip, bookings, loading, open, removeBooking } = useTripStore();
+  const { bookings, removeBooking } = useTripStore();
 
-  const [ready, setReady] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Booking | null>(null);
-
-  useFocusEffect(
-    useCallback(() => {
-      void open(tripId).then(() => setReady(true));
-    }, [tripId, open]),
-  );
 
   // Grouped by the day they start, so a four-day trip reads as four blocks
   // rather than one undifferentiated column.
@@ -60,81 +51,62 @@ export default function BookingsScreen() {
     });
   }, [bookings]);
 
-  if (loading || !ready) return <SkeletonList rows={3} />;
-  if (!trip) return null;
-
   const close = () => {
     setFormOpen(false);
     setEditing(null);
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <Stack.Screen
-        options={{
-          title: 'Bookings',
-          headerRight: () => (
-            <HeaderAction
-              label={formOpen || editing ? 'Close' : 'Add'}
-              icon={formOpen || editing ? 'close' : 'add'}
-              onPress={() => {
-                if (formOpen || editing) close();
-                else setFormOpen(true);
-              }}
-            />
-          ),
-        }}
-      />
+    <View style={styles.section}>
+      {formOpen || editing ? (
+        <BookingForm
+          key={editing?.id ?? 'new'}
+          currency={trip.currency}
+          trip={trip}
+          editing={editing}
+          onDone={close}
+        />
+      ) : (
+        <Button
+          title="Add a booking"
+          icon="add"
+          variant="secondary"
+          onPress={() => setFormOpen(true)}
+        />
+      )}
 
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        {formOpen || editing ? (
-          <BookingForm
-            key={editing?.id ?? 'new'}
-            currency={trip.currency}
-            trip={trip}
-            editing={editing}
-            onDone={close}
-          />
-        ) : null}
+      {bookings.length === 0 && !formOpen ? (
+        <EmptyState
+          icon="bookmark-outline"
+          title="Nothing booked yet"
+          body="Flights, hotels, trains and tables — with their confirmation numbers, so you're not digging through email at a check-in desk."
+        />
+      ) : null}
 
-        {bookings.length === 0 && !formOpen ? (
-          <EmptyState
-            icon="bookmark-outline"
-            title="Nothing booked yet"
-            body="Flights, hotels, trains and tables — with their confirmation numbers, so you're not digging through email at a check-in desk."
-          />
-        ) : null}
-
-        {groups.map(([day, items]) => (
-          <View key={day || 'undated'} style={styles.group}>
-            <Text style={styles.groupTitle}>
-              {day ? formatDayLabel(day) : 'No date yet'}
-            </Text>
-            <View style={styles.list}>
-              {items.map((booking) => (
-                <BookingRow
-                  key={booking.id}
-                  booking={booking}
-                  currency={trip.currency}
-                  onPress={() => {
-                    setFormOpen(false);
-                    setEditing(booking);
-                  }}
-                  onLongPress={() => void removeBooking(booking.id)}
-                />
-              ))}
-            </View>
+      {groups.map(([day, items]) => (
+        <View key={day || 'undated'} style={styles.group}>
+          <Text style={styles.groupTitle}>{day ? formatDayLabel(day) : 'No date yet'}</Text>
+          <View style={styles.list}>
+            {items.map((booking) => (
+              <BookingRow
+                key={booking.id}
+                booking={booking}
+                currency={trip.currency}
+                onPress={() => {
+                  setFormOpen(false);
+                  setEditing(booking);
+                }}
+                onLongPress={() => void removeBooking(booking.id)}
+              />
+            ))}
           </View>
-        ))}
+        </View>
+      ))}
 
-        {bookings.length > 0 ? (
-          <Text style={styles.hint}>Tap to edit, long-press to delete.</Text>
-        ) : null}
-      </ScrollView>
-    </KeyboardAvoidingView>
+      {bookings.length > 0 ? (
+        <Text style={styles.hint}>Tap to edit, long-press to delete.</Text>
+      ) : null}
+    </View>
   );
 }
 
@@ -208,8 +180,7 @@ function BookingRow({
 }
 
 const useStyles = makeStyles((t) => ({
-  flex: { flex: 1, backgroundColor: t.bg },
-  content: { padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xxl },
+  section: { gap: spacing.lg },
 
   group: { gap: spacing.sm },
   groupTitle: { ...type.label, color: t.textMuted },

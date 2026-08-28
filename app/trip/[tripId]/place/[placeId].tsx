@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import {
@@ -27,9 +28,9 @@ import {
   notifySuccess,
 } from '../../../../src/components/ui';
 import { useTripStore } from '../../../../src/state/tripStore';
-import { makeStyles, spacing, type } from '../../../../src/theme';
+import { makeStyles, spacing, type, useTheme } from '../../../../src/theme';
 
-type Tab = 'activities' | 'food' | 'budget';
+type Tab = 'activities' | 'food' | 'overview';
 
 export default function StopDetailScreen() {
   const styles = useStyles();
@@ -125,7 +126,7 @@ export default function StopDetailScreen() {
               label: foodPlans.length ? `Food ${foodPlans.length}` : 'Food',
               icon: 'restaurant-outline',
             },
-            { value: 'budget', label: 'Budget', icon: 'wallet-outline' },
+            { value: 'overview', label: 'Details', icon: 'information-circle-outline' },
           ]}
         />
       </View>
@@ -138,8 +139,8 @@ export default function StopDetailScreen() {
         <FoodTab stop={stop} currency={trip.currency} foodPlans={foodPlans} />
       ) : null}
 
-      {tab === 'budget' ? (
-        <BudgetTab
+      {tab === 'overview' ? (
+        <OverviewTab
           currency={trip.currency}
           summary={summary}
           onRemoveStop={() => void removeThisStop()}
@@ -151,7 +152,14 @@ export default function StopDetailScreen() {
   );
 }
 
-function BudgetTab({
+/**
+ * What this stop is, with money as one line rather than the whole tab.
+ *
+ * The old Budget tab put a cap form and three figures on equal footing with
+ * the two planning tabs, which is a third of the stop screen given over to
+ * spending. Address, rating and the cap now sit together as stop details.
+ */
+function OverviewTab({
   currency,
   summary,
   onRemoveStop,
@@ -165,6 +173,7 @@ function BudgetTab({
   onOpenExpenses: () => void;
 }) {
   const styles = useStyles();
+  const t = useTheme();
   const updateStop = useTripStore((s) => s.updateStop);
   const [capText, setCapText] = useState(
     toDecimalString(summary.stop.plannedBudgetMinor, currency),
@@ -183,8 +192,27 @@ function BudgetTab({
     }
   };
 
+  const { stop } = summary;
+
   return (
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      {stop.address || stop.rating !== null ? (
+        <Card style={styles.gapped}>
+          {stop.address ? (
+            <View style={styles.detailRow}>
+              <Ionicons name="location-outline" size={16} color={t.textMuted} />
+              <Text style={styles.detailText}>{stop.address}</Text>
+            </View>
+          ) : null}
+          {stop.rating !== null ? (
+            <View style={styles.detailRow}>
+              <Ionicons name="star" size={16} color={t.near} />
+              <Text style={styles.detailText}>{stop.rating.toFixed(1)} on Google</Text>
+            </View>
+          ) : null}
+        </Card>
+      ) : null}
+
       <Card>
         <Field
           label="Budget for this stop"
@@ -274,6 +302,8 @@ const useStyles = makeStyles((t) => ({
   rowLabel: { ...type.body, color: t.textMuted },
   rowValue: { ...type.amount, color: t.text },
   rowValueOver: { color: t.overText },
+  detailRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  detailText: { flex: 1, ...type.body, color: t.text },
   plannedNote: { ...type.caption, color: t.textFaint },
   missing: { flex: 1, justifyContent: 'center' },
 }));
