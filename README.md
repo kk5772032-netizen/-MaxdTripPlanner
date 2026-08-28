@@ -37,8 +37,9 @@ keystore of your own.
 Two optional repository secrets get baked in when present:
 `EXPO_PUBLIC_GOOGLE_PLACES_KEY` turns on place search, and
 `EXPO_PUBLIC_GOOGLE_MAPS_KEY` makes the map draw tiles. Without them the app
-still works — stops are added by typing, and the map is the only thing that
-looks empty.
+still works — stops are added by typing, photos and opening hours are simply
+absent rather than broken, and Directions still opens Google Maps, because that
+is a URL rather than an API call. The map is the only thing that looks empty.
 
 ### Option B — build an APK with EAS
 
@@ -165,7 +166,10 @@ already spent. Set both, and treat the cap as the one that matters.
 
 - **Field masks are exactly what each screen renders.** Places (New) picks its
   billing tier from the fields you request, so asking for something you don't
-  display costs money for nothing.
+  display costs money for nothing. Details and Nearby ask for hours, review
+  counts, price level, phone and website — all Enterprise-tier fields, which the
+  rating already put the call in, so they ride along rather than costing extra.
+  Nothing that would push either call to Enterprise+ is requested.
 - **Autocomplete runs under a session token**, held from the moment the search
   field mounts until you pick a result, then rotated. Google bills the whole
   type-and-select flow as one session instead of per keystroke.
@@ -178,6 +182,12 @@ already spent. Set both, and treat the cap as the one that matters.
   Food tab, or when you tap Refresh. Nothing else triggers it.
 - **Offline falls back to the cache.** If a call fails and there's an expired
   entry, the app serves the stale copy and says so, rather than showing an error.
+- **Open or closed is computed locally.** Google's `openNow` is only true at the
+  moment it was computed, and these responses are cached for thirty days, so the
+  structured periods are stored and the question is answered from the clock —
+  in the place's own timezone — every time it's asked.
+- **Directions cost nothing.** Handing a place to Google Maps is a plain URL, not
+  a billed API call, so it works with no Places key at all.
 
 ---
 
@@ -227,6 +237,9 @@ app/                        expo-router file-based routes
 src/
   api/places.ts             Places API (New) client — field masks, session tokens
   api/placesCache.ts        30-day SQLite response cache
+  places/hours.ts           open-or-shut from the clock, in the place's timezone
+  places/maps.ts            Google Maps handoff — directions, place, whole route
+  places/usePlaceContent.ts fetches a stop's photos, rating and hours
   budget/engine.ts          pure budget maths (planned/actual/status/totals)
   budget/money.ts           minor-unit parsing and formatting
   db/schema.ts              CREATE TABLE statements
@@ -341,4 +354,5 @@ appearance and asserts on the colour actually painted.
 Everything is stored in a local SQLite database on the device. There is no
 account, no server, and no sync — uninstalling the app deletes your trips. The
 only data that leaves the device is what you type into place search, which goes
-to Google Places.
+to Google Places, and the place you tap Directions for, which goes to Google
+Maps in the URL that opens it.

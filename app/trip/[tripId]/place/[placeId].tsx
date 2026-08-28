@@ -13,6 +13,8 @@ import {
 import { stopSummary } from '../../../../src/budget/engine';
 import { formatMoney, parseMoney, toDecimalString } from '../../../../src/budget/money';
 import { ActivitiesTab } from '../../../../src/components/stop/ActivitiesTab';
+import { PhotoStrip } from '../../../../src/components/places/PhotoStrip';
+import { PlaceFacts } from '../../../../src/components/places/PlaceFacts';
 import { FoodTab } from '../../../../src/components/stop/FoodTab';
 import { ScheduleControls } from '../../../../src/components/itinerary/ScheduleControls';
 import { StopNotes } from '../../../../src/components/stop/StopNotes';
@@ -23,10 +25,13 @@ import {
   Card,
   EmptyState,
   Field,
+  Notice,
   SegmentedControl,
   SkeletonList,
   notifySuccess,
 } from '../../../../src/components/ui';
+import { directionsUrl, openInMaps, placeUrl } from '../../../../src/places/maps';
+import { usePlaceContent } from '../../../../src/places/usePlaceContent';
 import { useTripStore } from '../../../../src/state/tripStore';
 import { makeStyles, spacing, type, useTheme } from '../../../../src/theme';
 
@@ -193,10 +198,21 @@ function OverviewTab({
   };
 
   const { stop } = summary;
+  const content = usePlaceContent(stop.googlePlaceId);
 
   return (
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      {stop.address || stop.rating !== null ? (
+      {content.status === 'ready' ? (
+        <PhotoStrip photoRefs={content.details.photoRefs} name={stop.name} />
+      ) : null}
+
+      {/* What we always know, from the row in our own database, and what Google
+          can add on top. Without a key or a network the first still stands. */}
+      {content.status === 'ready' ? (
+        <Card style={styles.gapped}>
+          <PlaceFacts details={content.details} currency={currency} />
+        </Card>
+      ) : stop.address || stop.rating !== null ? (
         <Card style={styles.gapped}>
           {stop.address ? (
             <View style={styles.detailRow}>
@@ -210,6 +226,39 @@ function OverviewTab({
               <Text style={styles.detailText}>{stop.rating.toFixed(1)} on Google</Text>
             </View>
           ) : null}
+        </Card>
+      ) : null}
+
+      {/* Directions come before anything else on this tab and never depend on
+          Places: a stop typed by hand still has a name, and Maps can search on
+          a name. This is the button people press while already walking. */}
+      <View style={styles.directions}>
+        <View style={styles.directionsMain}>
+          <Button
+            title="Directions"
+            icon="navigate"
+            onPress={() => void openInMaps(directionsUrl(stop))}
+          />
+        </View>
+        <View style={styles.directionsMain}>
+          <Button
+            title="View on map"
+            icon="map-outline"
+            variant="secondary"
+            onPress={() => void openInMaps(placeUrl(stop))}
+          />
+        </View>
+      </View>
+
+      {content.status === 'error' ? (
+        <Card style={styles.gapped}>
+          <Notice tone="warning" body={content.message} />
+          <Button
+            title="Try again"
+            icon="refresh-outline"
+            variant="secondary"
+            onPress={content.retry}
+          />
         </Card>
       ) : null}
 
@@ -297,6 +346,8 @@ const useStyles = makeStyles((t) => ({
   tabBar: { padding: spacing.lg, paddingBottom: spacing.md, gap: spacing.md },
   content: { padding: spacing.lg, paddingTop: 0, gap: spacing.lg, paddingBottom: spacing.xxl },
   gapped: { gap: spacing.md },
+  directions: { flexDirection: 'row', gap: spacing.md },
+  directionsMain: { flex: 1 },
   rows: { gap: spacing.sm },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   rowLabel: { ...type.body, color: t.textMuted },

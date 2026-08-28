@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { PlacesError, hasApiKey, nearbyRestaurants } from '../../api/places';
+import { PlacesError, hasApiKey, nearbyRestaurants, photoUrl } from '../../api/places';
 import { formatMoney, parseMoney, sumMinor, toDecimalString } from '../../budget/money';
 import { useTripStore } from '../../state/tripStore';
 import { elevation, makeStyles, radius, spacing, type } from '../../theme';
+import { Image } from 'expo-image';
+
+import { currencySymbol } from '../../budget/money';
+import { openState, priceLevelLabel } from '../../places/hours';
 import type { FoodPlan, NearbyRestaurant, Stop } from '../../types';
 import { AmountInput } from '../AmountInput';
 import {
@@ -169,6 +173,7 @@ export function FoodTab({
                 <NearbyRow
                   key={restaurant.placeId}
                   restaurant={restaurant}
+              currency={currency}
                   added={plannedPlaceIds.has(restaurant.placeId)}
                   onAdd={() => addFromNearby(restaurant)}
                 />
@@ -253,29 +258,58 @@ function PlanRow({
 
 function NearbyRow({
   restaurant,
+  currency,
   added,
   onAdd,
 }: {
   restaurant: NearbyRestaurant;
+  currency: string;
   added: boolean;
   onAdd: () => void;
 }) {
   const styles = useStyles();
+  const thumb = photoUrl(restaurant.photoRef, 160);
+  const state = openState(restaurant.hours);
+
+  const meta = [
+    restaurant.cuisine,
+    restaurant.rating != null
+      ? `★ ${restaurant.rating.toFixed(1)}${
+          restaurant.userRatingCount ? ` (${restaurant.userRatingCount})` : ''
+        }`
+      : null,
+    // The trip's currency, not a hardcoded rupee: a price level shown in the
+    // wrong symbol is a small lie about a place you might book on it.
+    priceLevelLabel(restaurant.priceLevel, currencySymbol(currency)),
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
   return (
     <View style={styles.item}>
+      {thumb ? (
+        <Image source={{ uri: thumb }} style={styles.thumb} contentFit="cover" transition={150} />
+      ) : null}
+
       <View style={styles.itemMain}>
         <Text style={styles.itemTitle} numberOfLines={1}>
           {restaurant.name}
         </Text>
-        <Text style={styles.itemMeta} numberOfLines={1}>
-          {[
-            restaurant.cuisine,
-            restaurant.rating != null ? `★ ${restaurant.rating.toFixed(1)}` : null,
-            restaurant.priceLevel != null ? '₹'.repeat(Math.max(1, restaurant.priceLevel)) : null,
-          ]
-            .filter(Boolean)
-            .join(' · ')}
-        </Text>
+        {meta ? (
+          <Text style={styles.itemMeta} numberOfLines={1}>
+            {meta}
+          </Text>
+        ) : null}
+        {state.status !== 'unknown' ? (
+          <Text
+            style={[
+              styles.openState,
+              state.status === 'open' ? styles.openStateOpen : styles.openStateShut,
+            ]}
+          >
+            {state.status === 'open' ? 'Open now' : 'Closed now'}
+          </Text>
+        ) : null}
       </View>
 
       <Pressable
@@ -368,6 +402,10 @@ const useStyles = makeStyles((t) => ({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: t.border,
   },
+  thumb: { width: 52, height: 52, borderRadius: 10, backgroundColor: t.surfaceSunken },
+  openState: { ...type.caption, fontWeight: '600' },
+  openStateOpen: { color: t.underText },
+  openStateShut: { color: t.textFaint },
   itemMain: { flex: 1, gap: 1 },
   itemTitle: { ...type.bodyStrong, color: t.text },
   itemMeta: { ...type.caption, color: t.textMuted },

@@ -7,6 +7,8 @@
  * why the fields below are named `*_minor`. See `src/budget/money.ts`.
  */
 
+import type { OpeningHours } from './places/hours';
+
 export type ExpenseCategory =
   | 'food'
   | 'activity'
@@ -159,14 +161,25 @@ export interface PlaceDetails {
   lat: number | null;
   lng: number | null;
   rating: number | null;
+  /** How many reviews the rating rests on. 4.8 from six people is not 4.8. */
+  userRatingCount: number | null;
+  /** Google's 0–4 price level, when present. */
+  priceLevel: number | null;
   /** Places API photo resource name, e.g. "places/ABC/photos/XYZ". */
   photoRef: string | null;
+  /** The first few photos, for the gallery on a stop. Includes `photoRef`. */
+  photoRefs: string[];
+  /**
+   * Structured hours, so open-or-shut can be recomputed from the clock rather
+   * than trusting a cached `openNow`. See `src/places/hours.ts`.
+   */
+  hours: OpeningHours | null;
+  phone: string | null;
+  website: string | null;
 }
 
 /** A restaurant from Nearby Search. */
 export interface NearbyRestaurant extends PlaceDetails {
   /** Primary type label, e.g. "indian_restaurant" -> "Indian". */
   cuisine: string | null;
-  /** Google's 0–4 price level, when present. */
-  priceLevel: number | null;
 }

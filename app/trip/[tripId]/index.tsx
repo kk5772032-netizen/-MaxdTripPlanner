@@ -22,6 +22,7 @@ import {
 } from '../../../src/components/ui';
 import { formatDateRange } from '../../../src/dates';
 import { tripDays } from '../../../src/itinerary/schedule';
+import { openInMaps, routeUrl } from '../../../src/places/maps';
 import { useTripStore } from '../../../src/state/tripStore';
 import { elevation, makeStyles, radius, spacing, type, useTheme } from '../../../src/theme';
 
@@ -80,6 +81,7 @@ export default function TripDetailScreen() {
   // A dated trip with no stops still shows its days: empty days are the
   // invitation to plan, and an empty state there would hide the whole point.
   const hasPlan = tripDays(trip).length > 0 || stops.length > 0;
+  const route = routeUrl(stops);
 
   const header = (
     <View style={styles.header}>
@@ -127,6 +129,18 @@ export default function TripDetailScreen() {
             onPressStop={(stop) => router.push(`/trip/${tripId}/place/${stop.id}`)}
             style={styles.map}
           />
+
+          {/* Our map shows the shape of the trip; Google's drives it. Hidden
+              below two stops, where there is no route to hand over. */}
+          {route ? (
+            <View style={[styles.mapActions, { paddingBottom: spacing.lg + insets.bottom }]}>
+              <Button
+                title="Open route in Google Maps"
+                icon="navigate"
+                onPress={() => void openInMaps(route)}
+              />
+            </View>
+          ) : null}
         </View>
       ) : (
         <ScrollView
@@ -201,6 +215,7 @@ const useStyles = makeStyles((t) => ({
   mapMode: { flex: 1 },
   mapHeader: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg },
   map: { flex: 1, marginHorizontal: spacing.lg, borderRadius: radius.lg },
+  mapActions: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
   footerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   footerLink: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingVertical: 2 },
   footerRemaining: { ...type.label, color: t.primary },

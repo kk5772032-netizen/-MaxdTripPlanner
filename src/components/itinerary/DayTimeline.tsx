@@ -1,6 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { photoUrl } from '../../api/places';
+import { directionsUrl, openInMaps } from '../../places/maps';
 import {
   formatDayLabel,
   formatDuration,
@@ -155,6 +158,9 @@ function TimelineRow({
   const t = useTheme();
   const span = formatSpan(stop);
   const done = activities.filter((a) => a.done).length;
+  // Straight from the stop's own row — no request, and nothing at all when the
+  // place was typed by hand or the build has no Places key.
+  const thumb = photoUrl(stop.photoRef, 200);
 
   const meta = [
     activities.length
@@ -182,27 +188,50 @@ function TimelineRow({
         onPress={onPress}
         style={({ pressed }) => [styles.card, elevation.sm, pressed && styles.pressed]}
       >
-        <View style={styles.cardTop}>
-          <Text style={styles.stopName} numberOfLines={1}>
-            {stop.name}
-          </Text>
-          {stop.rating != null ? (
-            <View style={styles.rating}>
-              <Ionicons name="star" size={11} color={t.near} />
-              <Text style={styles.ratingText}>{stop.rating.toFixed(1)}</Text>
-            </View>
-          ) : null}
-        </View>
-
-        {stop.address ? (
-          <Text style={styles.address} numberOfLines={1}>
-            {stop.address}
-          </Text>
+        {thumb ? (
+          <Image
+            source={{ uri: thumb }}
+            style={styles.thumb}
+            contentFit="cover"
+            transition={150}
+          />
         ) : null}
 
-        {span && stop.endTime ? <Text style={styles.span}>{span}</Text> : null}
+        <View style={styles.cardText}>
+          <View style={styles.cardTop}>
+            <Text style={styles.stopName} numberOfLines={1}>
+              {stop.name}
+            </Text>
+            {stop.rating != null ? (
+              <View style={styles.rating}>
+                <Ionicons name="star" size={11} color={t.near} />
+                <Text style={styles.ratingText}>{stop.rating.toFixed(1)}</Text>
+              </View>
+            ) : null}
+          </View>
 
-        {meta.length > 0 ? <Text style={styles.meta}>{meta.join(' · ')}</Text> : null}
+          {stop.address ? (
+            <Text style={styles.address} numberOfLines={1}>
+              {stop.address}
+            </Text>
+          ) : null}
+
+          {span && stop.endTime ? <Text style={styles.span}>{span}</Text> : null}
+
+          {meta.length > 0 ? <Text style={styles.meta}>{meta.join(' · ')}</Text> : null}
+        </View>
+
+        {/* The one thing worth doing from the plan without opening the stop:
+            you are standing somewhere and you need to get to the next place. */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Directions to ${stop.name} in Google Maps`}
+          hitSlop={8}
+          onPress={() => void openInMaps(directionsUrl(stop))}
+          style={({ pressed }) => [styles.directions, pressed && styles.pressed]}
+        >
+          <Ionicons name="navigate" size={16} color={t.primary} />
+        </Pressable>
       </Pressable>
     </View>
   );
@@ -262,14 +291,26 @@ const useStyles = makeStyles((t) => ({
 
   card: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
     backgroundColor: t.surface,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: t.border,
     borderRadius: radius.lg,
     padding: spacing.md,
     marginBottom: spacing.sm,
-    gap: 2,
   },
+  cardText: { flex: 1, gap: 2 },
+  directions: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: t.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  thumb: { width: 54, height: 54, borderRadius: radius.md, backgroundColor: t.surfaceSunken },
   cardTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   stopName: { ...type.bodyStrong, color: t.text, flex: 1 },
   rating: { flexDirection: 'row', alignItems: 'center', gap: 3 },

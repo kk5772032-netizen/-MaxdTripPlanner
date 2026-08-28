@@ -1,5 +1,6 @@
 import * as Crypto from 'expo-crypto';
 
+import type { HoursPoint, OpeningHours } from '../places/hours';
 import type { NearbyRestaurant, PlaceDetails, PlaceSuggestion } from '../types';
 import * as cache from './placesCache';
 
@@ -197,8 +198,32 @@ export async function autocomplete(
 /* Place Details                                                              */
 /* -------------------------------------------------------------------------- */
 
-/** Exactly the fields a StopCard renders — nothing more. */
-const DETAILS_FIELD_MASK = 'id,displayName,formattedAddress,location,rating,photos';
+/**
+ * Exactly the fields the stop screen renders — nothing more.
+ *
+ * Field masks pick the billing tier, so an unused field is money burnt. Every
+ * name past `photos` here is an Enterprise-tier field, and `rating` already put
+ * this call in that tier, so the hours, review count, price, phone and site
+ * ride along at no extra cost. Anything that would push it to Enterprise+
+ * (reviews, atmosphere signals) is deliberately absent.
+ */
+const DETAILS_FIELD_MASK = [
+  'id',
+  'displayName',
+  'formattedAddress',
+  'location',
+  'utcOffsetMinutes',
+  'photos',
+  'rating',
+  'userRatingCount',
+  'priceLevel',
+  'regularOpeningHours',
+  'nationalPhoneNumber',
+  'websiteUri',
+].join(',');
+
+/** Enough for a strip you can swipe, few enough to stay under the photo bill. */
+const MAX_PHOTOS = 6;
 
 interface RawPlace {
   id?: string;
@@ -206,13 +231,26 @@ interface RawPlace {
   formattedAddress?: string;
   location?: { latitude?: number; longitude?: number };
   rating?: number;
+  userRatingCount?: number;
   photos?: { name?: string }[];
   priceLevel?: string;
   primaryTypeDisplayName?: { text?: string };
   primaryType?: string;
+  utcOffsetMinutes?: number;
+  regularOpeningHours?: {
+    periods?: { open?: HoursPoint; close?: HoursPoint }[];
+    weekdayDescriptions?: string[];
+  };
+  nationalPhoneNumber?: string;
+  websiteUri?: string;
 }
 
 function toPlaceDetails(raw: RawPlace, fallbackId: string): PlaceDetails {
+  const photoRefs = (raw.photos ?? [])
+    .map((p) => p.name)
+    .filter((name): name is string => !!name)
+    .slice(0, MAX_PHOTOS);
+
   return {
     placeId: raw.id ?? fallbackId,
     name: raw.displayName?.text ?? 'Unknown place',
@@ -220,7 +258,51 @@ function toPlaceDetails(raw: RawPlace, fallbackId: string): PlaceDetails {
     lat: raw.location?.latitude ?? null,
     lng: raw.location?.longitude ?? null,
     rating: raw.rating ?? null,
-    photoRef: raw.photos?.[0]?.name ?? null,
+    userRatingCount: raw.userRatingCount ?? null,
+    priceLevel: toPriceLevel(raw.priceLevel),
+    photoRef: photoRefs[0] ?? null,
+    photoRefs,
+    hours: toOpeningHours(raw),
+    phone: raw.nationalPhoneNumber ?? null,
+    website: raw.websiteUri ?? null,
+  };
+}
+
+/**
+ * Hours are only usable if we know where the place is in time — without an
+ * offset every open/closed answer would be computed against the phone's clock,
+ * so an offset-less response is treated as having no hours at all.
+ */
+function toOpeningHours(raw: RawPlace): OpeningHours | null {
+  const hours = raw.regularOpeningHours;
+  if (!hours || raw.utcOffsetMinutes === undefined) return null;
+
+  const periods = (hours.periods ?? [])
+    .filter((p): p is { open: HoursPoint; close?: HoursPoint } => !!p.open)
+    .map((p) => ({ open: p.open, ...(p.close ? { close: p.close } : {}) }));
+  if (periods.length === 0) return null;
+
+  return {
+    periods,
+    weekdayDescriptions: hours.weekdayDescriptions ?? [],
+    utcOffsetMinutes: raw.utcOffsetMinutes,
+  };
+}
+
+/**
+ * Fills in fields that a cache entry written by an older build won't have.
+ * Thirty-day entries outlive releases, and a missing `photoRefs` would be an
+ * undefined array the gallery then tries to map over.
+ */
+function normaliseCached(value: PlaceDetails): PlaceDetails {
+  return {
+    ...value,
+    userRatingCount: value.userRatingCount ?? null,
+    priceLevel: value.priceLevel ?? null,
+    photoRefs: value.photoRefs ?? (value.photoRef ? [value.photoRef] : []),
+    hours: value.hours ?? null,
+    phone: value.phone ?? null,
+    website: value.website ?? null,
   };
 }
 
@@ -234,7 +316,7 @@ export async function placeDetails(
 ): Promise<PlaceDetails> {
   if (!forceRefresh) {
     const hit = await cache.read<PlaceDetails>('details', placeId);
-    if (hit) return hit.value;
+    if (hit) return normaliseCached(hit.value);
   }
 
   try {
@@ -249,7 +331,7 @@ export async function placeDetails(
     return details;
   } catch (e) {
     const stale = await cache.read<PlaceDetails>('details', placeId, { allowStale: true });
-    if (stale) return stale.value;
+    if (stale) return normaliseCached(stale.value);
     throw e;
   }
 }
@@ -258,15 +340,21 @@ export async function placeDetails(
 /* Nearby Search                                                              */
 /* -------------------------------------------------------------------------- */
 
+// Same tier as Details: `rating` and `priceLevel` already make this an
+// Enterprise call, so the hours and review count come along for free — and
+// "open now" is the first thing anyone wants from a restaurant list.
 const NEARBY_FIELD_MASK = [
   'places.id',
   'places.displayName',
   'places.formattedAddress',
   'places.location',
+  'places.utcOffsetMinutes',
   'places.rating',
+  'places.userRatingCount',
   'places.priceLevel',
   'places.primaryTypeDisplayName',
   'places.photos',
+  'places.regularOpeningHours',
 ].join(',');
 
 interface NearbyResponse {
@@ -351,7 +439,6 @@ export async function nearbyRestaurants(
     const restaurants: NearbyRestaurant[] = (data.places ?? []).map((raw) => ({
       ...toPlaceDetails(raw, raw.id ?? ''),
       cuisine: toCuisine(raw),
-      priceLevel: toPriceLevel(raw.priceLevel),
     }));
 
     await cache.write('nearby', stopPlaceId, restaurants);
