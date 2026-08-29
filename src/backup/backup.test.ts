@@ -1,6 +1,7 @@
 import { openTestDb, setDbForTesting } from '../db/client';
 import * as activitiesRepo from '../db/repositories/activities';
 import * as bookingsRepo from '../db/repositories/bookings';
+import * as packingRepo from '../db/repositories/packing';
 import * as expensesRepo from '../db/repositories/expenses';
 import * as foodRepo from '../db/repositories/foodPlans';
 import * as stopsRepo from '../db/repositories/stops';
@@ -64,9 +65,11 @@ describe('parseBackup', () => {
   });
 
   it('tolerates a file written before a table existed', () => {
-    // An older build had no bookings. Its files must still restore.
+    // An older build had no bookings and no packing list. Its files must still
+    // restore rather than being rejected as damaged.
     const result = parseBackup(good);
     expect(result.ok && result.backup.bookings).toEqual([]);
+    expect(result.ok && result.backup.packing).toEqual([]);
   });
 });
 
@@ -143,6 +146,11 @@ describe('a round trip through a backup', () => {
       attachmentUri: null,
       attachmentName: null,
     });
+    await packingRepo.createPackingItem({
+      tripId: trip.id,
+      title: 'Sunscreen',
+      category: 'Health',
+    });
     return trip;
   }
 
@@ -156,6 +164,7 @@ describe('a round trip through a backup', () => {
     expect(before.activities[0].done).toBe(true);
     expect(before.activities[0].durationMin).toBe(45);
     expect(before.bookings[0].confirmation).toBe('PNR7Y2Q');
+    expect(before.packing[0].title).toBe('Sunscreen');
 
     // A fresh database, as a new phone would be.
     setDbForTesting(await openTestDb());
@@ -163,7 +172,7 @@ describe('a round trip through a backup', () => {
 
     const counts = await restoreBackup(before);
     expect(counts).toEqual({
-      trips: 1, stops: 1, activities: 1, foodPlans: 1, expenses: 1, bookings: 1,
+      trips: 1, stops: 1, activities: 1, foodPlans: 1, expenses: 1, bookings: 1, packing: 1,
     });
 
     const after = await buildBackup(new Date('2026-08-29T00:00:00Z'));

@@ -150,6 +150,22 @@ export interface Booking {
   createdAt: string;
 }
 
+/**
+ * One line on a packing list.
+ *
+ * The category is free text because people group their own way — "carry-on",
+ * "toiletries", "for the baby" — and a fixed set of categories is a fight with
+ * every one of them.
+ */
+export interface PackingItem {
+  id: string;
+  tripId: string;
+  title: string;
+  category: string | null;
+  packed: boolean;
+  sequence: number;
+}
+
 /** A place as returned by the Places API, normalised to what we actually use. */
 export interface PlaceSuggestion {
   placeId: string;

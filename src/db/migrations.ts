@@ -78,6 +78,25 @@ export const MIGRATIONS: readonly Migration[] = [
       CREATE INDEX IF NOT EXISTS idx_expenses_booking ON expenses(booking_id);
     `,
   },
+  {
+    version: 4,
+    name: 'packing lists',
+    sql: `
+      -- The two days before leaving are the app's busiest hours and it had
+      -- nothing to offer them.
+      CREATE TABLE IF NOT EXISTS packing_items (
+        id TEXT PRIMARY KEY,
+        trip_id TEXT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+        title TEXT NOT NULL,
+        -- Free text rather than an enum: people group by their own logic, and
+        -- a fixed list of categories is a fight with every one of them.
+        category TEXT,
+        packed INTEGER NOT NULL DEFAULT 0,
+        sequence INTEGER NOT NULL DEFAULT 0
+      );
+      CREATE INDEX IF NOT EXISTS idx_packing_trip ON packing_items(trip_id, sequence);
+    `,
+  },
 ];
 
 /** The version a freshly created database is at once every migration has run. */

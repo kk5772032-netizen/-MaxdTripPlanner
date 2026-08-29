@@ -11,6 +11,7 @@ import { BookingsSection } from '../../../src/components/bookings/BookingsSectio
 import { BudgetSection } from '../../../src/components/budget/BudgetSection';
 import { DayTimeline } from '../../../src/components/itinerary/DayTimeline';
 import { SharePlanSheet } from '../../../src/components/itinerary/SharePlanSheet';
+import { PackingSection } from '../../../src/components/packing/PackingSection';
 import { MapWithRoute } from '../../../src/components/MapWithRoute';
 import {
   Button,
@@ -32,7 +33,7 @@ import { elevation, makeStyles, radius, spacing, type, useTheme } from '../../..
  * others: it used to be a sticky bar over every screen plus a tab on every
  * stop, which made a planning tool read as an expense tracker.
  */
-type Section = 'itinerary' | 'map' | 'bookings' | 'budget';
+type Section = 'itinerary' | 'map' | 'bookings' | 'packing' | 'budget';
 
 export default function TripDetailScreen() {
   const styles = useStyles();
@@ -100,6 +101,7 @@ export default function TripDetailScreen() {
           { value: 'itinerary', label: 'Plan', icon: 'list' },
           { value: 'map', label: 'Map', icon: 'map-outline' },
           { value: 'bookings', label: 'Booked', icon: 'bookmark-outline' },
+          { value: 'packing', label: 'Pack', icon: 'briefcase-outline' },
           { value: 'budget', label: 'Money', icon: 'wallet-outline' },
         ]}
       />
@@ -204,6 +206,8 @@ export default function TripDetailScreen() {
               onFocusHandled={() => setFocusBookingId(null)}
             />
           ) : null}
+
+          {section === 'packing' ? <PackingSection trip={trip} /> : null}
 
           {section === 'budget' ? (
             <BudgetSection

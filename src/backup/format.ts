@@ -1,4 +1,4 @@
-import type { Activity, Booking, Expense, FoodPlan, Stop, Trip } from '../types';
+import type { Activity, Booking, Expense, FoodPlan, PackingItem, Stop, Trip } from '../types';
 
 /**
  * What a backup file is.
@@ -26,6 +26,7 @@ export interface Backup {
   foodPlans: FoodPlan[];
   expenses: Expense[];
   bookings: Booking[];
+  packing: PackingItem[];
 }
 
 export interface BackupCounts {
@@ -35,6 +36,7 @@ export interface BackupCounts {
   foodPlans: number;
   expenses: number;
   bookings: number;
+  packing: number;
 }
 
 export function countsOf(backup: Backup): BackupCounts {
@@ -45,6 +47,7 @@ export function countsOf(backup: Backup): BackupCounts {
     foodPlans: backup.foodPlans.length,
     expenses: backup.expenses.length,
     bookings: backup.bookings.length,
+    packing: backup.packing.length,
   };
 }
 
@@ -88,7 +91,9 @@ export function parseBackup(text: string): ParseResult {
     };
   }
 
-  const tables = ['trips', 'stops', 'activities', 'foodPlans', 'expenses', 'bookings'] as const;
+  const tables = [
+    'trips', 'stops', 'activities', 'foodPlans', 'expenses', 'bookings', 'packing',
+  ] as const;
   for (const table of tables) {
     // A missing table is tolerated — an older file may predate bookings — but
     // something that is present and the wrong shape is a corrupt file.
@@ -117,6 +122,7 @@ export function parseBackup(text: string): ParseResult {
       foodPlans: (obj.foodPlans ?? []) as FoodPlan[],
       expenses: (obj.expenses ?? []) as Expense[],
       bookings: (obj.bookings ?? []) as Booking[],
+      packing: (obj.packing ?? []) as PackingItem[],
     },
   };
 }

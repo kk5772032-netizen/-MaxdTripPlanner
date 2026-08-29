@@ -4,7 +4,9 @@ import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';
 
 import { getDb, runInTransaction } from '../db/client';
-import type { Activity, Booking, Expense, FoodPlan, Stop, Trip } from '../types';
+import type {
+  Activity, Booking, Expense, FoodPlan, PackingItem, Stop, Trip,
+} from '../types';
 import {
   BACKUP_KIND,
   BACKUP_VERSION,
@@ -52,6 +54,10 @@ interface ExpenseRow {
   id: string; trip_id: string; stop_id: string | null; category: string;
   amount: number; note: string | null; spent_at: string; booking_id: string | null;
 }
+interface PackingRow {
+  id: string; trip_id: string; title: string; category: string | null;
+  packed: number; sequence: number;
+}
 interface BookingRow {
   id: string; trip_id: string; kind: string; title: string; confirmation: string | null;
   starts_at: string | null; ends_at: string | null; location: string | null;
@@ -61,13 +67,14 @@ interface BookingRow {
 
 export async function buildBackup(now = new Date()): Promise<Backup> {
   const db = await getDb();
-  const [trips, stops, activities, foods, expenses, bookings] = await Promise.all([
+  const [trips, stops, activities, foods, expenses, bookings, packing] = await Promise.all([
     db.getAllAsync<TripRow>('SELECT * FROM trips ORDER BY created_at ASC'),
     db.getAllAsync<StopRow>('SELECT * FROM stops ORDER BY trip_id, sequence ASC'),
     db.getAllAsync<ActivityRow>('SELECT * FROM activities ORDER BY rowid ASC'),
     db.getAllAsync<FoodRow>('SELECT * FROM food_plans ORDER BY rowid ASC'),
     db.getAllAsync<ExpenseRow>('SELECT * FROM expenses ORDER BY spent_at ASC'),
     db.getAllAsync<BookingRow>('SELECT * FROM bookings ORDER BY created_at ASC'),
+    db.getAllAsync<PackingRow>('SELECT * FROM packing_items ORDER BY trip_id, sequence ASC'),
   ]);
 
   return {
@@ -119,6 +126,12 @@ export async function buildBackup(now = new Date()): Promise<Backup> {
         createdAt: r.created_at,
       }),
     ),
+    packing: packing.map(
+      (r): PackingItem => ({
+        id: r.id, tripId: r.trip_id, title: r.title, category: r.category,
+        packed: r.packed === 1, sequence: r.sequence,
+      }),
+    ),
   };
 }
 
@@ -138,7 +151,9 @@ export async function restoreBackup(backup: Backup): Promise<BackupCounts> {
   await runInTransaction(db, async (tx) => {
     // Children first: foreign keys are on, and trips cascade anyway, but being
     // explicit means this still works if a future table forgets to cascade.
-    for (const table of ['expenses', 'bookings', 'activities', 'food_plans', 'stops', 'trips']) {
+    for (const table of [
+      'expenses', 'bookings', 'packing_items', 'activities', 'food_plans', 'stops', 'trips',
+    ]) {
       await tx.runAsync(`DELETE FROM ${table}`);
     }
 
@@ -193,6 +208,13 @@ export async function restoreBackup(backup: Backup): Promise<BackupCounts> {
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         e.id, e.tripId, e.stopId, e.category, e.amountMinor, e.note, e.spentAt,
         e.bookingId ?? null,
+      );
+    }
+    for (const i of backup.packing ?? []) {
+      await tx.runAsync(
+        `INSERT INTO packing_items (id, trip_id, title, category, packed, sequence)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        i.id, i.tripId, i.title, i.category ?? null, i.packed ? 1 : 0, i.sequence ?? 0,
       );
     }
   });
