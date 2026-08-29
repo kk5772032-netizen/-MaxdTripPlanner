@@ -50,7 +50,7 @@ interface FoodRow {
 }
 interface ExpenseRow {
   id: string; trip_id: string; stop_id: string | null; category: string;
-  amount: number; note: string | null; spent_at: string;
+  amount: number; note: string | null; spent_at: string; booking_id: string | null;
 }
 interface BookingRow {
   id: string; trip_id: string; kind: string; title: string; confirmation: string | null;
@@ -105,7 +105,7 @@ export async function buildBackup(now = new Date()): Promise<Backup> {
       (r): Expense => ({
         id: r.id, tripId: r.trip_id, stopId: r.stop_id,
         category: r.category as Expense['category'], amountMinor: r.amount,
-        note: r.note, spentAt: r.spent_at,
+        note: r.note, spentAt: r.spent_at, bookingId: r.booking_id ?? null,
       }),
     ),
     bookings: bookings.map(
@@ -175,13 +175,6 @@ export async function restoreBackup(backup: Backup): Promise<BackupCounts> {
         f.id, f.stopId, f.googlePlaceId, f.name, f.cuisine, f.estimatedCostMinor, f.notes,
       );
     }
-    for (const e of backup.expenses) {
-      await tx.runAsync(
-        `INSERT INTO expenses (id, trip_id, stop_id, category, amount, note, spent_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        e.id, e.tripId, e.stopId, e.category, e.amountMinor, e.note, e.spentAt,
-      );
-    }
     for (const b of backup.bookings) {
       await tx.runAsync(
         `INSERT INTO bookings (id, trip_id, kind, title, confirmation, starts_at, ends_at,
@@ -189,6 +182,17 @@ export async function restoreBackup(backup: Backup): Promise<BackupCounts> {
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         b.id, b.tripId, b.kind, b.title, b.confirmation, b.startsAt, b.endsAt,
         b.location, b.costMinor, b.notes, b.attachmentUri, b.attachmentName, b.createdAt,
+      );
+    }
+    // After bookings: an expense can carry a booking_id, and the foreign key
+    // fires if the booking is not in place yet.
+    for (const e of backup.expenses) {
+      await tx.runAsync(
+        `INSERT INTO expenses
+           (id, trip_id, stop_id, category, amount, note, spent_at, booking_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        e.id, e.tripId, e.stopId, e.category, e.amountMinor, e.note, e.spentAt,
+        e.bookingId ?? null,
       );
     }
   });

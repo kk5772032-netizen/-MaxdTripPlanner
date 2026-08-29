@@ -2,11 +2,20 @@ import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
-import { parseMoney, toDecimalString } from '../../budget/money';
+import { formatMoney, parseMoney, toDecimalString } from '../../budget/money';
 import { attachDocument, type Attachment } from '../../documents';
 import { tripDays } from '../../itinerary/schedule';
 import { useTripStore } from '../../state/tripStore';
-import { HIT_SLOP, bookingIcons, bookingLabels, makeStyles, spacing, type, useTheme } from '../../theme';
+import {
+  HIT_SLOP,
+  bookingExpenseCategory,
+  bookingIcons,
+  bookingLabels,
+  makeStyles,
+  spacing,
+  type,
+  useTheme,
+} from '../../theme';
 import { BOOKING_KINDS, type Booking, type BookingKind, type Trip } from '../../types';
 import { AmountInput } from '../AmountInput';
 import { DateTimeField } from '../DateTimeField';
@@ -33,7 +42,7 @@ export function BookingForm({
 }) {
   const styles = useStyles();
   const t = useTheme();
-  const { addBooking, updateBooking, removeBooking } = useTripStore();
+  const { addBooking, updateBooking, removeBooking, addExpense, expenses } = useTripStore();
 
   const [kind, setKind] = useState<BookingKind>(editing?.kind ?? 'flight');
   const [title, setTitle] = useState(editing?.title ?? '');
@@ -55,6 +64,26 @@ export function BookingForm({
 
   const days = tripDays(trip);
   const canSave = title.trim().length > 0 && !saving;
+
+  // A booking already knows what it cost. Without this the figure gets typed a
+  // second time to become an expense, and nothing remembers that it has been —
+  // which is how a trip ends up double-counting its own flights.
+  const logged = editing ? expenses.find((e) => e.bookingId === editing.id) ?? null : null;
+  const loggable = editing && editing.costMinor !== null && editing.costMinor > 0;
+
+  const logAsSpent = async () => {
+    if (!editing || editing.costMinor === null) return;
+    await addExpense({
+      stopId: null,
+      category: bookingExpenseCategory[editing.kind],
+      amountMinor: editing.costMinor,
+      note: editing.title,
+      // The day it happens, not the day you happened to open this screen.
+      spentAt: editing.startsAt?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
+      bookingId: editing.id,
+    });
+    notifySuccess();
+  };
 
   const save = async () => {
     if (!canSave) return;
@@ -231,6 +260,25 @@ export function BookingForm({
         </View>
       </View>
 
+      {loggable ? (
+        logged ? (
+          <View style={styles.logged}>
+            <Ionicons name="checkmark-circle" size={17} color={t.underText} />
+            <Text style={styles.loggedText}>
+              {formatMoney(logged.amountMinor, currency, { compact: true })} already logged as
+              spent
+            </Text>
+          </View>
+        ) : (
+          <Button
+            title={`Log ${formatMoney(editing!.costMinor!, currency, { compact: true })} as spent`}
+            icon="receipt-outline"
+            variant="secondary"
+            onPress={() => void logAsSpent()}
+          />
+        )
+      ) : null}
+
       {editing ? (
         <Button
           title="Delete booking"
@@ -298,6 +346,14 @@ const useStyles = makeStyles((t) => ({
   attachError: { ...type.caption, color: t.overText, marginTop: spacing.xs },
 
   notes: { minHeight: 72, textAlignVertical: 'top', paddingTop: spacing.md },
+
+  logged: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+  },
+  loggedText: { flex: 1, ...type.label, color: t.underText },
 
   actions: { flexDirection: 'row', gap: spacing.md },
   action: { flex: 1 },

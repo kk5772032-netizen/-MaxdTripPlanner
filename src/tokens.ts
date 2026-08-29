@@ -125,3 +125,20 @@ export const bookingLabels: Record<string, string> = {
   restaurant: 'Table',
   other: 'Other',
 };
+
+
+/**
+ * What a booking counts as when it becomes an expense.
+ *
+ * Every way of getting somewhere is transport, whatever the vehicle: a bus
+ * ticket and a hire car answer the same question in a spending breakdown.
+ */
+export const bookingExpenseCategory = {
+  flight: 'transport',
+  train: 'transport',
+  bus: 'transport',
+  car: 'transport',
+  lodging: 'lodging',
+  restaurant: 'food',
+  other: 'other',
+} as const;

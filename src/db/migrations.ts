@@ -67,6 +67,17 @@ export const MIGRATIONS: readonly Migration[] = [
       CREATE INDEX IF NOT EXISTS idx_stops_trip_day ON stops(trip_id, day_date);
     `,
   },
+  {
+    version: 3,
+    name: 'link expenses to bookings',
+    sql: `
+      -- A booking already knows what it cost; without this the figure has to be
+      -- typed a second time to become an expense, and there is no way to tell
+      -- whether it already has been.
+      ALTER TABLE expenses ADD COLUMN booking_id TEXT REFERENCES bookings(id) ON DELETE SET NULL;
+      CREATE INDEX IF NOT EXISTS idx_expenses_booking ON expenses(booking_id);
+    `,
+  },
 ];
 
 /** The version a freshly created database is at once every migration has run. */

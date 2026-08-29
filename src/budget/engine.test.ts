@@ -83,6 +83,7 @@ function makeExpense(overrides: Partial<Expense> = {}): Expense {
     category: 'food',
     amountMinor: 100_00,
     note: null,
+    bookingId: null,
     spentAt: '2025-11-01',
     ...overrides,
   };

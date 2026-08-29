@@ -100,6 +100,11 @@ export interface Expense {
   note: string | null;
   /** ISO date, YYYY-MM-DD. */
   spentAt: string;
+  /**
+   * Set when this expense was logged from a booking, so the booking can show
+   * that it is already paid for rather than offering to log it twice.
+   */
+  bookingId: string | null;
 }
 
 export type BookingKind =

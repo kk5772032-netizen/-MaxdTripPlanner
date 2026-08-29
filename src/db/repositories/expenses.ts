@@ -10,6 +10,7 @@ interface ExpenseRow {
   amount: number;
   note: string | null;
   spent_at: string;
+  booking_id: string | null;
 }
 
 function toExpense(row: ExpenseRow): Expense {
@@ -21,17 +22,20 @@ function toExpense(row: ExpenseRow): Expense {
     amountMinor: row.amount,
     note: row.note,
     spentAt: row.spent_at,
+    bookingId: row.booking_id ?? null,
   };
 }
 
-export type NewExpense = Omit<Expense, 'id'>;
+/** Most expenses are typed by hand and have no booking behind them. */
+export type NewExpense = Omit<Expense, 'id' | 'bookingId'> &
+  Partial<Pick<Expense, 'bookingId'>>;
 
 export async function createExpense(input: NewExpense): Promise<Expense> {
   const db = await getDb();
-  const expense: Expense = { ...input, id: newId() };
+  const expense: Expense = { bookingId: null, ...input, id: newId() };
   await db.runAsync(
-    `INSERT INTO expenses (id, trip_id, stop_id, category, amount, note, spent_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO expenses (id, trip_id, stop_id, category, amount, note, spent_at, booking_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     expense.id,
     expense.tripId,
     expense.stopId,
@@ -39,6 +43,7 @@ export async function createExpense(input: NewExpense): Promise<Expense> {
     expense.amountMinor,
     expense.note,
     expense.spentAt,
+    expense.bookingId,
   );
   return expense;
 }
@@ -50,10 +55,11 @@ export async function createExpense(input: NewExpense): Promise<Expense> {
 export async function restoreExpense(expense: Expense): Promise<void> {
   const db = await getDb();
   await db.runAsync(
-    `INSERT OR REPLACE INTO expenses (id, trip_id, stop_id, category, amount, note, spent_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT OR REPLACE INTO expenses
+       (id, trip_id, stop_id, category, amount, note, spent_at, booking_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     expense.id, expense.tripId, expense.stopId, expense.category,
-    expense.amountMinor, expense.note, expense.spentAt,
+    expense.amountMinor, expense.note, expense.spentAt, expense.bookingId,
   );
 }
 
@@ -108,12 +114,15 @@ export async function updateExpense(
   const next: Expense = { ...existing, ...patch };
   const db = await getDb();
   await db.runAsync(
-    `UPDATE expenses SET stop_id = ?, category = ?, amount = ?, note = ?, spent_at = ? WHERE id = ?`,
+    `UPDATE expenses
+        SET stop_id = ?, category = ?, amount = ?, note = ?, spent_at = ?, booking_id = ?
+      WHERE id = ?`,
     next.stopId,
     next.category,
     next.amountMinor,
     next.note,
     next.spentAt,
+    next.bookingId,
     id,
   );
   return next;
