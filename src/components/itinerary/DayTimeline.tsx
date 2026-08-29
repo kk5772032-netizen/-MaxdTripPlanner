@@ -5,14 +5,26 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { photoUrl } from '../../api/places';
 import { directionsUrl, openInMaps } from '../../places/maps';
 import {
+  dayEntries,
   formatDayLabel,
   formatDuration,
   formatSpan,
+  formatTime,
   planByDay,
   plannedMinutes,
 } from '../../itinerary/schedule';
-import { elevation, makeStyles, radius, spacing, type, useTheme } from '../../theme';
-import type { Activity, FoodPlan, Stop, Trip } from '../../types';
+import {
+  bookingIcons,
+  bookingLabels,
+  elevation,
+  makeStyles,
+  radius,
+  spacing,
+  type,
+  useTheme,
+} from '../../theme';
+import type { Activity, Booking, FoodPlan, Stop, Trip } from '../../types';
+import type { IconName } from '../ui';
 
 /**
  * The itinerary as a plan rather than a list.
@@ -31,18 +43,22 @@ export function DayTimeline({
   stops,
   activities,
   foodPlans,
+  bookings,
   onPressStop,
+  onPressBooking,
   onAddStop,
 }: {
   trip: Trip;
   stops: Stop[];
   activities: Activity[];
   foodPlans: FoodPlan[];
+  bookings: Booking[];
   onPressStop: (stop: Stop) => void;
+  onPressBooking: (booking: Booking) => void;
   onAddStop: (dayDate: string | null) => void;
 }) {
   const styles = useStyles();
-  const days = planByDay(trip, stops);
+  const days = planByDay(trip, stops, bookings);
   if (days.length === 0) return null;
 
   return (
@@ -54,6 +70,7 @@ export function DayTimeline({
           activities={activities}
           foodPlans={foodPlans}
           onPressStop={onPressStop}
+          onPressBooking={onPressBooking}
           onAddStop={onAddStop}
         />
       ))}
@@ -66,12 +83,14 @@ function DaySection({
   activities,
   foodPlans,
   onPressStop,
+  onPressBooking,
   onAddStop,
 }: {
   day: ReturnType<typeof planByDay>[number];
   activities: Activity[];
   foodPlans: FoodPlan[];
   onPressStop: (stop: Stop) => void;
+  onPressBooking: (booking: Booking) => void;
   onAddStop: (dayDate: string | null) => void;
 }) {
   const styles = useStyles();
@@ -81,26 +100,41 @@ function DaySection({
   const dayActivities = activities.filter((a) => ids.has(a.stopId));
   const planned = formatDuration(plannedMinutes(dayActivities));
 
+  const entries = dayEntries(day);
   const unscheduled = day.date === null;
   const summary = unscheduled
     ? `${day.stops.length} ${day.stops.length === 1 ? 'place' : 'places'} with no day yet`
     : [
-        `${day.stops.length} ${day.stops.length === 1 ? 'stop' : 'stops'}`,
+        day.stops.length
+          ? `${day.stops.length} ${day.stops.length === 1 ? 'stop' : 'stops'}`
+          : null,
+        day.bookings.length
+          ? `${day.bookings.length} booked`
+          : null,
         planned ? `about ${planned} planned` : null,
       ]
         .filter(Boolean)
         .join(' · ');
 
+  // A day outside the trip's own dates — the flight home the morning after —
+  // has no day number, so it is titled by its date instead of "Day —".
+  const title = unscheduled
+    ? 'Not scheduled yet'
+    : day.dayNumber === null
+      ? formatDayLabel(day.date!)
+      : `Day ${day.dayNumber}`;
+  const subtitle = unscheduled
+    ? summary
+    : day.dayNumber === null
+      ? ['Outside the trip dates', summary].filter(Boolean).join(' · ')
+      : `${formatDayLabel(day.date!)}${summary ? ` · ${summary}` : ''}`;
+
   return (
     <View style={styles.section}>
       <View style={styles.dayHead}>
         <View style={styles.dayHeadText}>
-          <Text style={styles.dayTitle}>
-            {unscheduled ? 'Not scheduled yet' : `Day ${day.dayNumber ?? '—'}`}
-          </Text>
-          <Text style={styles.daySub}>
-            {unscheduled ? summary : `${formatDayLabel(day.date!)}${day.stops.length ? ` · ${summary}` : ''}`}
-          </Text>
+          <Text style={styles.dayTitle}>{title}</Text>
+          <Text style={styles.daySub}>{subtitle}</Text>
         </View>
 
         <Pressable
@@ -116,7 +150,7 @@ function DaySection({
         </Pressable>
       </View>
 
-      {day.stops.length === 0 ? (
+      {entries.length === 0 ? (
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`Nothing planned for ${formatDayLabel(day.date!)}. Add something.`}
@@ -126,16 +160,27 @@ function DaySection({
           <Text style={styles.emptyDayText}>Nothing planned — tap to add something.</Text>
         </Pressable>
       ) : (
-        day.stops.map((stop, i) => (
-          <TimelineRow
-            key={stop.id}
-            stop={stop}
-            last={i === day.stops.length - 1}
-            activities={activities.filter((a) => a.stopId === stop.id)}
-            foodPlans={foodPlans.filter((f) => f.stopId === stop.id)}
-            onPress={() => onPressStop(stop)}
-          />
-        ))
+        entries.map((entry, i) =>
+          entry.kind === 'stop' ? (
+            <TimelineRow
+              key={`stop-${entry.stop.id}`}
+              stop={entry.stop}
+              last={i === entries.length - 1}
+              activities={activities.filter((a) => a.stopId === entry.stop.id)}
+              foodPlans={foodPlans.filter((f) => f.stopId === entry.stop.id)}
+              onPress={() => onPressStop(entry.stop)}
+            />
+          ) : (
+            <BookingRow
+              key={`booking-${entry.booking.id}-${entry.role}`}
+              booking={entry.booking}
+              role={entry.role}
+              time={entry.time}
+              last={i === entries.length - 1}
+              onPress={() => onPressBooking(entry.booking)}
+            />
+          ),
+        )
       )}
     </View>
   );
@@ -237,6 +282,78 @@ function TimelineRow({
   );
 }
 
+/**
+ * A booking on the plan.
+ *
+ * Deliberately not a stop card: no photo, a tinted ground and the kind spelled
+ * out, because at a glance you need to know this is a thing you have already
+ * paid for rather than somewhere you are thinking of going. The confirmation
+ * code is on the row for the same reason it is in the Booked section — that is
+ * the number someone asks you for.
+ */
+function BookingRow({
+  booking,
+  role,
+  time,
+  last,
+  onPress,
+}: {
+  booking: Booking;
+  role: 'start' | 'checkout';
+  time: string | null;
+  last: boolean;
+  onPress: () => void;
+}) {
+  const styles = useStyles();
+  const t = useTheme();
+
+  const checkout = role === 'checkout';
+  const label = checkout ? 'Check out' : bookingLabels[booking.kind];
+  const meta = [booking.confirmation, checkout ? null : booking.location]
+    .filter(Boolean)
+    .join(' · ');
+
+  return (
+    <View style={styles.row}>
+      <View style={styles.rail}>
+        <Text style={[styles.railTime, !time && styles.railTimeMuted]} numberOfLines={1}>
+          {time ? formatTime(time) : '—'}
+        </Text>
+        {/* A square marker rather than the stops' round dot: the rail then reads
+            as two kinds of thing without needing a legend. */}
+        <View style={styles.square} />
+        {!last ? <View style={styles.line} /> : null}
+      </View>
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${label}: ${booking.title}${time ? `, ${formatTime(time)}` : ''}`}
+        onPress={onPress}
+        style={({ pressed }) => [styles.bookingCard, pressed && styles.pressed]}
+      >
+        <Ionicons
+          name={(checkout ? 'exit-outline' : bookingIcons[booking.kind]) as IconName}
+          size={17}
+          color={t.primary}
+          style={styles.bookingIcon}
+        />
+
+        <View style={styles.cardText}>
+          <Text style={styles.bookingKind}>{label}</Text>
+          <Text style={styles.bookingTitle} numberOfLines={1}>
+            {booking.title}
+          </Text>
+          {meta ? (
+            <Text style={styles.bookingMeta} numberOfLines={1}>
+              {meta}
+            </Text>
+          ) : null}
+        </View>
+      </Pressable>
+    </View>
+  );
+}
+
 const useStyles = makeStyles((t) => ({
   wrap: { gap: spacing.xl },
   section: { gap: spacing.sm },
@@ -286,6 +403,13 @@ const useStyles = makeStyles((t) => ({
     backgroundColor: t.primary,
     marginTop: 5,
   },
+  square: {
+    width: 9,
+    height: 9,
+    borderRadius: 2,
+    backgroundColor: t.primary,
+    marginTop: 5,
+  },
   // Reaches past the card's bottom margin so the rail reads as continuous.
   line: { flex: 1, width: 2, backgroundColor: t.border, marginTop: 2, marginBottom: -spacing.sm },
 
@@ -302,6 +426,24 @@ const useStyles = makeStyles((t) => ({
     marginBottom: spacing.sm,
   },
   cardText: { flex: 1, gap: 2 },
+
+  bookingCard: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: t.primarySoft,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: t.border,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  bookingIcon: { width: 20, textAlign: 'center' },
+  bookingKind: { ...type.captionStrong, color: t.primary },
+  bookingTitle: { ...type.bodyStrong, color: t.text },
+  bookingMeta: { ...type.caption, color: t.textMuted },
   directions: {
     width: 34,
     height: 34,

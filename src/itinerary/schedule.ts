@@ -1,4 +1,4 @@
-import type { Activity, Stop, Trip } from '../types';
+import type { Activity, Booking, Stop, Trip } from '../types';
 
 /**
  * Turning a bag of stops into a day-by-day plan.
@@ -9,6 +9,21 @@ import type { Activity, Stop, Trip } from '../types';
  * then reading it back can land on the 5th for anyone west of UTC.
  */
 
+/**
+ * How a booking shows up on a day.
+ *
+ * A hotel booked for three nights is two separate moments on the plan, not one:
+ * the night you arrive and the morning you have to be out. `checkout` is that
+ * second appearance, so Day 3 answers "where am I sleeping tonight, and by when
+ * do I have to leave" without opening another screen.
+ */
+export interface BookingOnDay {
+  booking: Booking;
+  /** HH:MM, or null when only the day is known. */
+  time: string | null;
+  role: 'start' | 'checkout';
+}
+
 /** A day of the trip, with whatever is planned on it. */
 export interface DayPlan {
   /** ISO date, or null for the "not scheduled yet" bucket. */
@@ -16,6 +31,52 @@ export interface DayPlan {
   /** 1-based day number within the trip. Null for the unscheduled bucket. */
   dayNumber: number | null;
   stops: Stop[];
+  bookings: BookingOnDay[];
+}
+
+/** One row on a day, whether it is somewhere you're going or something booked. */
+export type DayEntry =
+  | { kind: 'stop'; time: string | null; stop: Stop }
+  | { kind: 'booking'; time: string | null; booking: Booking; role: 'start' | 'checkout' };
+
+/** Splits `YYYY-MM-DD` or `YYYY-MM-DDTHH:MM` into its two halves. */
+function splitStamp(stamp: string | null): { date: string | null; time: string | null } {
+  if (!stamp) return { date: null, time: null };
+  const date = stamp.slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { date: null, time: null };
+  const time = /^\d{2}:\d{2}$/.test(stamp.slice(11, 16)) ? stamp.slice(11, 16) : null;
+  return { date, time };
+}
+
+/**
+ * Which days a booking appears on.
+ *
+ * Undated bookings appear on none of them. They still exist under Booked — a
+ * hotel you've reserved but not yet been given dates for is worth keeping, and
+ * guessing a day for it would put a fiction on the itinerary.
+ */
+function bookingDays(booking: Booking): { date: string; entry: BookingOnDay }[] {
+  const start = splitStamp(booking.startsAt);
+  const end = splitStamp(booking.endsAt);
+  const out: { date: string; entry: BookingOnDay }[] = [];
+
+  if (start.date) {
+    out.push({ date: start.date, entry: { booking, time: start.time, role: 'start' } });
+  } else if (end.date) {
+    // Only an end date: better on the day it ends than nowhere at all.
+    out.push({ date: end.date, entry: { booking, time: end.time, role: 'start' } });
+    return out;
+  }
+
+  if (
+    booking.kind === 'lodging' &&
+    end.date &&
+    start.date &&
+    end.date > start.date
+  ) {
+    out.push({ date: end.date, entry: { booking, time: end.time, role: 'checkout' } });
+  }
+  return out;
 }
 
 const DAY_MS = 86_400_000;
@@ -80,30 +141,43 @@ export function compareWithinDay(a: Stop, b: Stop): number {
 export function planByDay(
   trip: Pick<Trip, 'startDate' | 'endDate'>,
   stops: Stop[],
+  bookings: Booking[] = [],
 ): DayPlan[] {
   const days = tripDays(trip);
   const index = new Map<string, number>(days.map((d, i) => [d, i + 1]));
 
-  const byDate = new Map<string, Stop[]>();
+  const stopsByDate = new Map<string, Stop[]>();
   const unscheduled: Stop[] = [];
   for (const stop of stops) {
     if (!stop.dayDate) {
       unscheduled.push(stop);
       continue;
     }
-    const bucket = byDate.get(stop.dayDate);
+    const bucket = stopsByDate.get(stop.dayDate);
     if (bucket) bucket.push(stop);
-    else byDate.set(stop.dayDate, [stop]);
+    else stopsByDate.set(stop.dayDate, [stop]);
   }
 
-  // Trip days first, then any dated stop that falls outside them.
-  const strays = [...byDate.keys()].filter((d) => !index.has(d)).sort();
-  const ordered = [...days, ...strays];
+  const bookingsByDate = new Map<string, BookingOnDay[]>();
+  for (const booking of bookings) {
+    for (const { date, entry } of bookingDays(booking)) {
+      const bucket = bookingsByDate.get(date);
+      if (bucket) bucket.push(entry);
+      else bookingsByDate.set(date, [entry]);
+    }
+  }
+
+  // Trip days first, then any dated stop or booking that falls outside them —
+  // the flight home the morning after the trip "ends" is the common case.
+  const dated = new Set([...stopsByDate.keys(), ...bookingsByDate.keys()]);
+  const strays = [...dated].filter((d) => !index.has(d)).sort();
+  const ordered = [...days, ...strays].sort();
 
   const plans: DayPlan[] = ordered.map((date) => ({
     date,
     dayNumber: index.get(date) ?? null,
-    stops: (byDate.get(date) ?? []).slice().sort(compareWithinDay),
+    stops: (stopsByDate.get(date) ?? []).slice().sort(compareWithinDay),
+    bookings: (bookingsByDate.get(date) ?? []).slice().sort(compareBookings),
   }));
 
   if (unscheduled.length > 0) {
@@ -111,9 +185,56 @@ export function planByDay(
       date: null,
       dayNumber: null,
       stops: unscheduled.slice().sort((a, b) => a.sequence - b.sequence),
+      bookings: [],
     });
   }
   return plans;
+}
+
+function compareBookings(a: BookingOnDay, b: BookingOnDay): number {
+  if (a.time && b.time) return a.time < b.time ? -1 : a.time > b.time ? 1 : 0;
+  if (a.time) return -1;
+  if (b.time) return 1;
+  return 0;
+}
+
+/**
+ * A day as one ordered column: the flight, then the museum, then the hotel.
+ *
+ * Splitting bookings and stops into separate lists is how an itinerary starts
+ * lying about a day — a 06:00 flight listed under a heading below the 10:00
+ * museum reads as if the museum comes first. Everything timed sorts together on
+ * the clock; a booking wins a tie because you have to be at the airport before
+ * you can be anywhere else. Untimed rows follow, stops before bookings: the
+ * stops are what you're doing that day, an undated booking is reference.
+ */
+export function dayEntries(day: DayPlan): DayEntry[] {
+  const entries: DayEntry[] = [
+    ...day.bookings.map(
+      (b): DayEntry => ({ kind: 'booking', time: b.time, booking: b.booking, role: b.role }),
+    ),
+    ...day.stops.map((stop): DayEntry => ({ kind: 'stop', time: stop.startTime, stop })),
+  ];
+
+  return entries
+    .map((entry, i) => ({ entry, i }))
+    .sort((a, b) => {
+      const at = a.entry.time;
+      const bt = b.entry.time;
+      if (at && bt && at !== bt) return at < bt ? -1 : 1;
+      if (at && !bt) return -1;
+      if (bt && !at) return 1;
+      // Which kind wins a tie flips with whether there is a clock involved: at
+      // 09:00 the booking comes first, but among the day's loose ends the stops
+      // are the plan and the booking is the footnote.
+      if (a.entry.kind !== b.entry.kind) {
+        const bookingFirst = !!at;
+        const aIsBooking = a.entry.kind === 'booking';
+        return aIsBooking === bookingFirst ? -1 : 1;
+      }
+      return a.i - b.i;
+    })
+    .map(({ entry }) => entry);
 }
 
 /** "Fri 6 Nov" — short enough for a day header, unambiguous about weekday. */

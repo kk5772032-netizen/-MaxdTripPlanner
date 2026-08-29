@@ -44,6 +44,7 @@ export default function TripDetailScreen() {
     useTripStore();
   const [ready, setReady] = useState(false);
   const [section, setSection] = useState<Section>('itinerary');
+  const [focusBookingId, setFocusBookingId] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -80,7 +81,7 @@ export default function TripDetailScreen() {
   const warning = tripWarning(totals);
   // A dated trip with no stops still shows its days: empty days are the
   // invitation to plan, and an empty state there would hide the whole point.
-  const hasPlan = tripDays(trip).length > 0 || stops.length > 0;
+  const hasPlan = tripDays(trip).length > 0 || stops.length > 0 || bookings.length > 0;
   const route = routeUrl(stops);
 
   const header = (
@@ -158,7 +159,12 @@ export default function TripDetailScreen() {
                 stops={stops}
                 activities={activities}
                 foodPlans={foodPlans}
+                bookings={bookings}
                 onPressStop={(stop) => router.push(`/trip/${tripId}/place/${stop.id}`)}
+                onPressBooking={(booking) => {
+                  setFocusBookingId(booking.id);
+                  setSection('bookings');
+                }}
                 onAddStop={(dayDate) =>
                   router.push(
                     `/trip/${tripId}/new-place${dayDate ? `?day=${dayDate}` : ''}`,
@@ -181,7 +187,13 @@ export default function TripDetailScreen() {
             )
           ) : null}
 
-          {section === 'bookings' ? <BookingsSection trip={trip} /> : null}
+          {section === 'bookings' ? (
+            <BookingsSection
+              trip={trip}
+              focusBookingId={focusBookingId}
+              onFocusHandled={() => setFocusBookingId(null)}
+            />
+          ) : null}
 
           {section === 'budget' ? (
             <BudgetSection
@@ -194,8 +206,10 @@ export default function TripDetailScreen() {
         </ScrollView>
       )}
 
-      {/* The FAB adds a stop, so it belongs to the plan and nowhere else. */}
-      {stops.length > 0 && section === 'itinerary' ? (
+      {/* The FAB adds a stop, so it belongs to the plan and nowhere else. It
+          follows the timeline rather than the stop count: a trip with a flight
+          booked and no stops yet still shows days, and they need a way in. */}
+      {hasPlan && section === 'itinerary' ? (
         <Fab
           label="Add stop"
           onPress={() => router.push(`/trip/${tripId}/new-place`)}

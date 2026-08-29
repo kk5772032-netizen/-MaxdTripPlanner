@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { formatMoney } from '../../budget/money';
@@ -27,12 +27,34 @@ import { BookingForm } from './BookingForm';
  * code sits directly under the title and is selectable rather than something
  * to squint at and retype.
  */
-export function BookingsSection({ trip }: { trip: Trip }) {
+export function BookingsSection({
+  trip,
+  /** Opened straight into the editor — set when arriving from the day plan. */
+  focusBookingId,
+  onFocusHandled,
+}: {
+  trip: Trip;
+  focusBookingId?: string | null;
+  onFocusHandled?: () => void;
+}) {
   const styles = useStyles();
   const { bookings, removeBooking } = useTripStore();
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Booking | null>(null);
+
+  // Tapping a booking on the day plan brings you here with it already open;
+  // landing on the list and having to find it again would make that tap a
+  // navigation rather than an action.
+  useEffect(() => {
+    if (!focusBookingId) return;
+    const target = bookings.find((b) => b.id === focusBookingId);
+    if (target) {
+      setFormOpen(false);
+      setEditing(target);
+    }
+    onFocusHandled?.();
+  }, [focusBookingId, bookings, onFocusHandled]);
 
   // Grouped by the day they start, so a four-day trip reads as four blocks
   // rather than one undifferentiated column.

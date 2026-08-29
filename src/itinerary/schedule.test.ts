@@ -1,6 +1,7 @@
 import {
   addMinutes,
   compareWithinDay,
+  dayEntries,
   formatDayLabel,
   formatDuration,
   formatSpan,
@@ -9,7 +10,7 @@ import {
   tripDays,
   tripLengthInDays,
 } from './schedule';
-import type { Stop, Trip } from '../types';
+import type { Booking, BookingKind, Stop, Trip } from '../types';
 
 const trip = (startDate: string | null, endDate: string | null): Pick<Trip, 'startDate' | 'endDate'> =>
   ({ startDate, endDate });
@@ -36,8 +37,29 @@ function stop(overrides: Partial<Stop> = {}): Stop {
   };
 }
 
+let bseq = 0;
+function booking(overrides: Partial<Booking> = {}): Booking {
+  return {
+    id: `booking-${bseq}`,
+    tripId: 'trip-1',
+    kind: 'flight' as BookingKind,
+    title: `Booking ${bseq++}`,
+    confirmation: null,
+    startsAt: null,
+    endsAt: null,
+    location: null,
+    costMinor: null,
+    notes: null,
+    attachmentUri: null,
+    attachmentName: null,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    ...overrides,
+  };
+}
+
 beforeEach(() => {
   seq = 0;
+  bseq = 0;
 });
 
 describe('tripDays', () => {
@@ -165,5 +187,115 @@ describe('formatting', () => {
     expect(formatDuration(60)).toBe('1h');
     expect(formatDuration(270)).toBe('4h 30m');
     expect(formatDuration(0)).toBeNull();
+  });
+});
+
+
+describe('bookings on the plan', () => {
+  const nov = trip('2026-11-09', '2026-11-11');
+
+  it('puts a booking on the day it starts', () => {
+    const flight = booking({ startsAt: '2026-11-09T06:00' });
+    const days = planByDay(nov, [], [flight]);
+    expect(days[0].bookings).toEqual([
+      { booking: flight, time: '06:00', role: 'start' },
+    ]);
+    expect(days[1].bookings).toEqual([]);
+  });
+
+  it('leaves an undated booking off the plan entirely', () => {
+    // It still exists under Booked. Guessing a day would put a fiction on the
+    // itinerary, which is worse than the booking not being there.
+    const days = planByDay(nov, [], [booking()]);
+    expect(days.every((d) => d.bookings.length === 0)).toBe(true);
+  });
+
+  it('carries a day-only booking without inventing a time', () => {
+    const days = planByDay(nov, [], [booking({ startsAt: '2026-11-10' })]);
+    expect(days[1].bookings[0].time).toBeNull();
+  });
+
+  it('shows a hotel again on the morning you have to be out', () => {
+    const hotel = booking({
+      kind: 'lodging',
+      startsAt: '2026-11-09T15:00',
+      endsAt: '2026-11-11T11:00',
+    });
+    const days = planByDay(nov, [], [hotel]);
+    expect(days[0].bookings[0].role).toBe('start');
+    expect(days[1].bookings).toEqual([]);
+    expect(days[2].bookings).toEqual([{ booking: hotel, time: '11:00', role: 'checkout' }]);
+  });
+
+  it('does not double up a hotel booked for a single day', () => {
+    const hotel = booking({
+      kind: 'lodging',
+      startsAt: '2026-11-09T15:00',
+      endsAt: '2026-11-09T23:00',
+    });
+    expect(planByDay(nov, [], [hotel])[0].bookings).toHaveLength(1);
+  });
+
+  it('only splits lodging — a flight has one moment, not two', () => {
+    const flight = booking({ startsAt: '2026-11-09T06:00', endsAt: '2026-11-10T09:00' });
+    const days = planByDay(nov, [], [flight]);
+    expect(days[0].bookings).toHaveLength(1);
+    expect(days[1].bookings).toHaveLength(0);
+  });
+
+  it('keeps the flight home the morning after the trip ends', () => {
+    const days = planByDay(nov, [], [booking({ startsAt: '2026-11-12T06:00' })]);
+    const last = days[days.length - 1];
+    expect(last.date).toBe('2026-11-12');
+    expect(last.dayNumber).toBeNull();
+    expect(last.bookings).toHaveLength(1);
+  });
+
+  it('puts a booking the day before the trip before day one', () => {
+    const days = planByDay(nov, [], [booking({ startsAt: '2026-11-08T22:00' })]);
+    expect(days[0].date).toBe('2026-11-08');
+    expect(days[1].dayNumber).toBe(1);
+  });
+});
+
+describe('dayEntries', () => {
+  const nov = trip('2026-11-09', '2026-11-11');
+
+  it('reads a day as one column on the clock', () => {
+    const flight = booking({ startsAt: '2026-11-09T06:00', title: 'DEL to BOM' });
+    const museum = stop({ dayDate: '2026-11-09', startTime: '10:00', name: 'Museum' });
+    const dinner = booking({
+      kind: 'restaurant',
+      startsAt: '2026-11-09T20:00',
+      title: 'Table for 4',
+    });
+
+    const entries = dayEntries(planByDay(nov, [museum], [flight, dinner])[0]);
+    expect(entries.map((e) => (e.kind === 'stop' ? e.stop.name : e.booking.title))).toEqual([
+      'DEL to BOM',
+      'Museum',
+      'Table for 4',
+    ]);
+  });
+
+  it('sends untimed rows to the bottom, stops before bookings', () => {
+    const timed = stop({ dayDate: '2026-11-09', startTime: '09:00', name: 'Timed' });
+    const untimed = stop({ dayDate: '2026-11-09', name: 'Untimed' });
+    const hotel = booking({ kind: 'lodging', startsAt: '2026-11-09', title: 'Hotel' });
+
+    const entries = dayEntries(planByDay(nov, [timed, untimed], [hotel])[0]);
+    expect(entries.map((e) => (e.kind === 'stop' ? e.stop.name : e.booking.title))).toEqual([
+      'Timed',
+      'Untimed',
+      'Hotel',
+    ]);
+  });
+
+  it('puts the booking first when it clashes with a stop', () => {
+    // You have to be at the airport before you can be anywhere else.
+    const flight = booking({ startsAt: '2026-11-09T09:00', title: 'Flight' });
+    const place = stop({ dayDate: '2026-11-09', startTime: '09:00', name: 'Place' });
+    const entries = dayEntries(planByDay(nov, [place], [flight])[0]);
+    expect(entries[0].kind).toBe('booking');
   });
 });
