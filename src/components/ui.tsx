@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   Animated,
   ActivityIndicator,
+  Modal,
   Platform,
   Pressable,
   StyleSheet,
@@ -13,8 +14,9 @@ import {
   View,
   type ViewStyle,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { SHIMMER_MS, duration, easing, useAnimatedNumber, useReducedMotion } from '../motion';
+import { SHIMMER_MS, animateTo, duration, easing, useAnimatedNumber, useReducedMotion } from '../motion';
 import { HIT_SLOP, MIN_TAP, elevation, makeStyles, radius, spacing, type, useTheme } from '../theme';
 
 /** Shared primitives, so screens are about behaviour rather than padding. */
@@ -412,11 +414,18 @@ export function HeaderAction({
   icon,
   onPress,
   tone = 'primary',
+  /**
+   * Two worded actions plus a trip name is more than a phone header holds, and
+   * the title is the thing that loses. An icon-only action keeps its label for
+   * screen readers and gives the name back its room.
+   */
+  showLabel = true,
 }: {
   label: string;
   icon?: IconName;
   onPress: () => void;
   tone?: 'primary' | 'danger';
+  showLabel?: boolean;
 }) {
   const styles = useStyles();
   const t = useTheme();
@@ -432,8 +441,149 @@ export function HeaderAction({
       }}
       style={({ pressed }) => [styles.headerAction, pressed && styles.pressedSoft]}
     >
-      {icon ? <Ionicons name={icon} size={18} color={tint} /> : null}
-      <Text style={[styles.headerActionText, { color: tint }]}>{label}</Text>
+      {icon ? <Ionicons name={icon} size={showLabel ? 18 : 21} color={tint} /> : null}
+      {showLabel ? (
+        <Text style={[styles.headerActionText, { color: tint }]}>{label}</Text>
+      ) : null}
+    </Pressable>
+  );
+}
+
+/**
+ * A panel that rises from the bottom for a short, closed set of choices.
+ *
+ * This app answers most questions inline and undoes destructive things with a
+ * toast rather than asking first, so a modal has to earn itself. This one does:
+ * "share as what?" has two answers, neither is destructive, and putting both as
+ * permanent buttons on the plan would give a rarely-used action more of the
+ * screen than the plan it is exporting.
+ *
+ * Dismissal is deliberately generous — the backdrop, the handle, the system
+ * back button — because the worst version of a sheet is one you have to hunt
+ * for the way out of.
+ */
+export function Sheet({
+  visible,
+  title,
+  subtitle,
+  onClose,
+  children,
+}: {
+  visible: boolean;
+  title: string;
+  subtitle?: string;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  const styles = useStyles();
+  const insets = useSafeAreaInsets();
+  const reduced = useReducedMotion();
+  const progress = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    animateTo(progress, visible ? 1 : 0, {
+      ms: visible ? duration.standard : duration.micro,
+      reduced,
+      curve: visible ? easing.enter : easing.exit,
+    });
+  }, [visible, reduced, progress]);
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      // The slide is ours, so the OS must not add a second one on top of it.
+      animationType="none"
+      onRequestClose={onClose}
+      statusBarTranslucent
+    >
+      <Animated.View style={[styles.sheetBackdrop, { opacity: progress }]}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Close ${title.toLowerCase()}`}
+          style={StyleSheet.absoluteFill}
+          onPress={onClose}
+        />
+      </Animated.View>
+
+      <View style={styles.sheetAnchor} pointerEvents="box-none">
+        <Animated.View
+          style={[
+            styles.sheet,
+            { paddingBottom: spacing.lg + insets.bottom },
+            {
+              transform: [
+                {
+                  translateY: progress.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [340, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Close ${title.toLowerCase()}`}
+            hitSlop={HIT_SLOP}
+            onPress={onClose}
+            style={styles.sheetHandleTap}
+          >
+            <View style={styles.sheetHandle} />
+          </Pressable>
+
+          <Text style={styles.sheetTitle}>{title}</Text>
+          {subtitle ? <Text style={styles.sheetSubtitle}>{subtitle}</Text> : null}
+
+          <View style={styles.sheetBody}>{children}</View>
+        </Animated.View>
+      </View>
+    </Modal>
+  );
+}
+
+/** A full-width choice inside a `Sheet`: what it does, and what that means. */
+export function SheetOption({
+  icon,
+  title,
+  body,
+  onPress,
+  disabled,
+}: {
+  icon: IconName;
+  title: string;
+  body: string;
+  onPress: () => void;
+  disabled?: boolean;
+}) {
+  const styles = useStyles();
+  const t = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      accessibilityHint={body}
+      accessibilityState={{ disabled: !!disabled }}
+      disabled={disabled}
+      onPress={() => {
+        tap();
+        onPress();
+      }}
+      style={({ pressed }) => [
+        styles.sheetOption,
+        pressed && styles.pressedSoft,
+        disabled && styles.sheetOptionOff,
+      ]}
+    >
+      <View style={styles.sheetOptionIcon}>
+        <Ionicons name={icon} size={20} color={t.primary} />
+      </View>
+      <View style={styles.sheetOptionText}>
+        <Text style={styles.sheetOptionTitle}>{title}</Text>
+        <Text style={styles.sheetOptionBody}>{body}</Text>
+      </View>
+      <Ionicons name="chevron-forward" size={16} color={t.textFaint} />
     </Pressable>
   );
 }
@@ -543,6 +693,53 @@ export function Notice({
 }
 
 const useStyles = makeStyles((t) => ({
+  sheetBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: t.overlay,
+  },
+  sheetAnchor: { flex: 1, justifyContent: 'flex-end' },
+  sheet: {
+    backgroundColor: t.surface,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    gap: spacing.xs,
+    ...elevation.lg,
+  },
+  sheetHandleTap: { alignSelf: 'center', paddingVertical: spacing.sm, paddingHorizontal: spacing.xl },
+  sheetHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: t.borderStrong },
+  sheetTitle: { ...type.title, color: t.text, marginTop: spacing.xs },
+  sheetSubtitle: { ...type.caption, color: t.textMuted },
+  sheetBody: { marginTop: spacing.md, gap: spacing.sm },
+
+  sheetOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    padding: spacing.md,
+    borderRadius: radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: t.border,
+    backgroundColor: t.surfaceSunken,
+  },
+  sheetOptionOff: { opacity: 0.5 },
+  sheetOptionIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: t.primarySoft,
+  },
+  sheetOptionText: { flex: 1, gap: 1 },
+  sheetOptionTitle: { ...type.bodyStrong, color: t.text },
+  sheetOptionBody: { ...type.caption, color: t.textMuted },
+
   card: {
     backgroundColor: t.surface,
     borderRadius: radius.lg,

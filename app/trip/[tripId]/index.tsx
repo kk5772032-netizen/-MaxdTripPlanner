@@ -10,6 +10,7 @@ import { BudgetBar } from '../../../src/components/BudgetBar';
 import { BookingsSection } from '../../../src/components/bookings/BookingsSection';
 import { BudgetSection } from '../../../src/components/budget/BudgetSection';
 import { DayTimeline } from '../../../src/components/itinerary/DayTimeline';
+import { SharePlanSheet } from '../../../src/components/itinerary/SharePlanSheet';
 import { MapWithRoute } from '../../../src/components/MapWithRoute';
 import {
   Button,
@@ -45,6 +46,7 @@ export default function TripDetailScreen() {
   const [ready, setReady] = useState(false);
   const [section, setSection] = useState<Section>('itinerary');
   const [focusBookingId, setFocusBookingId] = useState<string | null>(null);
+  const [sharing, setSharing] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -113,11 +115,19 @@ export default function TripDetailScreen() {
         options={{
           title: trip.name,
           headerRight: () => (
-            <HeaderAction
-              label="Edit"
-              icon="create-outline"
-              onPress={() => router.push(`/new-trip?tripId=${trip.id}`)}
-            />
+            <View style={styles.headerActions}>
+              <HeaderAction
+                label="Share this plan"
+                icon="share-outline"
+                showLabel={false}
+                onPress={() => setSharing(true)}
+              />
+              <HeaderAction
+                label="Edit"
+                icon="create-outline"
+                onPress={() => router.push(`/new-trip?tripId=${trip.id}`)}
+              />
+            </View>
           ),
         }}
       />
@@ -206,6 +216,12 @@ export default function TripDetailScreen() {
         </ScrollView>
       )}
 
+      <SharePlanSheet
+        visible={sharing}
+        data={{ trip, stops, activities, foodPlans, bookings }}
+        onClose={() => setSharing(false)}
+      />
+
       {/* The FAB adds a stop, so it belongs to the plan and nowhere else. It
           follows the timeline rather than the stop count: a trip with a flight
           booked and no stops yet still shows days, and they need a way in. */}
@@ -222,6 +238,7 @@ export default function TripDetailScreen() {
 const useStyles = makeStyles((t) => ({
   screen: { flex: 1, backgroundColor: t.bg },
   header: { paddingBottom: spacing.lg, gap: spacing.md },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   listContent: { padding: spacing.lg },
   datesRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   dates: { ...type.caption, color: t.textMuted },

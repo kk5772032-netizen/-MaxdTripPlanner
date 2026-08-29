@@ -237,6 +237,8 @@ app/                        expo-router file-based routes
 src/
   api/places.ts             Places API (New) client — field masks, session tokens
   api/placesCache.ts        30-day SQLite response cache
+  itinerary/exportPlan.ts   the plan as shareable text and as a PDF-ready page
+  itinerary/sharePlan.ts    printing and the share sheet
   places/hours.ts           open-or-shut from the clock, in the place's timezone
   places/maps.ts            Google Maps handoff — directions, place, whole route
   places/usePlaceContent.ts fetches a stop's photos, rating and hours
