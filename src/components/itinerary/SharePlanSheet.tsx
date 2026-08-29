@@ -2,7 +2,11 @@ import { useState } from 'react';
 import { Platform } from 'react-native';
 
 import type { PlanData } from '../../itinerary/exportPlan';
-import { sharePlanAsPdf, sharePlanAsText } from '../../itinerary/sharePlan';
+import {
+  sharePlanAsCalendar,
+  sharePlanAsPdf,
+  sharePlanAsText,
+} from '../../itinerary/sharePlan';
 import { useToastStore } from '../../state/toastStore';
 import { Sheet, SheetOption } from '../ui';
 
@@ -62,6 +66,13 @@ export function SharePlanSheet({
         }
         disabled={busy}
         onPress={() => void run(sharePlanAsPdf)}
+      />
+      <SheetOption
+        icon="calendar-outline"
+        title="Add to your calendar"
+        body="A calendar file every app can open — Google, Apple, Outlook."
+        disabled={busy}
+        onPress={() => void run(sharePlanAsCalendar)}
       />
     </Sheet>
   );

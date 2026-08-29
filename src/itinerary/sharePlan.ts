@@ -1,7 +1,9 @@
+import { Directory, File, Paths } from 'expo-file-system';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { Platform, Share } from 'react-native';
 
+import { planAsIcs } from './calendar';
 import { type PlanData, planAsHtml, planAsText, planFileName } from './exportPlan';
 
 /**
@@ -100,6 +102,59 @@ export async function sharePlanAsPdf(data: PlanData): Promise<ShareOutcome> {
   } catch (e) {
     console.warn('[sharePlan] pdf share failed', e);
     return { ok: false, reason: "Couldn't share the PDF." };
+  }
+}
+
+/**
+ * Writes the trip as an `.ics` and shares it, which is how it reaches a
+ * calendar: every calendar app imports the format, so there is no account to
+ * link and no permission to ask for.
+ */
+export async function sharePlanAsCalendar(data: PlanData): Promise<ShareOutcome> {
+  const ics = planAsIcs(data);
+  if (!ics) {
+    return {
+      ok: false,
+      reason: 'Nothing on this trip has a date yet, so there is nothing to put in a calendar.',
+    };
+  }
+
+  const name = planFileName(data.trip, 'ics');
+
+  if (Platform.OS === 'web') {
+    try {
+      const url = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = name;
+      link.click();
+      URL.revokeObjectURL(url);
+      return { ok: true };
+    } catch {
+      return { ok: false, reason: "This browser wouldn't save the file." };
+    }
+  }
+
+  try {
+    const dir = new Directory(Paths.cache, 'calendar');
+    dir.create({ intermediates: true, idempotent: true });
+    const file = new File(dir, name);
+    if (file.exists) file.delete();
+    file.create();
+    file.write(ics);
+
+    if (!(await Sharing.isAvailableAsync())) {
+      return { ok: false, reason: 'Sharing is unavailable on this device.' };
+    }
+    await Sharing.shareAsync(file.uri, {
+      mimeType: 'text/calendar',
+      UTI: 'com.apple.ical.ics',
+      dialogTitle: data.trip.name,
+    });
+    return { ok: true };
+  } catch (e) {
+    console.warn('[sharePlan] calendar failed', e);
+    return { ok: false, reason: "Couldn't make a calendar file for this trip." };
   }
 }
 

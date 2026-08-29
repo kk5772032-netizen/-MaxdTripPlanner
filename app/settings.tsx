@@ -2,9 +2,11 @@ import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { pickBackup, restoreBackup, shareBackup } from '../src/backup/backup';
+import type { Backup } from '../src/backup/format';
 import { SUPPORTED_CURRENCIES, currencySymbol } from '../src/budget/money';
 import { SettingsRow, SettingsSection } from '../src/components/SettingsRow';
-import { Chip, Notice, SegmentedControl } from '../src/components/ui';
+import { Button, Chip, Notice, SegmentedControl, Sheet } from '../src/components/ui';
 import { confirmDestructive } from '../src/confirm';
 import { getDb } from '../src/db/client';
 import * as settingsRepo from '../src/db/repositories/settings';
@@ -25,6 +27,9 @@ export default function SettingsScreen() {
 
   const [cacheRows, setCacheRows] = useState<number | null>(null);
   const [currencyOpen, setCurrencyOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  /** A parsed, valid backup waiting for the user to say yes. */
+  const [pendingRestore, setPendingRestore] = useState<Backup | null>(null);
 
   const readCacheSize = useCallback(async () => {
     const db = await getDb();
@@ -58,6 +63,57 @@ export default function SettingsScreen() {
     await readCacheSize();
     router.replace('/trips');
     showToast({ message: 'All data deleted' });
+  };
+
+  const backUp = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const result = await shareBackup();
+      if (result.ok) {
+        const { trips } = result.counts;
+        showToast({ message: `Backed up ${trips} ${trips === 1 ? 'trip' : 'trips'}` });
+      } else if (result.reason) {
+        showToast({ message: result.reason });
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Two steps on purpose: picking a file is harmless, replacing everything you
+  // have is not, and the confirmation can only say what is in the file once the
+  // file has been read.
+  const chooseRestore = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const result = await pickBackup();
+      if (result.ok) setPendingRestore(result.backup);
+      else if (result.reason) showToast({ message: result.reason });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const confirmRestore = async () => {
+    if (!pendingRestore) return;
+    setBusy(true);
+    try {
+      const counts = await restoreBackup(pendingRestore);
+      setPendingRestore(null);
+      await loadTrips();
+      await readCacheSize();
+      router.replace('/trips');
+      showToast({
+        message: `Restored ${counts.trips} ${counts.trips === 1 ? 'trip' : 'trips'}`,
+      });
+    } catch (e) {
+      console.warn('[settings] restore failed', e);
+      showToast({ message: "That backup couldn't be restored. Nothing was changed." });
+    } finally {
+      setBusy(false);
+    }
   };
 
   const cacheLabel =
@@ -142,6 +198,17 @@ export default function SettingsScreen() {
 
       <SettingsSection title="Your data">
         <SettingsRow
+          icon="download-outline"
+          label="Back up your trips"
+          value="One file"
+          onPress={() => void backUp()}
+        />
+        <SettingsRow
+          icon="cloud-upload-outline"
+          label="Restore from a backup"
+          onPress={() => void chooseRestore()}
+        />
+        <SettingsRow
           icon="trash-outline"
           label="Delete all data"
           danger
@@ -154,9 +221,44 @@ export default function SettingsScreen() {
         icon="lock-closed-outline"
         body="Waypoint 1.0.0 — everything is stored on this device. No account, no sync."
       />
-      <Text style={styles.footer}>Uninstalling the app deletes your trips.</Text>
+      <Text style={styles.footer}>
+        Uninstalling the app deletes your trips. Back up first.
+      </Text>
+
+      <Sheet
+        visible={pendingRestore !== null}
+        title="Restore this backup?"
+        subtitle={describe(pendingRestore)}
+        onClose={() => setPendingRestore(null)}
+      >
+        <Notice
+          tone="warning"
+          body="Everything currently on this device will be replaced by what is in the file."
+        />
+        <Button
+          title="Replace everything"
+          icon="cloud-upload-outline"
+          variant="danger"
+          loading={busy}
+          onPress={() => void confirmRestore()}
+        />
+        <Button title="Cancel" variant="secondary" onPress={() => setPendingRestore(null)} />
+      </Sheet>
     </ScrollView>
   );
+}
+
+/** What is actually in the file, so "replace everything" is an informed yes. */
+function describe(backup: Backup | null): string {
+  if (!backup) return '';
+  const parts = [
+    `${backup.trips.length} ${backup.trips.length === 1 ? 'trip' : 'trips'}`,
+    backup.stops.length ? `${backup.stops.length} stops` : null,
+    backup.bookings.length ? `${backup.bookings.length} bookings` : null,
+    backup.expenses.length ? `${backup.expenses.length} expenses` : null,
+  ].filter(Boolean);
+  const when = backup.exportedAt ? `, saved ${backup.exportedAt.slice(0, 10)}` : '';
+  return `${parts.join(' · ')}${when}`;
 }
 
 const useStyles = makeStyles((t) => ({
