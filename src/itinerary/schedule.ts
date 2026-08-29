@@ -118,6 +118,38 @@ export function tripLengthInDays(trip: Pick<Trip, 'startDate' | 'endDate'>): num
   return days.length === 0 ? null : days.length;
 }
 
+/**
+ * Puts a handful of items into a new order without disturbing anything else.
+ *
+ * Reordering happens inside one day, but `sequence` is trip-wide, so the moved
+ * stops have to go back into exactly the positions they came out of. Anything
+ * not in `subset` keeps both its position and its neighbours — a nudge on
+ * Tuesday must not renumber Friday.
+ */
+export function reorderWithin(all: string[], subset: string[]): string[] {
+  const slots = all
+    .map((id, index) => (subset.includes(id) ? index : -1))
+    .filter((index) => index !== -1);
+  if (slots.length !== subset.length) return all;
+
+  const next = [...all];
+  slots.forEach((slot, i) => {
+    next[slot] = subset[i];
+  });
+  return next;
+}
+
+/** Moves one item one place up or down. Returns the same array at either end. */
+export function moveBy<T>(items: T[], index: number, delta: -1 | 1): T[] {
+  const target = index + delta;
+  if (index < 0 || index >= items.length || target < 0 || target >= items.length) {
+    return items;
+  }
+  const next = [...items];
+  [next[index], next[target]] = [next[target], next[index]];
+  return next;
+}
+
 /** Orders stops within a day: timed ones by clock, untimed after, in sequence. */
 export function compareWithinDay(a: Stop, b: Stop): number {
   if (a.startTime && b.startTime) {

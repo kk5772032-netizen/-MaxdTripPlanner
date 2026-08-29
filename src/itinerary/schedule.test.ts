@@ -6,7 +6,9 @@ import {
   formatDuration,
   formatSpan,
   formatTime,
+  moveBy,
   planByDay,
+  reorderWithin,
   tripDays,
   tripLengthInDays,
 } from './schedule';
@@ -297,5 +299,36 @@ describe('dayEntries', () => {
     const place = stop({ dayDate: '2026-11-09', startTime: '09:00', name: 'Place' });
     const entries = dayEntries(planByDay(nov, [place], [flight])[0]);
     expect(entries[0].kind).toBe('booking');
+  });
+});
+
+describe('reordering inside a day', () => {
+  it('puts the moved stops back in the slots they came from', () => {
+    // Trip-wide order is a,b,c,d,e. Tuesday holds b and d; swapping them must
+    // not move c, which belongs to another day and sits between them.
+    expect(reorderWithin(['a', 'b', 'c', 'd', 'e'], ['d', 'b'])).toEqual([
+      'a', 'd', 'c', 'b', 'e',
+    ]);
+  });
+
+  it('leaves everything alone when the subset does not fit', () => {
+    const all = ['a', 'b', 'c'];
+    expect(reorderWithin(all, ['b', 'z'])).toEqual(all);
+  });
+
+  it('is a no-op for a subset of one', () => {
+    expect(reorderWithin(['a', 'b', 'c'], ['b'])).toEqual(['a', 'b', 'c']);
+  });
+
+  it('moves an item one place at a time', () => {
+    expect(moveBy(['a', 'b', 'c'], 1, -1)).toEqual(['b', 'a', 'c']);
+    expect(moveBy(['a', 'b', 'c'], 1, 1)).toEqual(['a', 'c', 'b']);
+  });
+
+  it('stops at the ends rather than wrapping around', () => {
+    const items = ['a', 'b', 'c'];
+    expect(moveBy(items, 0, -1)).toBe(items);
+    expect(moveBy(items, 2, 1)).toBe(items);
+    expect(moveBy(items, 9, 1)).toBe(items);
   });
 });

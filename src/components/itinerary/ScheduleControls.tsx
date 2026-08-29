@@ -1,10 +1,8 @@
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
-import { addMinutes, formatDayLabel, formatTime, tripDays } from '../../itinerary/schedule';
-import { HIT_SLOP, MIN_TAP, makeStyles, radius, spacing, type, useTheme } from '../../theme';
+import { addMinutes, formatDayLabel, tripDays } from '../../itinerary/schedule';
+import { MIN_TAP, makeStyles, radius, spacing, type } from '../../theme';
+import { TimeField } from '../TimeField';
 import type { Stop, Trip } from '../../types';
 
 /**
@@ -24,8 +22,6 @@ export function ScheduleControls({
   onChange: (patch: Partial<Pick<Stop, 'dayDate' | 'startTime' | 'endTime'>>) => void;
 }) {
   const styles = useStyles();
-  const t = useTheme();
-  const [picking, setPicking] = useState<'start' | 'end' | null>(null);
 
   const days = tripDays(trip);
 
@@ -65,59 +61,40 @@ export function ScheduleControls({
         <>
           <Text style={[styles.label, styles.labelSpaced]}>Time</Text>
           <View style={styles.times}>
-            <TimeButton
-              caption="Starts"
-              value={stop.startTime}
-              onPress={() => setPicking(picking === 'start' ? null : 'start')}
-              active={picking === 'start'}
-            />
-            <TimeButton
-              caption="Ends"
-              value={stop.endTime}
-              onPress={() => setPicking(picking === 'end' ? null : 'end')}
-              active={picking === 'end'}
-              disabled={!stop.startTime}
-            />
-            {stop.startTime ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Clear the time"
-                hitSlop={HIT_SLOP}
-                onPress={() => {
-                  setPicking(null);
-                  onChange({ startTime: null, endTime: null });
-                }}
-                style={({ pressed }) => [styles.clear, pressed && styles.pressed]}
-              >
-                <Ionicons name="close" size={16} color={t.textMuted} />
-              </Pressable>
-            ) : null}
-          </View>
-
-          {picking ? (
-            <View style={styles.pickerWrap}>
-              <DateTimePicker
-                value={toDate(picking === 'start' ? stop.startTime : stop.endTime)}
-                mode="time"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={(_, picked) => {
-                  if (Platform.OS !== 'ios') setPicking(null);
-                  if (!picked) return;
-                  const hhmm = toHHMM(picked);
-                  if (picking === 'start') {
-                    // A start with no end gets a sensible hour, so the stop has
-                    // a shape on the timeline instead of a single instant.
-                    onChange({
-                      startTime: hhmm,
-                      endTime: stop.endTime ?? addMinutes(hhmm, 60),
-                    });
-                  } else {
-                    onChange({ endTime: hhmm });
-                  }
-                }}
+            <View style={styles.timeField}>
+              <Text style={styles.timeCaption}>Starts</Text>
+              <TimeField
+                value={stop.startTime}
+                label="Start"
+                placeholder="Not set"
+                onChange={(next) =>
+                  onChange(
+                    next
+                      ? {
+                          startTime: next,
+                          // A start with no end gets a sensible hour, so the
+                          // stop has a shape on the timeline rather than being
+                          // a single instant.
+                          endTime: stop.endTime ?? addMinutes(next, 60),
+                        }
+                      : { startTime: null, endTime: null },
+                  )
+                }
               />
             </View>
-          ) : null}
+
+            {stop.startTime ? (
+              <View style={styles.timeField}>
+                <Text style={styles.timeCaption}>Ends</Text>
+                <TimeField
+                  value={stop.endTime}
+                  label="End"
+                  placeholder="Not set"
+                  onChange={(next) => onChange({ endTime: next })}
+                />
+              </View>
+            ) : null}
+          </View>
         </>
       ) : null}
     </View>
@@ -156,53 +133,6 @@ function DayChip({
   );
 }
 
-function TimeButton({
-  caption,
-  value,
-  onPress,
-  active,
-  disabled,
-}: {
-  caption: string;
-  value: string | null;
-  onPress: () => void;
-  active: boolean;
-  disabled?: boolean;
-}) {
-  const styles = useStyles();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${caption}: ${formatTime(value) ?? 'not set'}`}
-      accessibilityState={{ disabled: !!disabled }}
-      disabled={disabled}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.time,
-        active && styles.timeActive,
-        disabled && styles.timeDisabled,
-        pressed && !disabled && styles.pressed,
-      ]}
-    >
-      <Text style={styles.timeCaption}>{caption}</Text>
-      <Text style={[styles.timeValue, !value && styles.timeValueEmpty]}>
-        {formatTime(value) ?? 'Not set'}
-      </Text>
-    </Pressable>
-  );
-}
-
-/** HH:MM to a Date, defaulting to a reasonable hour rather than midnight. */
-function toDate(hhmm: string | null): Date {
-  const d = new Date();
-  const m = hhmm ? /^(\d{1,2}):(\d{2})$/.exec(hhmm) : null;
-  d.setHours(m ? Number(m[1]) : 9, m ? Number(m[2]) : 0, 0, 0);
-  return d;
-}
-
-function toHHMM(d: Date): string {
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-}
 
 const useStyles = makeStyles((t) => ({
   wrap: { gap: spacing.sm },
@@ -225,36 +155,9 @@ const useStyles = makeStyles((t) => ({
   chipTextOn: { color: t.primary },
   chipSub: { ...type.caption, color: t.textFaint },
 
-  times: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  time: {
-    flex: 1,
-    minHeight: MIN_TAP,
-    justifyContent: 'center',
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: t.border,
-    backgroundColor: t.surface,
-  },
-  timeActive: { borderColor: t.primary },
-  timeDisabled: { opacity: 0.45 },
+  times: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
+  timeField: { flex: 1, gap: 2 },
   timeCaption: { ...type.caption, color: t.textFaint },
-  timeValue: { ...type.body, fontWeight: '600', color: t.text },
-  timeValueEmpty: { color: t.textFaint, fontWeight: '400' },
-  clear: {
-    width: MIN_TAP,
-    height: MIN_TAP,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  pickerWrap: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: t.border,
-    borderRadius: radius.md,
-    backgroundColor: t.surface,
-    overflow: 'hidden',
-  },
 
   pressed: { opacity: 0.7 },
 }));

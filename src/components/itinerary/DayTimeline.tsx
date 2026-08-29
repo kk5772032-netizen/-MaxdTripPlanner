@@ -1,17 +1,21 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
+import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { photoUrl } from '../../api/places';
 import { directionsUrl, openInMaps } from '../../places/maps';
+import { useTripStore } from '../../state/tripStore';
 import {
   dayEntries,
   formatDayLabel,
   formatDuration,
   formatSpan,
   formatTime,
+  moveBy,
   planByDay,
   plannedMinutes,
+  reorderWithin,
 } from '../../itinerary/schedule';
 import {
   bookingIcons,
@@ -24,7 +28,7 @@ import {
   useTheme,
 } from '../../theme';
 import type { Activity, Booking, FoodPlan, Stop, Trip } from '../../types';
-import type { IconName } from '../ui';
+import { IconButton, type IconName } from '../ui';
 
 /**
  * The itinerary as a plan rather than a list.
@@ -95,6 +99,25 @@ function DaySection({
 }) {
   const styles = useStyles();
   const t = useTheme();
+  const allStops = useTripStore((s) => s.stops);
+  const reorderStops = useTripStore((s) => s.reorderStops);
+  const [reordering, setReordering] = useState(false);
+
+  // Only untimed stops can be reordered, because the clock decides the rest:
+  // an arrow that visibly does nothing is worse than no arrow.
+  const loose = day.stops.filter((stop) => !stop.startTime);
+  const canReorder = loose.length >= 2;
+
+  const move = (stopId: string, delta: -1 | 1) => {
+    const index = loose.findIndex((stop) => stop.id === stopId);
+    const nextOrder = moveBy(loose, index, delta).map((stop) => stop.id);
+    void reorderStops(
+      reorderWithin(
+        [...allStops].sort((a, b) => a.sequence - b.sequence).map((stop) => stop.id),
+        nextOrder,
+      ),
+    );
+  };
 
   const ids = new Set(day.stops.map((s) => s.id));
   const dayActivities = activities.filter((a) => ids.has(a.stopId));
@@ -137,6 +160,22 @@ function DaySection({
           <Text style={styles.daySub}>{subtitle}</Text>
         </View>
 
+        {canReorder ? (
+          <IconButton
+            icon={reordering ? 'checkmark' : 'swap-vertical'}
+            label={
+              reordering
+                ? 'Done reordering'
+                : `Reorder the places with no time on ${
+                    unscheduled ? 'this list' : formatDayLabel(day.date!)
+                  }`
+            }
+            tone="primary"
+            size={32}
+            onPress={() => setReordering((open) => !open)}
+          />
+        ) : null}
+
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={
@@ -149,6 +188,12 @@ function DaySection({
           <Ionicons name="add" size={18} color={t.primary} />
         </Pressable>
       </View>
+
+      {reordering ? (
+        <Text style={styles.reorderHint}>
+          Anything with a time is held in place by the clock.
+        </Text>
+      ) : null}
 
       {entries.length === 0 ? (
         <Pressable
@@ -169,6 +214,9 @@ function DaySection({
               activities={activities.filter((a) => a.stopId === entry.stop.id)}
               foodPlans={foodPlans.filter((f) => f.stopId === entry.stop.id)}
               onPress={() => onPressStop(entry.stop)}
+              reordering={reordering && !entry.stop.startTime}
+              position={positionOf(loose, entry.stop.id)}
+              onMove={(delta) => move(entry.stop.id, delta)}
             />
           ) : (
             <BookingRow
@@ -186,18 +234,29 @@ function DaySection({
   );
 }
 
+/** Where a stop sits among the day's untimed ones, for the arrow states. */
+function positionOf(loose: Stop[], id: string): { index: number; total: number } {
+  return { index: loose.findIndex((stop) => stop.id === id), total: loose.length };
+}
+
 function TimelineRow({
   stop,
   last,
   activities,
   foodPlans,
   onPress,
+  reordering,
+  position,
+  onMove,
 }: {
   stop: Stop;
   last: boolean;
   activities: Activity[];
   foodPlans: FoodPlan[];
   onPress: () => void;
+  reordering: boolean;
+  position: { index: number; total: number };
+  onMove: (delta: -1 | 1) => void;
 }) {
   const styles = useStyles();
   const t = useTheme();
@@ -289,17 +348,49 @@ function TimelineRow({
           ) : null}
         </View>
 
-        {/* The one thing worth doing from the plan without opening the stop:
-            you are standing somewhere and you need to get to the next place. */}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Directions to ${stop.name} in Google Maps`}
-          hitSlop={8}
-          onPress={() => void openInMaps(directionsUrl(stop))}
-          style={({ pressed }) => [styles.directions, pressed && styles.pressed]}
-        >
-          <Ionicons name="navigate" size={16} color={t.primary} />
-        </Pressable>
+        {reordering ? (
+          // Arrows rather than a drag handle: this list is grouped, scrolls,
+          // and has rows the clock will not let you move. Buttons say which
+          // moves are possible, work under a screen reader, and cannot drop a
+          // stop somewhere it is not allowed to go.
+          <View style={styles.moveButtons}>
+            {/* An arrow at the end of the list is dimmed rather than removed:
+                hiding it would shuffle the other one up and down the card every
+                time something moved. */}
+            <View style={position.index > 0 ? undefined : styles.moveOff}>
+              <IconButton
+                icon="chevron-up"
+                label={`Move ${stop.name} earlier`}
+                size={30}
+                tone="primary"
+                onPress={() => position.index > 0 && onMove(-1)}
+              />
+            </View>
+            <View
+              style={position.index < position.total - 1 ? undefined : styles.moveOff}
+            >
+              <IconButton
+                icon="chevron-down"
+                label={`Move ${stop.name} later`}
+                size={30}
+                tone="primary"
+                onPress={() => position.index < position.total - 1 && onMove(1)}
+              />
+            </View>
+          </View>
+        ) : (
+          /* The one thing worth doing from the plan without opening the stop:
+             you are standing somewhere and you need to get to the next place. */
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Directions to ${stop.name} in Google Maps`}
+            hitSlop={8}
+            onPress={() => void openInMaps(directionsUrl(stop))}
+            style={({ pressed }) => [styles.directions, pressed && styles.pressed]}
+          >
+            <Ionicons name="navigate" size={16} color={t.primary} />
+          </Pressable>
+        )}
       </Pressable>
     </View>
   );
@@ -409,6 +500,9 @@ const useStyles = makeStyles((t) => ({
     alignItems: 'center',
   },
   emptyDayText: { ...type.caption, color: t.textFaint },
+  reorderHint: { ...type.caption, color: t.textFaint, marginBottom: spacing.xs },
+  moveButtons: { gap: 2 },
+  moveOff: { opacity: 0.3 },
 
   row: { flexDirection: 'row', gap: spacing.sm },
   rail: { width: 62, alignItems: 'center', paddingTop: 2 },
