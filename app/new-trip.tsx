@@ -13,6 +13,8 @@ import {
 import {
   SUPPORTED_CURRENCIES,
   currencySymbol,
+  formatRate,
+  parseRate,
   parseMoney,
   toDecimalString,
 } from '../src/budget/money';
@@ -49,6 +51,8 @@ export default function NewTripScreen() {
   const [startDate, setStartDate] = useState<string | null>(null);
   const [endDate, setEndDate] = useState<string | null>(null);
   const [currency, setCurrency] = useState(defaultCurrency);
+  const [homeCurrency, setHomeCurrency] = useState<string | null>(null);
+  const [rateText, setRateText] = useState('');
   const [budgetText, setBudgetText] = useState('');
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(!isEdit);
@@ -61,6 +65,8 @@ export default function NewTripScreen() {
       setStartDate(trip.startDate);
       setEndDate(trip.endDate);
       setCurrency(trip.currency);
+      setHomeCurrency(trip.homeCurrency);
+      setRateText(formatRate(trip.ratePpm));
       setBudgetText(toDecimalString(trip.totalBudgetMinor, trip.currency));
       setLoaded(true);
     });
@@ -76,6 +82,10 @@ export default function NewTripScreen() {
       startDate,
       endDate,
       currency,
+      // A rate with nothing to convert into is meaningless, and vice versa, so
+      // the pair lives or dies together.
+      homeCurrency: homeCurrency && rateText.trim() ? homeCurrency : null,
+      ratePpm: homeCurrency ? parseRate(rateText) : null,
       totalBudgetMinor: parseMoney(budgetText, currency),
     };
     try {
@@ -134,12 +144,55 @@ export default function NewTripScreen() {
               <Chip
                 key={code}
                 label={code}
+                accessibilityLabel={`Spend in ${code}`}
                 selected={code === currency}
                 onPress={() => setCurrency(code)}
               />
             ))}
           </View>
         </Field>
+
+        <Field
+          label="Also show amounts in"
+          hint="Optional. For a trip you spend in one currency and think about in another."
+        >
+          <View style={styles.currencyRow}>
+            <Chip
+              label="Just one"
+              accessibilityLabel="Show one currency only"
+              selected={homeCurrency === null}
+              onPress={() => setHomeCurrency(null)}
+            />
+            {SUPPORTED_CURRENCIES.filter((code) => code !== currency).map((code) => (
+              <Chip
+                key={code}
+                label={code}
+                accessibilityLabel={`Also show ${code}`}
+                selected={code === homeCurrency}
+                onPress={() => setHomeCurrency(code)}
+              />
+            ))}
+          </View>
+        </Field>
+
+        {homeCurrency ? (
+          <Field
+            label={`1 ${currency} is worth`}
+            hint="Look it up once. Rates move, but not enough to matter for planning."
+          >
+            <View style={styles.amountRow}>
+              <Text style={styles.amountSymbol}>{currencySymbol(homeCurrency)}</Text>
+              <Input
+                value={rateText}
+                onChangeText={setRateText}
+                placeholder="2.34"
+                keyboardType="decimal-pad"
+                style={styles.amountInput}
+                accessibilityLabel={`Exchange rate, ${homeCurrency} per ${currency}`}
+              />
+            </View>
+          </Field>
+        ) : null}
 
         <Field
           label="Total budget"

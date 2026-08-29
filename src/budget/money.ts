@@ -135,3 +135,62 @@ export function sumMinor(values: (number | null | undefined)[]): number {
   }
   return total;
 }
+
+
+/* -------------------------------------------------------------------------- */
+/* A second currency                                                          */
+/* -------------------------------------------------------------------------- */
+
+/** One million: the scale a stored exchange rate is held at. */
+export const RATE_SCALE = 1_000_000;
+
+/**
+ * Converts minor units from one currency to another at a stored rate.
+ *
+ * Two things make this more than a multiplication. The rate is parts per
+ * million rather than a float, for the same reason money is minor units — 2.34
+ * is not a number a computer holds exactly. And the two currencies may not
+ * have the same number of decimal places: ¥1,200 is 1200 minor units where
+ * ₹1,200 is 120000, so converting between them has to shift the scale as well
+ * as apply the rate.
+ *
+ * Null in, null out — a trip with no second currency has nothing to show.
+ */
+export function convertMinor(
+  minor: number | null,
+  from: string,
+  to: string | null,
+  ratePpm: number | null,
+): number | null {
+  if (minor === null || !to || ratePpm === null || ratePpm <= 0) return null;
+  const shift = 10 ** (minorUnitExponent(to) - minorUnitExponent(from));
+  return Math.round((minor * ratePpm * shift) / RATE_SCALE);
+}
+
+/** "2.34" -> 2_340_000. Null for anything that isn't a positive number. */
+export function parseRate(input: string): number | null {
+  const trimmed = input.trim().replace(/,/g, '');
+  if (!/^\d*\.?\d*$/.test(trimmed) || trimmed === '' || trimmed === '.') return null;
+  const value = Number(trimmed);
+  if (!Number.isFinite(value) || value <= 0) return null;
+  return Math.round(value * RATE_SCALE);
+}
+
+/** 2_340_000 -> "2.34". Trailing zeros are dropped; a rate is not money. */
+export function formatRate(ratePpm: number | null): string {
+  if (ratePpm === null) return '';
+  return String(Number((ratePpm / RATE_SCALE).toFixed(6)));
+}
+
+/** "≈ ₹2,808" — the approximation sign is doing real work and stays. */
+export function formatConverted(
+  minor: number | null,
+  from: string,
+  to: string | null,
+  ratePpm: number | null,
+  options?: { compact?: boolean },
+): string | null {
+  const converted = convertMinor(minor, from, to, ratePpm);
+  if (converted === null || !to) return null;
+  return `≈ ${formatMoney(converted, to, options)}`;
+}

@@ -97,6 +97,18 @@ export const MIGRATIONS: readonly Migration[] = [
       CREATE INDEX IF NOT EXISTS idx_packing_trip ON packing_items(trip_id, sequence);
     `,
   },
+  {
+    version: 5,
+    name: 'second currency per trip',
+    sql: `
+      -- A trip is spent in one currency and thought about in another. The rate
+      -- is stored as parts per million rather than a float, for the same reason
+      -- money is stored in minor units: a rate of 2.34 is not representable and
+      -- 2340000 is.
+      ALTER TABLE trips ADD COLUMN home_currency TEXT;
+      ALTER TABLE trips ADD COLUMN rate_ppm INTEGER;
+    `,
+  },
 ];
 
 /** The version a freshly created database is at once every migration has run. */

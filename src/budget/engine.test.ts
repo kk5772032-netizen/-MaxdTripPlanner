@@ -21,6 +21,8 @@ function makeTrip(overrides: Partial<Trip> = {}): Trip {
     startDate: '2025-11-01',
     endDate: '2025-11-03',
     currency: 'INR',
+    homeCurrency: null,
+    ratePpm: null,
     totalBudgetMinor: 10_000_00,
     createdAt: '2025-10-01T00:00:00.000Z',
     ...overrides,

@@ -33,7 +33,8 @@ import {
 
 interface TripRow {
   id: string; name: string; start_date: string | null; end_date: string | null;
-  currency: string; total_budget: number | null; created_at: string;
+  currency: string; home_currency: string | null; rate_ppm: number | null;
+  total_budget: number | null; created_at: string;
 }
 interface StopRow {
   id: string; trip_id: string; google_place_id: string | null; name: string;
@@ -84,7 +85,9 @@ export async function buildBackup(now = new Date()): Promise<Backup> {
     trips: trips.map(
       (r): Trip => ({
         id: r.id, name: r.name, startDate: r.start_date, endDate: r.end_date,
-        currency: r.currency, totalBudgetMinor: r.total_budget, createdAt: r.created_at,
+        currency: r.currency, homeCurrency: r.home_currency ?? null,
+        ratePpm: r.rate_ppm ?? null,
+        totalBudgetMinor: r.total_budget, createdAt: r.created_at,
       }),
     ),
     stops: stops.map(
@@ -159,9 +162,11 @@ export async function restoreBackup(backup: Backup): Promise<BackupCounts> {
 
     for (const t of backup.trips) {
       await tx.runAsync(
-        `INSERT INTO trips (id, name, start_date, end_date, currency, total_budget, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        t.id, t.name, t.startDate, t.endDate, t.currency, t.totalBudgetMinor, t.createdAt,
+        `INSERT INTO trips (id, name, start_date, end_date, currency, home_currency,
+           rate_ppm, total_budget, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        t.id, t.name, t.startDate, t.endDate, t.currency, t.homeCurrency ?? null,
+        t.ratePpm ?? null, t.totalBudgetMinor, t.createdAt,
       );
     }
     for (const s of backup.stops) {

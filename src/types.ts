@@ -33,8 +33,19 @@ export interface Trip {
   /** ISO date, YYYY-MM-DD. Null when the user hasn't picked dates yet. */
   startDate: string | null;
   endDate: string | null;
-  /** ISO 4217 code, e.g. 'INR'. */
+  /** ISO 4217 code, e.g. 'INR'. The currency the trip is spent in. */
   currency: string;
+  /**
+   * What you think in, when that differs from what you spend in. Null when the
+   * trip needs only one currency, which is most of them.
+   */
+  homeCurrency: string | null;
+  /**
+   * How much one unit of `currency` is worth in `homeCurrency`, in parts per
+   * million: 1 THB = 2.34 INR is 2_340_000. An integer for the same reason
+   * money is — 2.34 is not a number a computer can hold exactly.
+   */
+  ratePpm: number | null;
   /** Minor units. Null means "no overall budget set". */
   totalBudgetMinor: number | null;
   createdAt: string;

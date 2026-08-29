@@ -4,7 +4,7 @@ import type { Booking, Stop, Trip } from '../types';
 
 const trip: Trip = {
   id: 't', name: 'Delhi long weekend', startDate: '2026-11-09', endDate: '2026-11-11',
-  currency: 'INR', totalBudgetMinor: null, createdAt: '2026-08-01T00:00:00.000Z',
+  currency: 'INR', homeCurrency: null, ratePpm: null, totalBudgetMinor: null, createdAt: '2026-08-01T00:00:00.000Z',
 };
 
 const stop = (o: Partial<Stop> = {}): Stop => ({

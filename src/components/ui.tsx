@@ -364,6 +364,12 @@ export function Chip({
   icon,
   color,
   style,
+  /**
+   * Overrides the spoken label. Two rows of currency chips both say "USD", and
+   * a screen reader swiping through them hears the same word twice with no way
+   * to tell which question it is answering.
+   */
+  accessibilityLabel,
 }: {
   label: string;
   selected: boolean;
@@ -372,6 +378,7 @@ export function Chip({
   /** Tints the chip when selected — used for expense categories. */
   color?: string;
   style?: ViewStyle;
+  accessibilityLabel?: string;
 }) {
   const styles = useStyles();
   const t = useTheme();
@@ -379,7 +386,7 @@ export function Chip({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ selected }}
       // The pill is 36pt tall for density; hitSlop takes the touch target to
       // the 44pt minimum without changing the layout.

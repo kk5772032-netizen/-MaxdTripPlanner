@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { Text, View } from 'react-native';
 
-import { formatMoney } from '../../budget/money';
+import { formatConverted, formatMoney } from '../../budget/money';
 import type { TripTotals } from '../../budget/engine';
 import { makeStyles, spacing, type } from '../../theme';
 import type { Trip } from '../../types';
@@ -33,6 +33,9 @@ export function BudgetSection({
   const headline =
     totals.remainingBudget === null ? totals.totalActual : totals.remainingBudget;
   const over = totals.remainingBudget !== null && totals.remainingBudget < 0;
+  const inHome = formatConverted(headline, trip.currency, trip.homeCurrency, trip.ratePpm, {
+    compact: true,
+  });
 
   return (
     <View style={styles.section}>
@@ -43,6 +46,7 @@ export function BudgetSection({
         <Text style={[styles.heroValue, over && styles.heroValueOver]}>
           {formatMoney(headline, trip.currency, { compact: true })}
         </Text>
+        {inHome ? <Text style={styles.heroHome}>{inHome}</Text> : null}
 
         <BudgetBar
           actual={totals.totalActual}
@@ -56,9 +60,9 @@ export function BudgetSection({
       </Card>
 
       <View style={styles.stats}>
-        <Stat label="Budget" value={totals.totalBudget} currency={trip.currency} />
-        <Stat label="Planned" value={totals.totalPlanned} currency={trip.currency} />
-        <Stat label="Actual" value={totals.totalActual} currency={trip.currency} />
+        <Stat label="Budget" value={totals.totalBudget} trip={trip} />
+        <Stat label="Planned" value={totals.totalPlanned} trip={trip} />
+        <Stat label="Actual" value={totals.totalActual} trip={trip} />
       </View>
 
       <Button
@@ -83,22 +87,18 @@ export function BudgetSection({
   );
 }
 
-function Stat({
-  label,
-  value,
-  currency,
-}: {
-  label: string;
-  value: number | null;
-  currency: string;
-}) {
+function Stat({ label, value, trip }: { label: string; value: number | null; trip: Trip }) {
   const styles = useStyles();
+  const inHome = formatConverted(value, trip.currency, trip.homeCurrency, trip.ratePpm, {
+    compact: true,
+  });
   return (
     <Card style={styles.stat} raised={false}>
       <Text style={styles.statLabel}>{label}</Text>
       <Text style={styles.statValue}>
-        {value === null ? '—' : formatMoney(value, currency, { compact: true })}
+        {value === null ? '—' : formatMoney(value, trip.currency, { compact: true })}
       </Text>
+      {value !== null && inHome ? <Text style={styles.statHome}>{inHome}</Text> : null}
     </Card>
   );
 }
@@ -109,10 +109,12 @@ const useStyles = makeStyles((t) => ({
   heroLabel: { ...type.label, color: t.textMuted },
   heroValue: { ...type.hero, color: t.text, fontVariant: ['tabular-nums'] },
   heroValueOver: { color: t.overText },
+  heroHome: { ...type.label, color: t.textMuted, fontVariant: ['tabular-nums'] },
   heroBar: { marginTop: spacing.sm },
 
   stats: { flexDirection: 'row', gap: spacing.md },
   stat: { flex: 1, gap: 2 },
   statLabel: { ...type.captionStrong, color: t.textMuted },
   statValue: { ...type.heading, color: t.text, fontVariant: ['tabular-nums'] },
+  statHome: { ...type.caption, color: t.textFaint, fontVariant: ['tabular-nums'] },
 }));

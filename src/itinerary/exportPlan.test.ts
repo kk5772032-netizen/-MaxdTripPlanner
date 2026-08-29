@@ -6,7 +6,7 @@ const trip: Trip = {
   name: 'Delhi long weekend',
   startDate: '2026-11-09',
   endDate: '2026-11-11',
-  currency: 'INR',
+  currency: 'INR', homeCurrency: null, ratePpm: null,
   totalBudgetMinor: 1_500_000,
   createdAt: '2026-08-01T00:00:00.000Z',
 };
