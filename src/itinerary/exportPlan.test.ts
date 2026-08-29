@@ -114,6 +114,22 @@ describe('planAsText', () => {
     expect(text).toContain("Food: Karim's");
   });
 
+  it('carries the times people set on their to-dos', () => {
+    const text = planAsText({
+      ...empty,
+      stops: [stop({ name: 'Red Fort', dayDate: '2026-11-09' })],
+      activities: [
+        activity({ id: 'a1', title: 'Museum wing', startTime: '11:15' }),
+        activity({ id: 'a2', title: 'Light show', startTime: '10:30', durationMin: 45 }),
+        activity({ id: 'a3', title: 'Buy a postcard' }),
+      ],
+    });
+    // On the clock, and the untimed one last rather than dropped.
+    expect(text).toContain(
+      'To do: 10:30 am Light show (45m), 11:15 am Museum wing, Buy a postcard',
+    );
+  });
+
   it('lists undated bookings at the end rather than dropping them', () => {
     const text = planAsText({
       ...empty,

@@ -1,7 +1,14 @@
 import { formatDateRange } from '../dates';
 import { bookingLabels } from '../tokens';
 import type { Activity, Booking, FoodPlan, Stop, Trip } from '../types';
-import { dayEntries, formatDayLabel, formatSpan, formatTime, planByDay } from './schedule';
+import {
+  dayEntries,
+  formatDayLabel,
+  formatDuration,
+  formatSpan,
+  formatTime,
+  planByDay,
+} from './schedule';
 
 /**
  * The itinerary as something you can send someone.
@@ -75,10 +82,29 @@ function linesForDay(day: ReturnType<typeof planByDay>[number], data: PlanData):
       title: stop.name,
       kicker: null,
       detail: stop.address,
-      todo: data.activities.filter((a) => a.stopId === stop.id).map((a) => a.title),
+      todo: data.activities
+        .filter((a) => a.stopId === stop.id)
+        .sort(byClock)
+        .map(describeActivity),
       food: data.foodPlans.filter((f) => f.stopId === stop.id).map((f) => f.name),
     };
   });
+}
+
+/** Timed to-dos first and in order; the rest keep the order they were added. */
+function byClock(a: Activity, b: Activity): number {
+  if (a.startTime && b.startTime) return a.startTime < b.startTime ? -1 : 1;
+  if (a.startTime) return -1;
+  if (b.startTime) return 1;
+  return 0;
+}
+
+/** "10:30 am Museum wing", or just the title when nobody set a time. */
+function describeActivity(activity: Activity): string {
+  const at = formatTime(activity.startTime);
+  const length = activity.durationMin ? formatDuration(activity.durationMin) : null;
+  if (at) return length ? `${at} ${activity.title} (${length})` : `${at} ${activity.title}`;
+  return length ? `${activity.title} (${length})` : activity.title;
 }
 
 /** Days in order, with the ones that have nothing on them still present. */

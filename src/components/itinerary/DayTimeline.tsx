@@ -216,6 +216,13 @@ function TimelineRow({
       : null,
   ].filter(Boolean);
 
+  // Only the timed ones. An untimed to-do is a thing to do at this stop, which
+  // the count above already says; putting it on the hour-by-hour list would
+  // claim a place in the day that it does not have.
+  const scheduled = activities
+    .filter((a) => a.startTime)
+    .sort((a, b) => (a.startTime! < b.startTime! ? -1 : 1));
+
   return (
     <View style={styles.row}>
       {/* The rail: a time, a dot, and a line down to the next stop. */}
@@ -264,6 +271,22 @@ function TimelineRow({
           {span && stop.endTime ? <Text style={styles.span}>{span}</Text> : null}
 
           {meta.length > 0 ? <Text style={styles.meta}>{meta.join(' · ')}</Text> : null}
+
+          {scheduled.length > 0 ? (
+            <View style={styles.schedule}>
+              {scheduled.map((activity) => (
+                <View key={activity.id} style={styles.scheduleRow}>
+                  <Text style={styles.scheduleTime}>{formatTime(activity.startTime)}</Text>
+                  <Text
+                    style={[styles.scheduleTitle, activity.done && styles.scheduleDone]}
+                    numberOfLines={1}
+                  >
+                    {activity.title}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
         </View>
 
         {/* The one thing worth doing from the plan without opening the stop:
@@ -416,7 +439,10 @@ const useStyles = makeStyles((t) => ({
   card: {
     flex: 1,
     flexDirection: 'row',
-    alignItems: 'center',
+    // Top, not centre: a card with an hour-by-hour list under it would
+    // otherwise float the directions button beside the schedule rather than
+    // beside the place it gives directions to.
+    alignItems: 'flex-start',
     gap: spacing.md,
     backgroundColor: t.surface,
     borderWidth: StyleSheet.hairlineWidth,
@@ -453,13 +479,30 @@ const useStyles = makeStyles((t) => ({
     justifyContent: 'center',
   },
   thumb: { width: 54, height: 54, borderRadius: radius.md, backgroundColor: t.surfaceSunken },
-  cardTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  cardTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: 34 },
   stopName: { ...type.bodyStrong, color: t.text, flex: 1 },
   rating: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   ratingText: { ...type.caption, fontWeight: '600', color: t.textMuted },
   address: { ...type.caption, color: t.textMuted },
   span: { ...type.caption, color: t.textMuted, fontVariant: ['tabular-nums'] },
   meta: { ...type.caption, color: t.textFaint, marginTop: 2 },
+
+  schedule: {
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: t.border,
+    gap: 3,
+  },
+  scheduleRow: { flexDirection: 'row', gap: spacing.sm },
+  scheduleTime: {
+    ...type.caption,
+    color: t.textMuted,
+    fontVariant: ['tabular-nums'],
+    width: 62,
+  },
+  scheduleTitle: { flex: 1, ...type.caption, color: t.text },
+  scheduleDone: { color: t.textFaint, textDecorationLine: 'line-through' },
 
   pressed: { opacity: 0.7 },
 }));

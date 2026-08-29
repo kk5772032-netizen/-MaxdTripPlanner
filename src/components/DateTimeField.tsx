@@ -1,10 +1,8 @@
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ScrollView, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { formatDayLabel, formatTime } from '../itinerary/schedule';
-import { HIT_SLOP, MIN_TAP, makeStyles, radius, spacing, type, useTheme } from '../theme';
+import { formatDayLabel } from '../itinerary/schedule';
+import { MIN_TAP, makeStyles, radius, spacing, type, useTheme } from '../theme';
+import { TimeField } from './TimeField';
 
 /**
  * A day and a time, stored together as `YYYY-MM-DDTHH:MM`.
@@ -27,7 +25,6 @@ export function DateTimeField({
 }) {
   const styles = useStyles();
   const t = useTheme();
-  const [pickingTime, setPickingTime] = useState(false);
 
   const date = value ? value.slice(0, 10) : null;
   const time = value ? value.slice(11, 16) : null;
@@ -89,81 +86,16 @@ export function DateTimeField({
         />
       )}
 
-      <View style={styles.timeRow}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`${label} time: ${formatTime(time) ?? 'not set'}`}
-          onPress={() => setPickingTime((o) => !o)}
-          style={({ pressed }) => [
-            styles.time,
-            pickingTime && styles.timeActive,
-            pressed && styles.pressed,
-          ]}
-        >
-          <Ionicons name="time-outline" size={16} color={t.textMuted} />
-          <Text style={[styles.timeText, !time && styles.timeEmpty]}>
-            {formatTime(time) ?? 'Add a time'}
-          </Text>
-        </Pressable>
+      <TimeField
+        value={time}
+        onChange={(next) => (next ? setTime(next) : onChange(date))}
+        label={label}
+      />
 
-        {value ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Clear the ${label.toLowerCase()}`}
-            hitSlop={HIT_SLOP}
-            onPress={() => {
-              setPickingTime(false);
-              onChange(null);
-            }}
-            style={styles.clear}
-          >
-            <Ionicons name="close" size={16} color={t.textMuted} />
-          </Pressable>
-        ) : null}
-      </View>
-
-      {pickingTime ? (
-        Platform.OS === 'web' ? (
-          <TextInput
-            accessibilityLabel={`${label} time, as hours colon minutes`}
-            autoFocus
-            defaultValue={time ?? ''}
-            onChangeText={(text) => {
-              if (/^\d{2}:\d{2}$/.test(text)) setTime(text);
-            }}
-            placeholder="HH:MM"
-            placeholderTextColor={t.textFaint}
-            style={styles.dateInput}
-          />
-        ) : (
-          <View style={styles.pickerWrap}>
-            <DateTimePicker
-              value={toDate(time)}
-              mode="time"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={(_, picked) => {
-                if (Platform.OS !== 'ios') setPickingTime(false);
-                if (!picked) return;
-                setTime(
-                  `${String(picked.getHours()).padStart(2, '0')}:${String(
-                    picked.getMinutes(),
-                  ).padStart(2, '0')}`,
-                );
-              }}
-            />
-          </View>
-        )
-      ) : null}
     </View>
   );
 }
 
-function toDate(hhmm: string | null): Date {
-  const d = new Date();
-  const m = hhmm ? /^(\d{1,2}):(\d{2})$/.exec(hhmm) : null;
-  d.setHours(m ? Number(m[1]) : 9, m ? Number(m[2]) : 0, 0, 0);
-  return d;
-}
 
 const useStyles = makeStyles((t) => ({
   wrap: { gap: spacing.sm },
@@ -181,22 +113,6 @@ const useStyles = makeStyles((t) => ({
   chipText: { ...type.label, color: t.textMuted },
   chipTextOn: { color: t.primary },
 
-  timeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  time: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    minHeight: MIN_TAP,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: t.border,
-    backgroundColor: t.surface,
-  },
-  timeActive: { borderColor: t.primary },
-  timeText: { ...type.body, color: t.text },
-  timeEmpty: { color: t.textFaint },
-  clear: { width: MIN_TAP, height: MIN_TAP, alignItems: 'center', justifyContent: 'center' },
 
   dateInput: {
     minHeight: MIN_TAP,
@@ -208,13 +124,6 @@ const useStyles = makeStyles((t) => ({
     color: t.text,
     fontSize: 15,
     fontVariant: ['tabular-nums'],
-  },
-  pickerWrap: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: t.border,
-    borderRadius: radius.md,
-    backgroundColor: t.surface,
-    overflow: 'hidden',
   },
 
   pressed: { opacity: 0.7 },
