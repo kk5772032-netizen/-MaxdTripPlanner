@@ -6,6 +6,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { photoUrl } from '../../api/places';
 import { directionsUrl, openInMaps } from '../../places/maps';
 import { useTripStore } from '../../state/tripStore';
+import { DayJournal } from './DayJournal';
 import {
   dayEntries,
   formatDayLabel,
@@ -100,6 +101,7 @@ function DaySection({
   const styles = useStyles();
   const t = useTheme();
   const allStops = useTripStore((s) => s.stops);
+  const journal = useTripStore((s) => s.journal);
   const reorderStops = useTripStore((s) => s.reorderStops);
   const [reordering, setReordering] = useState(false);
 
@@ -230,8 +232,25 @@ function DaySection({
           ),
         )
       )}
+
+      {/* What happened, under what was planned. Only for days that have. */}
+      {day.date ? (
+        <DayJournal
+          dayDate={day.date}
+          entry={journal.find((e) => e.dayDate === day.date) ?? null}
+          today={today()}
+        />
+      ) : null}
     </View>
   );
+}
+
+/** Local today, not UTC: the journal is about the day you are actually in. */
+function today(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
+    now.getDate(),
+  ).padStart(2, '0')}`;
 }
 
 /** Where a stop sits among the day's untimed ones, for the arrow states. */

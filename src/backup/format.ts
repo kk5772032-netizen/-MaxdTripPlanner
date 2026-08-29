@@ -1,4 +1,6 @@
-import type { Activity, Booking, Expense, FoodPlan, PackingItem, Stop, Trip } from '../types';
+import type {
+  Activity, Booking, Expense, FoodPlan, JournalEntry, PackingItem, Stop, Trip,
+} from '../types';
 
 /**
  * What a backup file is.
@@ -27,6 +29,13 @@ export interface Backup {
   expenses: Expense[];
   bookings: Booking[];
   packing: PackingItem[];
+  /**
+   * Notes travel; photos do not. The file paths point into the old phone's
+   * storage and would restore as grey boxes, so entries come back with their
+   * words and without their pictures. Saying so is better than a gallery of
+   * missing files.
+   */
+  journal: JournalEntry[];
 }
 
 export interface BackupCounts {
@@ -37,6 +46,7 @@ export interface BackupCounts {
   expenses: number;
   bookings: number;
   packing: number;
+  journal: number;
 }
 
 export function countsOf(backup: Backup): BackupCounts {
@@ -48,6 +58,7 @@ export function countsOf(backup: Backup): BackupCounts {
     expenses: backup.expenses.length,
     bookings: backup.bookings.length,
     packing: backup.packing.length,
+    journal: backup.journal.length,
   };
 }
 
@@ -93,6 +104,7 @@ export function parseBackup(text: string): ParseResult {
 
   const tables = [
     'trips', 'stops', 'activities', 'foodPlans', 'expenses', 'bookings', 'packing',
+    'journal',
   ] as const;
   for (const table of tables) {
     // A missing table is tolerated — an older file may predate bookings — but
@@ -123,6 +135,7 @@ export function parseBackup(text: string): ParseResult {
       expenses: (obj.expenses ?? []) as Expense[],
       bookings: (obj.bookings ?? []) as Booking[],
       packing: (obj.packing ?? []) as PackingItem[],
+      journal: (obj.journal ?? []) as JournalEntry[],
     },
   };
 }

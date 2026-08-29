@@ -2,13 +2,16 @@ import { create } from 'zustand';
 
 import * as activitiesRepo from '../db/repositories/activities';
 import * as bookingsRepo from '../db/repositories/bookings';
+import * as journalRepo from '../db/repositories/journal';
 import * as packingRepo from '../db/repositories/packing';
 import * as expensesRepo from '../db/repositories/expenses';
 import * as foodPlansRepo from '../db/repositories/foodPlans';
 import * as stopsRepo from '../db/repositories/stops';
 import * as tripsRepo from '../db/repositories/trips';
 import { notifyBudgetCrossing } from '../notifications';
-import type { Activity, Booking, Expense, FoodPlan, PackingItem, Stop, Trip } from '../types';
+import type {
+  Activity, Booking, Expense, FoodPlan, JournalEntry, PackingItem, Stop, Trip,
+} from '../types';
 import { useSettingsStore } from './settingsStore';
 import { useToastStore } from './toastStore';
 
@@ -31,6 +34,7 @@ interface TripState {
   foodPlans: FoodPlan[];
   bookings: Booking[];
   packing: PackingItem[];
+  journal: JournalEntry[];
   expenses: Expense[];
   loading: boolean;
   error: string | null;
@@ -56,6 +60,10 @@ interface TripState {
   addExpense: (input: Omit<expensesRepo.NewExpense, 'tripId'>) => Promise<void>;
   updateExpense: (id: string, patch: Partial<Omit<Expense, 'id' | 'tripId'>>) => Promise<void>;
   removeExpense: (id: string) => Promise<void>;
+
+  setJournalNote: (dayDate: string, note: string | null) => Promise<void>;
+  addJournalPhotos: (dayDate: string, uris: string[]) => Promise<void>;
+  removeJournalPhoto: (photoId: string) => Promise<string | null>;
 
   addPacking: (input: Omit<packingRepo.NewPackingItem, 'tripId'>) => Promise<void>;
   addPackingTemplate: (
@@ -85,6 +93,7 @@ export const useTripStore = create<TripState>((set, get) => ({
   expenses: [],
   bookings: [],
   packing: [],
+  journal: [],
   loading: false,
   error: null,
 
@@ -99,13 +108,13 @@ export const useTripStore = create<TripState>((set, get) => ({
       ...(switching
         ? {
             trip: null, stops: [], activities: [], foodPlans: [], expenses: [],
-            bookings: [], packing: [],
+            bookings: [], packing: [], journal: [],
           }
         : {}),
     });
 
     try {
-      const [trip, stops, activities, foodPlans, expenses, bookings, packing] =
+      const [trip, stops, activities, foodPlans, expenses, bookings, packing, journal] =
         await Promise.all([
         tripsRepo.getTrip(tripId),
         stopsRepo.listStops(tripId),
@@ -114,12 +123,14 @@ export const useTripStore = create<TripState>((set, get) => ({
         expensesRepo.listExpenses(tripId),
         bookingsRepo.listBookings(tripId),
         packingRepo.listPacking(tripId),
+        journalRepo.listJournal(tripId),
       ]);
       // A slower load for a trip the user has already navigated away from must
       // not overwrite the one now on screen.
       if (get().tripId !== tripId) return;
       set({
-        trip, stops, activities, foodPlans, expenses, bookings, packing, loading: false,
+        trip, stops, activities, foodPlans, expenses, bookings, packing, journal,
+        loading: false,
       });
     } catch (e) {
       console.warn('[trip] open failed', e);
@@ -142,6 +153,7 @@ export const useTripStore = create<TripState>((set, get) => ({
       expenses: [],
       bookings: [],
       packing: [],
+      journal: [],
       error: null,
     }),
 
@@ -319,6 +331,30 @@ export const useTripStore = create<TripState>((set, get) => ({
         set({ expenses: [expense, ...get().expenses] });
       },
     });
+  },
+
+  /* -------------------------------------------------------------- journal */
+
+  setJournalNote: async (dayDate, note) => {
+    const tripId = get().trip?.id;
+    if (!tripId) return;
+    await journalRepo.setNote(tripId, dayDate, note);
+    set({ journal: await journalRepo.listJournal(tripId) });
+  },
+
+  addJournalPhotos: async (dayDate, uris) => {
+    const tripId = get().trip?.id;
+    if (!tripId) return;
+    await journalRepo.addPhotos(tripId, dayDate, uris);
+    set({ journal: await journalRepo.listJournal(tripId) });
+  },
+
+  removeJournalPhoto: async (photoId) => {
+    const tripId = get().trip?.id;
+    if (!tripId) return null;
+    const uri = await journalRepo.removePhoto(photoId);
+    set({ journal: await journalRepo.listJournal(tripId) });
+    return uri;
   },
 
   /* -------------------------------------------------------------- packing */

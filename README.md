@@ -242,6 +242,7 @@ src/
   itinerary/calendar.ts     the trip as a standard .ics file
   itinerary/exportPlan.ts   the plan as shareable text and as a PDF-ready page
   packing/templates.ts      starter packing lists by trip type
+  db/repositories/journal.ts  what happened on a day, and its photos
   itinerary/sharePlan.ts    printing and the share sheet
   places/hours.ts           open-or-shut from the clock, in the place's timezone
   places/maps.ts            Google Maps handoff — directions, place, whole route

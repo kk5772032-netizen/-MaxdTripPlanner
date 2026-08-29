@@ -1,6 +1,7 @@
 import { openTestDb, setDbForTesting } from '../db/client';
 import * as activitiesRepo from '../db/repositories/activities';
 import * as bookingsRepo from '../db/repositories/bookings';
+import * as journalRepo from '../db/repositories/journal';
 import * as packingRepo from '../db/repositories/packing';
 import * as expensesRepo from '../db/repositories/expenses';
 import * as foodRepo from '../db/repositories/foodPlans';
@@ -70,6 +71,7 @@ describe('parseBackup', () => {
     const result = parseBackup(good);
     expect(result.ok && result.backup.bookings).toEqual([]);
     expect(result.ok && result.backup.packing).toEqual([]);
+    expect(result.ok && result.backup.journal).toEqual([]);
   });
 });
 
@@ -151,6 +153,8 @@ describe('a round trip through a backup', () => {
       title: 'Sunscreen',
       category: 'Health',
     });
+    await journalRepo.setNote(trip.id, '2026-11-09', 'Rained all afternoon');
+    await journalRepo.addPhotos(trip.id, '2026-11-09', ['file:///old-phone/a.jpg']);
     return trip;
   }
 
@@ -165,6 +169,7 @@ describe('a round trip through a backup', () => {
     expect(before.activities[0].durationMin).toBe(45);
     expect(before.bookings[0].confirmation).toBe('PNR7Y2Q');
     expect(before.packing[0].title).toBe('Sunscreen');
+    expect(before.journal[0].note).toBe('Rained all afternoon');
 
     // A fresh database, as a new phone would be.
     setDbForTesting(await openTestDb());
@@ -172,7 +177,8 @@ describe('a round trip through a backup', () => {
 
     const counts = await restoreBackup(before);
     expect(counts).toEqual({
-      trips: 1, stops: 1, activities: 1, foodPlans: 1, expenses: 1, bookings: 1, packing: 1,
+      trips: 1, stops: 1, activities: 1, foodPlans: 1, expenses: 1, bookings: 1,
+      packing: 1, journal: 1,
     });
 
     const after = await buildBackup(new Date('2026-08-29T00:00:00Z'));
@@ -196,6 +202,15 @@ describe('a round trip through a backup', () => {
     const trips = await tripsRepo.listTrips();
     expect(trips).toHaveLength(1);
     expect(trips[0].name).toBe('Delhi long weekend');
+  });
+
+  it('carries the words of a journal but not its photos', async () => {
+    // The file paths point into the old phone's storage; restoring them would
+    // produce a gallery of grey boxes.
+    await seed();
+    const backup = await buildBackup();
+    expect(backup.journal[0].note).toBe('Rained all afternoon');
+    expect(backup.journal[0].photos).toEqual([]);
   });
 
   it('drops attachment paths, which point at a phone you no longer have', async () => {

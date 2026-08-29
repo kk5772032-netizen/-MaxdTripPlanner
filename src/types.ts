@@ -162,6 +162,31 @@ export interface Booking {
 }
 
 /**
+ * What actually happened on a day, as opposed to what was planned.
+ *
+ * A trip planner that closes the moment the trip starts is half an app. One
+ * entry per day, created only when there is something to say — an empty day
+ * has no row, so the journal never accuses you of not writing in it.
+ */
+export interface JournalEntry {
+  id: string;
+  tripId: string;
+  /** ISO date, YYYY-MM-DD. Unique within a trip. */
+  dayDate: string;
+  note: string | null;
+  updatedAt: string;
+  photos: JournalPhoto[];
+}
+
+export interface JournalPhoto {
+  id: string;
+  entryId: string;
+  /** A file in this app's own storage, not the picker's cache. */
+  uri: string;
+  sequence: number;
+}
+
+/**
  * One line on a packing list.
  *
  * The category is free text because people group their own way — "carry-on",

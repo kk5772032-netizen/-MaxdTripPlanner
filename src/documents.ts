@@ -1,4 +1,5 @@
 import * as DocumentPicker from 'expo-document-picker';
+import * as ImagePicker from 'expo-image-picker';
 import { Directory, File, Paths } from 'expo-file-system';
 import { Platform } from 'react-native';
 
@@ -79,3 +80,69 @@ export async function deleteAttachment(uri: string | null): Promise<void> {
     /* best effort */
   }
 }
+
+
+/* -------------------------------------------------------------------------- */
+/* Photos                                                                     */
+/* -------------------------------------------------------------------------- */
+
+const PHOTO_FOLDER = 'journal';
+
+export type PhotoResult =
+  | { ok: true; uris: string[] }
+  | { ok: false; reason: string | null };
+
+/**
+ * Picks photos from the library and copies them into the app's own storage.
+ *
+ * The same reason as attachments: the picker hands back a URI into a cache the
+ * OS may empty, so a journal photo saved today would be a grey box by the time
+ * anyone looked back at the trip. Copying costs disk and buys the photo still
+ * being there.
+ */
+export async function pickPhotos(limit = 8): Promise<PhotoResult> {
+  let picked: ImagePicker.ImagePickerResult;
+  try {
+    picked = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsMultipleSelection: true,
+      selectionLimit: limit,
+      // A journal photo is looked at on a phone, not printed. Full-resolution
+      // originals would fill the device for no visible gain.
+      quality: 0.8,
+    });
+  } catch (e) {
+    console.warn('[documents] photo picker failed', e);
+    return { ok: false, reason: "Couldn't open your photos." };
+  }
+
+  if (picked.canceled) return { ok: false, reason: null };
+  const assets = picked.assets ?? [];
+  if (assets.length === 0) return { ok: false, reason: 'No photos were picked.' };
+
+  if (Platform.OS === 'web') {
+    // Nothing persistent to copy into; the blob URIs are good for this session,
+    // which is the honest limit of a browser here.
+    return { ok: true, uris: assets.map((a) => a.uri) };
+  }
+
+  try {
+    const dir = new Directory(Paths.document, PHOTO_FOLDER);
+    dir.create({ intermediates: true, idempotent: true });
+
+    const uris: string[] = [];
+    for (const [i, asset] of assets.entries()) {
+      const extension = asset.uri.split('.').pop()?.split('?')[0] ?? 'jpg';
+      const target = new File(dir, `${Date.now()}-${i}.${extension.slice(0, 5)}`);
+      await new File(asset.uri).copy(target);
+      uris.push(target.uri);
+    }
+    return { ok: true, uris };
+  } catch (e) {
+    console.warn('[documents] photo copy failed', e);
+    return { ok: false, reason: "Couldn't save those photos." };
+  }
+}
+
+/** Same best-effort delete as attachments: a missing file is already gone. */
+export const deletePhoto = deleteAttachment;

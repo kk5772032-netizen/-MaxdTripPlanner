@@ -109,6 +109,33 @@ export const MIGRATIONS: readonly Migration[] = [
       ALTER TABLE trips ADD COLUMN rate_ppm INTEGER;
     `,
   },
+  {
+    version: 6,
+    name: 'journal entries',
+    sql: `
+      -- What actually happened, as opposed to what was planned. One row per day
+      -- of a trip, created only when there is something to say.
+      CREATE TABLE IF NOT EXISTS journal_entries (
+        id TEXT PRIMARY KEY,
+        trip_id TEXT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+        -- ISO date. One entry per day per trip, enforced rather than trusted.
+        day_date TEXT NOT NULL,
+        note TEXT,
+        updated_at TEXT NOT NULL,
+        UNIQUE (trip_id, day_date)
+      );
+
+      CREATE TABLE IF NOT EXISTS journal_photos (
+        id TEXT PRIMARY KEY,
+        entry_id TEXT NOT NULL REFERENCES journal_entries(id) ON DELETE CASCADE,
+        -- A file this app copied into its own storage, not the picker's cache,
+        -- which the OS is free to empty.
+        uri TEXT NOT NULL,
+        sequence INTEGER NOT NULL DEFAULT 0
+      );
+      CREATE INDEX IF NOT EXISTS idx_journal_photos ON journal_photos(entry_id, sequence);
+    `,
+  },
 ];
 
 /** The version a freshly created database is at once every migration has run. */

@@ -42,6 +42,13 @@
       "expo-router",
       "expo-sqlite",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Waypoint adds the photos you pick to your trip journal, on this device.",
+          "cameraPermission": "Waypoint uses the camera to add a photo to your trip journal."
+        }
+      ],
+      [
         "react-native-maps",
         {
           "androidGoogleMapsApiKey": "$EXPO_PUBLIC_GOOGLE_MAPS_KEY",
@@ -67,7 +74,7 @@
     "experiments": {
       "typedRoutes": true
     },
-    "description": "Plan a trip as a sequence of stops — what to do, where to eat, and what it should cost — then track real spending against the plan.",
+    "description": "Plan a trip as a sequence of stops \u2014 what to do, where to eat, and what it should cost \u2014 then track real spending against the plan.",
     "primaryColor": "#2563EB",
     "backgroundColor": "#F6F7F9"
   }

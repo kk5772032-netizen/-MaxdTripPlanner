@@ -5,7 +5,7 @@ import { Platform } from 'react-native';
 
 import { getDb, runInTransaction } from '../db/client';
 import type {
-  Activity, Booking, Expense, FoodPlan, PackingItem, Stop, Trip,
+  Activity, Booking, Expense, FoodPlan, JournalEntry, PackingItem, Stop, Trip,
 } from '../types';
 import {
   BACKUP_KIND,
@@ -59,6 +59,9 @@ interface PackingRow {
   id: string; trip_id: string; title: string; category: string | null;
   packed: number; sequence: number;
 }
+interface JournalRow {
+  id: string; trip_id: string; day_date: string; note: string | null; updated_at: string;
+}
 interface BookingRow {
   id: string; trip_id: string; kind: string; title: string; confirmation: string | null;
   starts_at: string | null; ends_at: string | null; location: string | null;
@@ -68,7 +71,8 @@ interface BookingRow {
 
 export async function buildBackup(now = new Date()): Promise<Backup> {
   const db = await getDb();
-  const [trips, stops, activities, foods, expenses, bookings, packing] = await Promise.all([
+  const [trips, stops, activities, foods, expenses, bookings, packing, journal] =
+    await Promise.all([
     db.getAllAsync<TripRow>('SELECT * FROM trips ORDER BY created_at ASC'),
     db.getAllAsync<StopRow>('SELECT * FROM stops ORDER BY trip_id, sequence ASC'),
     db.getAllAsync<ActivityRow>('SELECT * FROM activities ORDER BY rowid ASC'),
@@ -76,6 +80,7 @@ export async function buildBackup(now = new Date()): Promise<Backup> {
     db.getAllAsync<ExpenseRow>('SELECT * FROM expenses ORDER BY spent_at ASC'),
     db.getAllAsync<BookingRow>('SELECT * FROM bookings ORDER BY created_at ASC'),
     db.getAllAsync<PackingRow>('SELECT * FROM packing_items ORDER BY trip_id, sequence ASC'),
+    db.getAllAsync<JournalRow>('SELECT * FROM journal_entries ORDER BY trip_id, day_date ASC'),
   ]);
 
   return {
@@ -135,6 +140,14 @@ export async function buildBackup(now = new Date()): Promise<Backup> {
         packed: r.packed === 1, sequence: r.sequence,
       }),
     ),
+    journal: journal.map(
+      (r): JournalEntry => ({
+        id: r.id, tripId: r.trip_id, dayDate: r.day_date, note: r.note,
+        updatedAt: r.updated_at,
+        // Photos live on the phone that took them; the words are what travels.
+        photos: [],
+      }),
+    ),
   };
 }
 
@@ -155,7 +168,8 @@ export async function restoreBackup(backup: Backup): Promise<BackupCounts> {
     // Children first: foreign keys are on, and trips cascade anyway, but being
     // explicit means this still works if a future table forgets to cascade.
     for (const table of [
-      'expenses', 'bookings', 'packing_items', 'activities', 'food_plans', 'stops', 'trips',
+      'expenses', 'bookings', 'packing_items', 'journal_entries', 'activities',
+      'food_plans', 'stops', 'trips',
     ]) {
       await tx.runAsync(`DELETE FROM ${table}`);
     }
@@ -220,6 +234,13 @@ export async function restoreBackup(backup: Backup): Promise<BackupCounts> {
         `INSERT INTO packing_items (id, trip_id, title, category, packed, sequence)
          VALUES (?, ?, ?, ?, ?, ?)`,
         i.id, i.tripId, i.title, i.category ?? null, i.packed ? 1 : 0, i.sequence ?? 0,
+      );
+    }
+    for (const e of backup.journal ?? []) {
+      await tx.runAsync(
+        `INSERT INTO journal_entries (id, trip_id, day_date, note, updated_at)
+         VALUES (?, ?, ?, ?, ?)`,
+        e.id, e.tripId, e.dayDate, e.note ?? null, e.updatedAt,
       );
     }
   });
