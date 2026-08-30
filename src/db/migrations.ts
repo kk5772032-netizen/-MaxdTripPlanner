@@ -136,6 +136,39 @@ export const MIGRATIONS: readonly Migration[] = [
       CREATE INDEX IF NOT EXISTS idx_journal_photos ON journal_photos(entry_id, sequence);
     `,
   },
+  {
+    version: 7,
+    name: 'sync metadata',
+    sql: `
+      -- Every row a device can change gets a stamp, so two copies of the same
+      -- data can be merged without a server deciding who is right. The stamp is
+      -- an HLC string, not a wall clock: see src/sync/hlc.ts.
+      --
+      -- Existing rows get an empty string here and are backfilled in code on
+      -- first run, because SQLite cannot mint an HLC and a row that sorts
+      -- before everything would lose every merge it ever entered.
+      ALTER TABLE trips ADD COLUMN updated_at TEXT NOT NULL DEFAULT '';
+      ALTER TABLE stops ADD COLUMN updated_at TEXT NOT NULL DEFAULT '';
+      ALTER TABLE activities ADD COLUMN updated_at TEXT NOT NULL DEFAULT '';
+      ALTER TABLE food_plans ADD COLUMN updated_at TEXT NOT NULL DEFAULT '';
+      ALTER TABLE expenses ADD COLUMN updated_at TEXT NOT NULL DEFAULT '';
+      ALTER TABLE bookings ADD COLUMN updated_at TEXT NOT NULL DEFAULT '';
+      ALTER TABLE packing_items ADD COLUMN updated_at TEXT NOT NULL DEFAULT '';
+      -- journal_entries already had an updated_at holding an ISO instant that
+      -- nothing ever displayed. It is reused rather than doubled: the backfill
+      -- replaces anything that is not a stamp, which covers those too.
+      ALTER TABLE journal_photos ADD COLUMN updated_at TEXT NOT NULL DEFAULT '';
+
+      -- Without tombstones a delete cannot travel. The other device simply sees
+      -- a row it has and you do not, and helpfully gives it back.
+      CREATE TABLE IF NOT EXISTS deletions (
+        table_name TEXT NOT NULL,
+        row_id TEXT NOT NULL,
+        deleted_at TEXT NOT NULL,
+        PRIMARY KEY (table_name, row_id)
+      );
+    `,
+  },
 ];
 
 /** The version a freshly created database is at once every migration has run. */
