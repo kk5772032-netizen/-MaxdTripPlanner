@@ -6,9 +6,11 @@ import { HeaderAction } from '../../src/components/ui';
 import { elevation, type, useTheme } from '../../src/theme';
 
 /**
- * A single tab today. The group exists because the trip list is the app's home
- * and later additions (saved places, settings) slot in beside it without
- * moving routes around.
+ * Two tabs: what is happening now, and everything you have planned.
+ *
+ * Today is first and is the app's home, because during a trip it is the only
+ * screen worth opening — the trip list is where you go to plan, which is a
+ * different mood and a rarer one.
  */
 export default function TabsLayout() {
   const t = useTheme();
@@ -30,6 +32,26 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen
+        name="index"
+        options={{
+          title: 'Today',
+          headerRight: () => (
+            <HeaderAction
+              label="Settings"
+              icon="settings-outline"
+              onPress={() => router.push('/settings')}
+            />
+          ),
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons
+              name={focused ? 'today' : 'today-outline'}
+              size={size}
+              color={color}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="trips"
         options={{
           title: 'Trips',
@@ -45,7 +67,6 @@ export default function TabsLayout() {
           ),
         }}
       />
-      <Tabs.Screen name="index" options={{ href: null }} />
     </Tabs>
   );
 }
