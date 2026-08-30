@@ -6,13 +6,18 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { actualByCategory, tripTotals } from '../../../src/budget/engine';
 import { formatMoney } from '../../../src/budget/money';
 import { CategoryPie } from '../../../src/components/charts/CategoryPie';
+import { PlannedVsActualChart } from '../../../src/components/charts/PlannedVsActualChart';
 import { Button, Card, EmptyState, SkeletonList } from '../../../src/components/ui';
 import { dayCount, formatDateRange } from '../../../src/dates';
 import { useTripStore } from '../../../src/state/tripStore';
 import { categoryIcons, elevation, makeStyles, radius, spacing, statusColorOf, type, useTheme } from '../../../src/theme';
 
 /**
- * What the trip actually cost, after it's over.
+ * Where the money went — the whole breakdown, in one place.
+ *
+ * This absorbed a separate Dashboard screen that answered the same question
+ * with different charts. Two screens for one question is not twice the answer;
+ * it is a fork in the navigation that makes people wonder which one is right.
  *
  * Deliberately blame-free: the headline sits on brand blue whether you came in
  * under or over, because a red screen at the end of a holiday is a punishment,
@@ -101,9 +106,22 @@ export default function TripRecapScreen() {
         </View>
 
         <Card style={styles.card}>
-          <Text style={styles.cardTitle}>Where the money went</Text>
+          <Text style={styles.cardTitle}>By category</Text>
           <CategoryPie totals={byCategory} currency={trip.currency} size={150} />
+          {totals.unassignedActual > 0 ? (
+            <Text style={styles.footnote}>
+              {formatMoney(totals.unassignedActual, trip.currency, { compact: true })} of this
+              isn&apos;t tied to a stop — flights, visas and the like.
+            </Text>
+          ) : null}
         </Card>
+
+        {totals.stops.length > 0 ? (
+          <Card style={styles.card}>
+            <Text style={styles.cardTitle}>Planned against actual</Text>
+            <PlannedVsActualChart stops={totals.stops} currency={trip.currency} />
+          </Card>
+        ) : null}
 
         {biggest ? (
           <Card style={styles.card}>
@@ -220,6 +238,7 @@ const useStyles = makeStyles((t) => ({
   statValue: { ...type.heading, color: t.text },
   statLabel: { ...type.captionStrong, color: t.textMuted },
   card: { gap: spacing.lg },
+  footnote: { ...type.caption, color: t.textFaint },
   cardTitle: { ...type.heading, color: t.text },
   cardLabel: { ...type.label, color: t.textMuted },
   biggest: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },

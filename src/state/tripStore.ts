@@ -8,7 +8,7 @@ import * as expensesRepo from '../db/repositories/expenses';
 import * as foodPlansRepo from '../db/repositories/foodPlans';
 import * as stopsRepo from '../db/repositories/stops';
 import * as tripsRepo from '../db/repositories/trips';
-import { notifyBudgetCrossing } from '../notifications';
+import { notifyBudgetCrossing, rescheduleBookingReminders } from '../notifications';
 import type {
   Activity, Booking, Expense, FoodPlan, JournalEntry, PackingItem, Stop, Trip,
 } from '../types';
@@ -76,6 +76,8 @@ interface TripState {
   removePacking: (id: string) => Promise<void>;
   unpackAll: () => Promise<void>;
 
+  /** Rebuilds the phone's scheduled booking reminders from what is loaded. */
+  syncBookingReminders: () => void;
   addBooking: (input: Omit<bookingsRepo.NewBooking, 'tripId'>) => Promise<void>;
   updateBooking: (
     id: string,
@@ -132,6 +134,9 @@ export const useTripStore = create<TripState>((set, get) => ({
         trip, stops, activities, foodPlans, expenses, bookings, packing, journal,
         loading: false,
       });
+      // Opening a trip is the reliable moment to re-sync: bookings can change
+      // through a restored backup as well as through the form.
+      get().syncBookingReminders();
     } catch (e) {
       console.warn('[trip] open failed', e);
       set({ error: 'Could not open this trip. Go back and try again.', loading: false });
@@ -405,6 +410,15 @@ export const useTripStore = create<TripState>((set, get) => ({
 
   /* ------------------------------------------------------------- bookings */
 
+  /**
+   * Rebuilt from whatever the trip currently holds rather than diffed. Booking
+   * reminder ids are stable, so a full reschedule replaces its own and drops
+   * the ones whose bookings have gone.
+   */
+  syncBookingReminders: () => {
+    void rescheduleBookingReminders(useSettingsStore.getState(), get().bookings);
+  },
+
   addBooking: async (input) => {
     const { tripId } = get();
     if (!tripId) return;
@@ -412,6 +426,7 @@ export const useTripStore = create<TripState>((set, get) => ({
     // Re-read rather than append: the list is ordered by start time, and a
     // booking added last is rarely the one that happens last.
     set({ bookings: await bookingsRepo.listBookings(tripId) });
+    get().syncBookingReminders();
   },
 
   updateBooking: async (id, patch) => {
@@ -419,19 +434,24 @@ export const useTripStore = create<TripState>((set, get) => ({
     const updated = await bookingsRepo.updateBooking(id, patch);
     if (!updated || !tripId) return;
     set({ bookings: await bookingsRepo.listBookings(tripId) });
+    get().syncBookingReminders();
   },
 
   removeBooking: async (id) => {
     const booking = get().bookings.find((b) => b.id === id);
     await bookingsRepo.deleteBooking(id);
     set({ bookings: get().bookings.filter((b) => b.id !== id) });
+    get().syncBookingReminders();
     if (!booking) return;
     useToastStore.getState().show({
       message: `${booking.title} removed`,
       undo: async () => {
         await bookingsRepo.restoreBooking(booking);
         const { tripId } = get();
-        if (tripId) set({ bookings: await bookingsRepo.listBookings(tripId) });
+        if (tripId) {
+          set({ bookings: await bookingsRepo.listBookings(tripId) });
+          get().syncBookingReminders();
+        }
       },
     });
   },

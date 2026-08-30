@@ -71,15 +71,11 @@ export function BudgetSection({
         variant="secondary"
         onPress={() => router.push(`/trip/${trip.id}/expenses`)}
       />
+      {/* One breakdown, not two. A Dashboard and a Recap answering the same
+          question was a fork in the navigation, not twice the answer. */}
       <Button
-        title="Charts and breakdown"
+        title="Where the money went"
         icon="stats-chart-outline"
-        variant="secondary"
-        onPress={() => router.push(`/trip/${trip.id}/dashboard`)}
-      />
-      <Button
-        title="Trip recap"
-        icon="sparkles-outline"
         variant="secondary"
         onPress={() => router.push(`/trip/${trip.id}/recap`)}
       />

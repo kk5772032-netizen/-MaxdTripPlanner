@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { formatMoney, parseMoney, toDecimalString } from '../../budget/money';
-import { attachDocument, type Attachment } from '../../documents';
+import { attachDocument, openAttachment, type Attachment } from '../../documents';
 import { tripDays } from '../../itinerary/schedule';
 import { useTripStore } from '../../state/tripStore';
 import {
@@ -110,6 +110,12 @@ export function BookingForm({
     }
   };
 
+  const openTicket = async () => {
+    if (!attachment) return;
+    const result = await openAttachment(attachment.uri);
+    if (!result.ok && result.reason) setAttachError(result.reason);
+  };
+
   const pickDocument = async () => {
     setAttachError(null);
     const result = await attachDocument();
@@ -210,10 +216,20 @@ export function BookingForm({
       <Field label="Ticket or voucher">
         {attachment ? (
           <View style={styles.attachment}>
-            <Ionicons name="document-text-outline" size={18} color={t.primary} />
-            <Text style={styles.attachmentName} numberOfLines={1}>
-              {attachment.name}
-            </Text>
+            {/* The whole row opens it: a saved ticket you cannot open is
+                barely saved, and this is the moment it matters. */}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Open ${attachment.name}`}
+              onPress={() => void openTicket()}
+              style={({ pressed }) => [styles.attachmentMain, pressed && styles.pressed]}
+            >
+              <Ionicons name="document-text-outline" size={18} color={t.primary} />
+              <Text style={styles.attachmentName} numberOfLines={1}>
+                {attachment.name}
+              </Text>
+              <Text style={styles.attachmentOpen}>Open</Text>
+            </Pressable>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Remove the attached file"
@@ -338,11 +354,19 @@ const useStyles = makeStyles((t) => ({
     alignItems: 'center',
     gap: spacing.sm,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.xs,
     borderRadius: 12,
     backgroundColor: t.surfaceSunken,
   },
+  attachmentMain: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+  },
   attachmentName: { flex: 1, ...type.body, color: t.text },
+  attachmentOpen: { ...type.label, color: t.primary },
   attachError: { ...type.caption, color: t.overText, marginTop: spacing.xs },
 
   notes: { minHeight: 72, textAlignVertical: 'top', paddingTop: spacing.md },

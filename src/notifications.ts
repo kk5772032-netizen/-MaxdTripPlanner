@@ -5,7 +5,8 @@ import { statusFor } from './budget/engine';
 import { formatMoney } from './budget/money';
 import { todayIso } from './dates';
 import type { Settings } from './state/settingsStore';
-import type { Trip } from './types';
+import { remindersForTrip } from './itinerary/reminders';
+import type { Booking, Trip } from './types';
 
 /**
  * Budget alerts and reminders.
@@ -24,6 +25,7 @@ const ID = {
   tripAlert: 'trip-alert:',
   daily: 'daily-reminder',
   startingSoon: 'starting-soon:',
+  booking: 'booking-',
 } as const;
 
 let handlerInstalled = false;
@@ -72,13 +74,22 @@ export async function hasNotificationPermission(): Promise<boolean> {
   }
 }
 
+/**
+ * Best effort throughout. Reading the scheduled list can fail — no permission,
+ * an OS that has decided otherwise, a simulator with no notification service —
+ * and none of that is a reason for the screen that triggered it to break.
+ */
 async function cancelWithPrefix(prefix: string): Promise<void> {
-  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-  await Promise.all(
-    scheduled
-      .filter((n) => n.identifier.startsWith(prefix))
-      .map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier)),
-  );
+  try {
+    const scheduled = (await Notifications.getAllScheduledNotificationsAsync()) ?? [];
+    await Promise.all(
+      scheduled
+        .filter((n) => n.identifier.startsWith(prefix))
+        .map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier)),
+    );
+  } catch {
+    /* best effort */
+  }
 }
 
 /** True while today falls inside the trip's dates. */
@@ -218,6 +229,36 @@ export async function scheduleTripStartingSoon(
     });
   } catch {
     /* best effort */
+  }
+}
+
+/**
+ * Reminders for what has been booked: the night before, and a lead time on the
+ * day that depends on the kind — three hours for a flight, one for a table.
+ *
+ * Rescheduled wholesale rather than diffed. The ids are stable per booking, so
+ * a reschedule replaces its own and the only thing that has to be right is
+ * cancelling the ones for bookings that have since been deleted, which
+ * `cancelWithPrefix` does in one go.
+ */
+export async function rescheduleBookingReminders(
+  settings: Settings,
+  bookings: Booking[],
+): Promise<void> {
+  if (Platform.OS === 'web') return;
+  await cancelWithPrefix(ID.booking);
+  if (!settings.bookingReminders || bookings.length === 0) return;
+
+  for (const reminder of remindersForTrip(bookings)) {
+    try {
+      await Notifications.scheduleNotificationAsync({
+        identifier: reminder.id,
+        content: { title: reminder.title, body: reminder.body, sound: false },
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: reminder.at },
+      });
+    } catch {
+      // One failure is not a reason to lose the rest of the trip's reminders.
+    }
   }
 }
 

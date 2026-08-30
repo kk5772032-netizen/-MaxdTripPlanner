@@ -1,14 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { deletePhoto, pickPhotos } from '../../documents';
 import { useToastStore } from '../../state/toastStore';
 import { useTripStore } from '../../state/tripStore';
 import { makeStyles, radius, spacing, type, useTheme } from '../../theme';
 import type { JournalEntry } from '../../types';
-import { Input } from '../ui';
+import { Button, Input } from '../ui';
 
 /**
  * What actually happened on a day.
@@ -37,6 +37,8 @@ export function DayJournal({
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(entry?.note ?? '');
   const [busy, setBusy] = useState(false);
+  /** Index of the photo being looked at, or null. */
+  const [viewing, setViewing] = useState<number | null>(null);
 
   const hasEntry = !!entry && (!!entry.note || entry.photos.length > 0);
   // A future day has nothing to look back on. Once something is written the
@@ -92,7 +94,8 @@ export function DayJournal({
             <Pressable
               key={photo.id}
               accessibilityRole="button"
-              accessibilityLabel={`Remove photo ${i + 1} of ${entry.photos.length}`}
+              accessibilityLabel={`Photo ${i + 1} of ${entry.photos.length}`}
+              onPress={() => setViewing(i)}
               onLongPress={() => void removeOne(photo.id)}
               style={styles.frame}
             >
@@ -129,9 +132,55 @@ export function DayJournal({
         </Pressable>
 
         {entry && entry.photos.length > 0 ? (
-          <Text style={styles.hint}>Long-press a photo to remove it.</Text>
+          <Text style={styles.hint}>Tap a photo to see it, long-press to remove.</Text>
         ) : null}
       </View>
+
+      {/* Full-screen rather than a share-sheet hand-off: these are your own
+          photos and looking at them is the point, not sending them somewhere. */}
+      <Modal
+        visible={viewing !== null && !!entry}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setViewing(null)}
+        statusBarTranslucent
+      >
+        <View style={styles.viewer}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Close the photo"
+            style={StyleSheet.absoluteFill}
+            onPress={() => setViewing(null)}
+          />
+
+          {entry && viewing !== null && entry.photos[viewing] ? (
+            <>
+              <Image
+                source={{ uri: entry.photos[viewing].uri }}
+                style={styles.viewerImage}
+                contentFit="contain"
+                transition={120}
+              />
+              <View style={styles.viewerBar}>
+                <Text style={styles.viewerCount}>
+                  {viewing + 1} of {entry.photos.length}
+                </Text>
+                <Button
+                  title="Remove"
+                  icon="trash-outline"
+                  variant="danger"
+                  onPress={() => {
+                    const id = entry.photos[viewing].id;
+                    setViewing(null);
+                    void removeOne(id);
+                  }}
+                />
+                <Button title="Close" variant="secondary" onPress={() => setViewing(null)} />
+              </View>
+            </>
+          ) : null}
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -170,6 +219,22 @@ const useStyles = makeStyles((t) => ({
   action: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 4 },
   actionText: { ...type.label, color: t.primary },
   hint: { flex: 1, ...type.caption, color: t.textFaint },
+
+  viewer: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.92)',
+    justifyContent: 'center',
+    padding: spacing.lg,
+    gap: spacing.lg,
+  },
+  viewerImage: { width: '100%', height: '70%' },
+  viewerBar: { gap: spacing.sm },
+  viewerCount: {
+    ...type.caption,
+    color: '#FFFFFF',
+    textAlign: 'center',
+    fontVariant: ['tabular-nums'],
+  },
 
   pressed: { opacity: 0.6 },
 }));

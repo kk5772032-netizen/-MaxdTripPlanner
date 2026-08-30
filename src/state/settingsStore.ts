@@ -27,6 +27,12 @@ export interface Settings {
   /** 24h local time, "HH:MM". */
   dailyReminderTime: string;
   tripStartingSoon: boolean;
+  /**
+   * Reminders for what you have booked — the night before, and a lead time on
+   * the day. The app already knows the flight is at six; not saying so was the
+   * gap.
+   */
+  bookingReminders: boolean;
   /** Suppress everything outside a running trip. */
   onlyWhileTravelling: boolean;
 
@@ -52,6 +58,7 @@ export const DEFAULTS: Settings = {
   dailyReminder: true,
   dailyReminderTime: '20:00',
   tripStartingSoon: true,
+  bookingReminders: true,
   onlyWhileTravelling: true,
   travelTimes: true,
   theme: 'system',

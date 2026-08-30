@@ -250,6 +250,8 @@ src/
   backup/format.ts          what a backup is, and what makes one invalid
   itinerary/calendar.ts     the trip as a standard .ics file
   itinerary/exportPlan.ts   the plan as shareable text and as a PDF-ready page
+  itinerary/now.ts          which trip you are on, and what happens next
+  itinerary/reminders.ts    what a booking is worth being reminded about
   packing/templates.ts      starter packing lists by trip type
   db/repositories/journal.ts  what happened on a day, and its photos
   itinerary/sharePlan.ts    printing and the share sheet

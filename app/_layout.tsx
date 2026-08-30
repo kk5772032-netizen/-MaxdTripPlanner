@@ -139,8 +139,10 @@ function RootLayoutInner() {
             <Stack.Screen name="trip/[tripId]/new-place" options={{ title: 'Add stop' }} />
             <Stack.Screen name="trip/[tripId]/place/[placeId]" options={{ title: 'Stop' }} />
             <Stack.Screen name="trip/[tripId]/expenses" options={{ title: 'Expenses' }} />
-            <Stack.Screen name="trip/[tripId]/dashboard" options={{ title: 'Dashboard' }} />
-            <Stack.Screen name="trip/[tripId]/recap" options={{ title: 'Trip recap' }} />
+            <Stack.Screen
+              name="trip/[tripId]/recap"
+              options={{ title: 'Where the money went' }}
+            />
             <Stack.Screen name="settings" options={{ title: 'Settings' }} />
             <Stack.Screen
               name="notification-settings"

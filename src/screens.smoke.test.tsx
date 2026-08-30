@@ -7,7 +7,7 @@ import TripDetailScreen from '../app/trip/[tripId]/index';
 import NewPlaceScreen from '../app/trip/[tripId]/new-place';
 import StopDetailScreen from '../app/trip/[tripId]/place/[placeId]';
 import ExpensesScreen from '../app/trip/[tripId]/expenses';
-import DashboardScreen from '../app/trip/[tripId]/dashboard';
+import RecapScreen from '../app/trip/[tripId]/recap';
 import { type Db, openTestDb, setDbForTesting } from './db/client';
 import * as activitiesRepo from './db/repositories/activities';
 import * as expensesRepo from './db/repositories/expenses';
@@ -203,27 +203,21 @@ describe('screen smoke tests', () => {
     expect(screen.getAllByText('₹450.00')).toHaveLength(2);
   });
 
-  it('renders the dashboard with both charts', async () => {
-    await mountAndSettle(<DashboardScreen />);
-    await waitFor(() => expect(screen.getByText('Remaining budget')).toBeTruthy());
-    expect(screen.getByText('₹9,550')).toBeTruthy();
-    expect(screen.getByText('Planned vs actual per stop')).toBeTruthy();
-    expect(screen.getByText('Where the money went')).toBeTruthy();
+  it('renders one breakdown holding both charts', async () => {
+    // The Dashboard screen was merged into this one: two screens answering
+    // "where did the money go" was a fork in the navigation, not two answers.
+    await mountAndSettle(<RecapScreen />);
+    await waitFor(() => expect(screen.getByText('By category')).toBeTruthy());
+    expect(screen.getByText('Planned against actual')).toBeTruthy();
     // The pie's direct label for the one category with spend.
     expect(screen.getByText('Food')).toBeTruthy();
   });
 
-  it('renders the dashboard for a trip with nothing logged', async () => {
+  it('says so plainly when a trip has nothing logged', async () => {
     await expensesRepo.deleteExpense(
       (await expensesRepo.listExpenses(tripId))[0].id,
     );
-    await mountAndSettle(<DashboardScreen />);
-    await waitFor(() =>
-      expect(
-        screen.getByText(
-          'Nothing logged yet — the breakdown appears once you add expenses.',
-        ),
-      ).toBeTruthy(),
-    );
+    await mountAndSettle(<RecapScreen />);
+    await waitFor(() => expect(screen.getByText('Nothing was logged')).toBeTruthy());
   });
 });

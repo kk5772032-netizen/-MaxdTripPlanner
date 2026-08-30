@@ -1,5 +1,6 @@
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
+import * as Sharing from 'expo-sharing';
 import { Directory, File, Paths } from 'expo-file-system';
 import { Platform } from 'react-native';
 
@@ -146,3 +147,46 @@ export async function pickPhotos(limit = 8): Promise<PhotoResult> {
 
 /** Same best-effort delete as attachments: a missing file is already gone. */
 export const deletePhoto = deleteAttachment;
+
+
+/* -------------------------------------------------------------------------- */
+/* Opening what has been saved                                                */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Opens a stored file with whatever the device uses for it.
+ *
+ * A ticket you cannot open at a check-in desk is barely stored, and the app has
+ * no business trying to render a PDF itself when every phone already has
+ * something that does it better. On Android a `file://` URI cannot be handed to
+ * another app directly — that is what `FileProvider` and content URIs are for —
+ * so the sharing sheet is the route, which also covers "send this to someone"
+ * with the same tap.
+ */
+export async function openAttachment(uri: string | null): Promise<AttachResult> {
+  if (!uri) return { ok: false, reason: 'That file is no longer here.' };
+
+  if (Platform.OS === 'web') {
+    try {
+      globalThis.open?.(uri, '_blank');
+      return { ok: true, attachment: { uri, name: '' } };
+    } catch {
+      return { ok: false, reason: "This browser wouldn't open the file." };
+    }
+  }
+
+  try {
+    if (!new File(uri).exists) {
+      // The row outlived the file: a restored backup, or storage cleared.
+      return { ok: false, reason: 'That file is no longer on this device.' };
+    }
+    if (!(await Sharing.isAvailableAsync())) {
+      return { ok: false, reason: "This device can't open that file." };
+    }
+    await Sharing.shareAsync(uri);
+    return { ok: true, attachment: { uri, name: '' } };
+  } catch (e) {
+    console.warn('[documents] open failed', e);
+    return { ok: false, reason: "Couldn't open that file." };
+  }
+}

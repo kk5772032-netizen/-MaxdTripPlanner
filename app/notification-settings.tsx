@@ -30,7 +30,9 @@ export default function NotificationSettingsScreen() {
       if (!ok) return;
     }
     await s.set('budgetAlerts', next);
-    if (!next && !s.dailyReminder && !s.tripStartingSoon) await cancelAll();
+    if (!next && !s.dailyReminder && !s.tripStartingSoon && !s.bookingReminders) {
+      await cancelAll();
+    }
   };
 
   return (
@@ -106,6 +108,13 @@ export default function NotificationSettingsScreen() {
           sub="The evening before your start date"
           toggled={s.tripStartingSoon}
           onToggle={(v) => void s.set('tripStartingSoon', v)}
+        />
+        <SettingsRow
+          icon="bookmark-outline"
+          label="What you have booked"
+          sub="The night before, and before you need to leave"
+          toggled={s.bookingReminders}
+          onToggle={(v) => void s.set('bookingReminders', v)}
         />
       </SettingsSection>
 
