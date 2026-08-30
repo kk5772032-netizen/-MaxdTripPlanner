@@ -1,6 +1,6 @@
 import type { Tombstone } from '../sync/merge';
 import type {
-  Activity, Booking, Expense, FoodPlan, JournalEntry, PackingItem, Stop, Trip,
+  Activity, Booking, Expense, FoodPlan, JournalEntry, PackingItem, Stop, Traveller, Trip,
 } from '../types';
 
 /** A row with the stamp that decides who wins a merge. See `src/sync/hlc.ts`. */
@@ -46,6 +46,7 @@ export interface Backup {
    * missing files.
    */
   journal: Stamped<JournalEntry>[];
+  travellers: Stamped<Traveller>[];
   /**
    * Rows that were deleted, so a merge does not hand them back. Absent in
    * version 1 files, where a delete simply could not travel.
@@ -62,6 +63,7 @@ export interface BackupCounts {
   bookings: number;
   packing: number;
   journal: number;
+  travellers: number;
 }
 
 export function countsOf(backup: Backup): BackupCounts {
@@ -74,6 +76,7 @@ export function countsOf(backup: Backup): BackupCounts {
     bookings: backup.bookings.length,
     packing: backup.packing.length,
     journal: backup.journal.length,
+    travellers: backup.travellers.length,
   };
 }
 
@@ -119,7 +122,7 @@ export function parseBackup(text: string): ParseResult {
 
   const tables = [
     'trips', 'stops', 'activities', 'foodPlans', 'expenses', 'bookings', 'packing',
-    'journal', 'tombstones',
+    'journal', 'travellers', 'tombstones',
   ] as const;
   for (const table of tables) {
     // A missing table is tolerated — an older file may predate bookings — but
@@ -151,6 +154,7 @@ export function parseBackup(text: string): ParseResult {
       bookings: (obj.bookings ?? []) as Stamped<Booking>[],
       packing: (obj.packing ?? []) as Stamped<PackingItem>[],
       journal: (obj.journal ?? []) as Stamped<JournalEntry>[],
+      travellers: (obj.travellers ?? []) as Stamped<Traveller>[],
       tombstones: (obj.tombstones ?? []) as Tombstone[],
     },
   };

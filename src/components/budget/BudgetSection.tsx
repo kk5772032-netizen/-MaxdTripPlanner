@@ -6,6 +6,7 @@ import type { TripTotals } from '../../budget/engine';
 import { makeStyles, spacing, type } from '../../theme';
 import type { Trip } from '../../types';
 import { BudgetBar } from '../BudgetBar';
+import { SplitSection } from './SplitSection';
 import { Button, Card, Notice } from '../ui';
 
 /**
@@ -73,6 +74,8 @@ export function BudgetSection({
       />
       {/* One breakdown, not two. A Dashboard and a Recap answering the same
           question was a fork in the navigation, not twice the answer. */}
+      <SplitSection trip={trip} />
+
       <Button
         title="Where the money went"
         icon="stats-chart-outline"

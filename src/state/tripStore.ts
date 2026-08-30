@@ -7,10 +7,11 @@ import * as packingRepo from '../db/repositories/packing';
 import * as expensesRepo from '../db/repositories/expenses';
 import * as foodPlansRepo from '../db/repositories/foodPlans';
 import * as stopsRepo from '../db/repositories/stops';
+import * as travellersRepo from '../db/repositories/travellers';
 import * as tripsRepo from '../db/repositories/trips';
 import { notifyBudgetCrossing, rescheduleBookingReminders } from '../notifications';
 import type {
-  Activity, Booking, Expense, FoodPlan, JournalEntry, PackingItem, Stop, Trip,
+  Activity, Booking, Expense, FoodPlan, JournalEntry, PackingItem, Stop, Traveller, Trip,
 } from '../types';
 import { useSettingsStore } from './settingsStore';
 import { useToastStore } from './toastStore';
@@ -35,6 +36,7 @@ interface TripState {
   bookings: Booking[];
   packing: PackingItem[];
   journal: JournalEntry[];
+  travellers: Traveller[];
   expenses: Expense[];
   loading: boolean;
   error: string | null;
@@ -60,6 +62,10 @@ interface TripState {
   addExpense: (input: Omit<expensesRepo.NewExpense, 'tripId'>) => Promise<void>;
   updateExpense: (id: string, patch: Partial<Omit<Expense, 'id' | 'tripId'>>) => Promise<void>;
   removeExpense: (id: string) => Promise<void>;
+
+  addTraveller: (name: string) => Promise<void>;
+  renameTraveller: (id: string, name: string) => Promise<void>;
+  removeTraveller: (id: string) => Promise<void>;
 
   setJournalNote: (dayDate: string, note: string | null) => Promise<void>;
   addJournalPhotos: (dayDate: string, uris: string[]) => Promise<void>;
@@ -96,6 +102,7 @@ export const useTripStore = create<TripState>((set, get) => ({
   bookings: [],
   packing: [],
   journal: [],
+  travellers: [],
   loading: false,
   error: null,
 
@@ -110,13 +117,13 @@ export const useTripStore = create<TripState>((set, get) => ({
       ...(switching
         ? {
             trip: null, stops: [], activities: [], foodPlans: [], expenses: [],
-            bookings: [], packing: [], journal: [],
+            bookings: [], packing: [], journal: [], travellers: [],
           }
         : {}),
     });
 
     try {
-      const [trip, stops, activities, foodPlans, expenses, bookings, packing, journal] =
+      const [trip, stops, activities, foodPlans, expenses, bookings, packing, journal, travellers] =
         await Promise.all([
         tripsRepo.getTrip(tripId),
         stopsRepo.listStops(tripId),
@@ -126,13 +133,14 @@ export const useTripStore = create<TripState>((set, get) => ({
         bookingsRepo.listBookings(tripId),
         packingRepo.listPacking(tripId),
         journalRepo.listJournal(tripId),
+        travellersRepo.listTravellers(tripId),
       ]);
       // A slower load for a trip the user has already navigated away from must
       // not overwrite the one now on screen.
       if (get().tripId !== tripId) return;
       set({
         trip, stops, activities, foodPlans, expenses, bookings, packing, journal,
-        loading: false,
+        travellers, loading: false,
       });
       // Opening a trip is the reliable moment to re-sync: bookings can change
       // through a restored backup as well as through the form.
@@ -159,6 +167,7 @@ export const useTripStore = create<TripState>((set, get) => ({
       bookings: [],
       packing: [],
       journal: [],
+      travellers: [],
       error: null,
     }),
 
@@ -336,6 +345,45 @@ export const useTripStore = create<TripState>((set, get) => ({
         set({ expenses: [expense, ...get().expenses] });
       },
     });
+  },
+
+  /* ----------------------------------------------------------- travellers */
+
+  addTraveller: async (name) => {
+    const tripId = get().trip?.id;
+    if (!tripId) return;
+    const traveller = await travellersRepo.createTraveller({ tripId, name });
+    set({ travellers: [...get().travellers, traveller] });
+  },
+
+  renameTraveller: async (id, name) => {
+    const updated = await travellersRepo.updateTraveller(id, { name });
+    if (!updated) return;
+    set({ travellers: get().travellers.map((t) => (t.id === id ? updated : t)) });
+  },
+
+  removeTraveller: async (id) => {
+    const tripId = get().trip?.id;
+    const traveller = get().travellers.find((t) => t.id === id);
+    await travellersRepo.deleteTraveller(id);
+    // Their expenses stay: the money was still spent, and deleting it with the
+    // person would quietly change what the trip cost. They just fall out of the
+    // settle-up, which is why the expenses are re-read here.
+    set({
+      travellers: get().travellers.filter((t) => t.id !== id),
+      expenses: tripId ? await expensesRepo.listExpenses(tripId) : get().expenses,
+    });
+    if (traveller) {
+      useToastStore.getState().show({
+        message: `${traveller.name} removed`,
+        undo: async () => {
+          await travellersRepo.restoreTraveller(traveller);
+          if (tripId) {
+            set({ travellers: await travellersRepo.listTravellers(tripId) });
+          }
+        },
+      });
+    }
   },
 
   /* -------------------------------------------------------------- journal */

@@ -218,7 +218,7 @@ function ExpenseForm({
 }) {
   const styles = useStyles();
   const t = useTheme();
-  const { addExpense, updateExpense } = useTripStore();
+  const { addExpense, updateExpense, travellers } = useTripStore();
 
   const [amountText, setAmountText] = useState(
     editing ? toDecimalString(editing.amountMinor, currency) : '',
@@ -227,6 +227,8 @@ function ExpenseForm({
   const [stopId, setStopId] = useState<string | null>(editing ? editing.stopId : defaultStopId);
   const [note, setNote] = useState(editing?.note ?? '');
   const [spentAt, setSpentAt] = useState(editing?.spentAt ?? todayIso());
+  const [paidBy, setPaidBy] = useState<string | null>(editing?.paidBy ?? null);
+  const [sharedWith, setSharedWith] = useState<string[] | null>(editing?.sharedWith ?? null);
   const [saving, setSaving] = useState(false);
 
   const amountMinor = parseMoney(amountText, currency);
@@ -242,6 +244,13 @@ function ExpenseForm({
         amountMinor,
         note: note.trim() || null,
         spentAt,
+        paidBy,
+        // Null rather than a list of everyone: the trip's people can change
+        // after the fact, and "everyone" should keep meaning everyone.
+        sharedWith:
+          sharedWith && sharedWith.length > 0 && sharedWith.length < travellers.length
+            ? sharedWith
+            : null,
       };
       if (editing) {
         await updateExpense(editing.id, input);
@@ -281,6 +290,67 @@ function ExpenseForm({
           ))}
         </View>
       </Field>
+
+      {travellers.length > 0 ? (
+        <Field
+          label="Who paid"
+          hint="Only needed if you're splitting costs. Leave it blank and this stays out of the settle-up."
+        >
+          <View style={styles.chips}>
+            <Chip
+              label="Not splitting"
+              icon="remove-outline"
+              accessibilityLabel="Nobody in particular paid"
+              selected={paidBy === null}
+              onPress={() => setPaidBy(null)}
+            />
+            {travellers.map((person) => (
+              <Chip
+                key={person.id}
+                label={person.name}
+                icon="person-outline"
+                accessibilityLabel={`${person.name} paid`}
+                selected={person.id === paidBy}
+                onPress={() => setPaidBy(person.id)}
+              />
+            ))}
+          </View>
+        </Field>
+      ) : null}
+
+      {paidBy && travellers.length > 1 ? (
+        <Field label="Split between" hint="Everyone, unless you say otherwise.">
+          <View style={styles.chips}>
+            <Chip
+              label="Everyone"
+              icon="people-outline"
+              accessibilityLabel="Split between everyone"
+              selected={sharedWith === null || sharedWith.length === 0}
+              onPress={() => setSharedWith(null)}
+            />
+            {travellers.map((person) => {
+              const on = sharedWith?.includes(person.id) ?? false;
+              return (
+                <Chip
+                  key={person.id}
+                  label={person.name}
+                  icon={on ? 'checkmark' : 'person-outline'}
+                  accessibilityLabel={`Split with ${person.name}`}
+                  selected={on}
+                  onPress={() =>
+                    setSharedWith((current) => {
+                      const next = new Set(current ?? []);
+                      if (next.has(person.id)) next.delete(person.id);
+                      else next.add(person.id);
+                      return next.size === 0 ? null : [...next];
+                    })
+                  }
+                />
+              );
+            })}
+          </View>
+        </Field>
+      ) : null}
 
       <Field label="Stop" hint="Leave on “Whole trip” for flights, visas and anything not tied to one place.">
         <View style={styles.chips}>

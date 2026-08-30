@@ -111,11 +111,29 @@ export interface Expense {
   note: string | null;
   /** ISO date, YYYY-MM-DD. */
   spentAt: string;
+  /** Who paid. Null leaves it out of the settle-up but in the budget. */
+  paidBy: string | null;
+  /** Who it was for. Null means everyone on the trip. */
+  sharedWith: string[] | null;
   /**
    * Set when this expense was logged from a booking, so the booking can show
    * that it is already paid for rather than offering to log it twice.
    */
   bookingId: string | null;
+}
+
+/**
+ * Someone on the trip, for splitting costs.
+ *
+ * Just a name. There is no account behind it and no invitation to send: you are
+ * recording who was there so the app can work out who owes whom, and the other
+ * people do not need this app for that to be useful.
+ */
+export interface Traveller {
+  id: string;
+  tripId: string;
+  name: string;
+  sequence: number;
 }
 
 export type BookingKind =

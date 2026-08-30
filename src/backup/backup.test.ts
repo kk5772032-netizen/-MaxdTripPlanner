@@ -72,6 +72,7 @@ describe('parseBackup', () => {
     expect(result.ok && result.backup.bookings).toEqual([]);
     expect(result.ok && result.backup.packing).toEqual([]);
     expect(result.ok && result.backup.journal).toEqual([]);
+    expect(result.ok && result.backup.travellers).toEqual([]);
   });
 });
 
@@ -178,7 +179,7 @@ describe('a round trip through a backup', () => {
     const counts = await restoreBackup(before);
     expect(counts).toEqual({
       trips: 1, stops: 1, activities: 1, foodPlans: 1, expenses: 1, bookings: 1,
-      packing: 1, journal: 1,
+      packing: 1, journal: 1, travellers: 0,
     });
 
     const after = await buildBackup(new Date('2026-08-29T00:00:00Z'));

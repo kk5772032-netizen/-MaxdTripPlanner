@@ -169,6 +169,29 @@ export const MIGRATIONS: readonly Migration[] = [
       );
     `,
   },
+  {
+    version: 8,
+    name: 'who is on the trip, and who paid',
+    sql: `
+      CREATE TABLE IF NOT EXISTS travellers (
+        id TEXT PRIMARY KEY,
+        trip_id TEXT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        sequence INTEGER NOT NULL DEFAULT 0,
+        updated_at TEXT NOT NULL DEFAULT ''
+      );
+      CREATE INDEX IF NOT EXISTS idx_travellers_trip ON travellers(trip_id, sequence);
+
+      -- Who actually paid. Null keeps the expense out of the settle-up while
+      -- leaving it in the budget, which is right for a trip nobody is splitting.
+      ALTER TABLE expenses ADD COLUMN paid_by TEXT REFERENCES travellers(id) ON DELETE SET NULL;
+
+      -- A JSON array of traveller ids, or NULL for everyone. Null rather than a
+      -- join table because it is always read whole and never queried across,
+      -- and because "everyone" should not require a row per person.
+      ALTER TABLE expenses ADD COLUMN shared_with TEXT;
+    `,
+  },
 ];
 
 /** The version a freshly created database is at once every migration has run. */

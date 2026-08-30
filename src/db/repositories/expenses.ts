@@ -12,6 +12,8 @@ interface ExpenseRow {
   note: string | null;
   spent_at: string;
   booking_id: string | null;
+  paid_by: string | null;
+  shared_with: string | null;
 }
 
 function toExpense(row: ExpenseRow): Expense {
@@ -24,20 +26,46 @@ function toExpense(row: ExpenseRow): Expense {
     note: row.note,
     spentAt: row.spent_at,
     bookingId: row.booking_id ?? null,
+    paidBy: row.paid_by ?? null,
+    sharedWith: parseSharedWith(row.shared_with),
   };
 }
 
-/** Most expenses are typed by hand and have no booking behind them. */
-export type NewExpense = Omit<Expense, 'id' | 'bookingId'> &
-  Partial<Pick<Expense, 'bookingId'>>;
+/**
+ * A stored JSON array, or null for "everyone". Anything unreadable is treated
+ * as everyone: a share list that fails to parse should not quietly exclude
+ * people from a bill.
+ */
+function parseSharedWith(raw: string | null): string[] | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) && parsed.every((v) => typeof v === 'string')
+      ? (parsed as string[])
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Most expenses are typed by hand, split with everyone, and settle nothing. */
+export type NewExpense = Omit<Expense, 'id' | 'bookingId' | 'paidBy' | 'sharedWith'> &
+  Partial<Pick<Expense, 'bookingId' | 'paidBy' | 'sharedWith'>>;
 
 export async function createExpense(input: NewExpense): Promise<Expense> {
   const db = await getDb();
-  const expense: Expense = { bookingId: null, ...input, id: newId() };
+  const expense: Expense = {
+    bookingId: null,
+    paidBy: null,
+    sharedWith: null,
+    ...input,
+    id: newId(),
+  };
   await db.runAsync(
     `INSERT INTO expenses
-       (id, trip_id, stop_id, category, amount, note, spent_at, booking_id, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, trip_id, stop_id, category, amount, note, spent_at, booking_id,
+        paid_by, shared_with, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     expense.id,
     expense.tripId,
     expense.stopId,
@@ -46,6 +74,8 @@ export async function createExpense(input: NewExpense): Promise<Expense> {
     expense.note,
     expense.spentAt,
     expense.bookingId,
+    expense.paidBy,
+    expense.sharedWith ? JSON.stringify(expense.sharedWith) : null,
     await stamp(),
   );
   return expense;
@@ -59,10 +89,12 @@ export async function restoreExpense(expense: Expense): Promise<void> {
   const db = await getDb();
   await db.runAsync(
     `INSERT OR REPLACE INTO expenses
-       (id, trip_id, stop_id, category, amount, note, spent_at, booking_id, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, trip_id, stop_id, category, amount, note, spent_at, booking_id,
+        paid_by, shared_with, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     expense.id, expense.tripId, expense.stopId, expense.category,
     expense.amountMinor, expense.note, expense.spentAt, expense.bookingId,
+    expense.paidBy, expense.sharedWith ? JSON.stringify(expense.sharedWith) : null,
     await stamp(),
   );
   await unTombstone('expenses', expense.id);
@@ -121,7 +153,7 @@ export async function updateExpense(
   await db.runAsync(
     `UPDATE expenses
         SET stop_id = ?, category = ?, amount = ?, note = ?, spent_at = ?, booking_id = ?,
-            updated_at = ?
+            paid_by = ?, shared_with = ?, updated_at = ?
       WHERE id = ?`,
     next.stopId,
     next.category,
@@ -129,6 +161,8 @@ export async function updateExpense(
     next.note,
     next.spentAt,
     next.bookingId,
+    next.paidBy,
+    next.sharedWith ? JSON.stringify(next.sharedWith) : null,
     await stamp(),
     id,
   );
