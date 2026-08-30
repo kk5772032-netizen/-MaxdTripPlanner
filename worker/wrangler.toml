@@ -1,0 +1,10 @@
+name = "waypoint-sync"
+main = "src/index.ts"
+compatibility_date = "2026-08-01"
+
+# R2 rather than KV: KV's free tier allows 1,000 writes a day, which two
+# devices syncing a few times an hour would spend by lunchtime. R2's free tier
+# is 10 GB and a million writes a month, and a snapshot is tens of kilobytes.
+[[r2_buckets]]
+binding = "SNAPSHOTS"
+bucket_name = "waypoint-snapshots"

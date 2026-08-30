@@ -6,6 +6,10 @@
 let mockIdCounter = 0;
 jest.mock('expo-crypto', () => ({
   randomUUID: () => `test-id-${String(++mockIdCounter).padStart(6, '0')}`,
+  // Sync codes are the only credential the sync server has, so this one is
+  // genuinely random rather than a counter — a test that a code is unguessable
+  // proves nothing against a fake that counts.
+  getRandomBytes: (n) => require('node:crypto').randomBytes(n),
 }));
 
 // expo-sqlite has no implementation outside a native runtime. Swap in a real

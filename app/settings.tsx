@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -15,6 +15,7 @@ import { cancelAll } from '../src/notifications';
 import { useSettingsStore } from '../src/state/settingsStore';
 import { useToastStore } from '../src/state/toastStore';
 import { useTripsStore } from '../src/state/tripsStore';
+import { readSyncSettings } from '../src/sync/remote';
 import { makeStyles, spacing, type, useTheme } from '../src/theme';
 
 export default function SettingsScreen() {
@@ -30,6 +31,7 @@ export default function SettingsScreen() {
   const [busy, setBusy] = useState(false);
   /** A parsed, valid backup waiting for the user to say yes. */
   const [pendingRestore, setPendingRestore] = useState<Backup | null>(null);
+  const [syncOn, setSyncOn] = useState(false);
 
   const readCacheSize = useCallback(async () => {
     const db = await getDb();
@@ -42,6 +44,14 @@ export default function SettingsScreen() {
   useEffect(() => {
     void readCacheSize();
   }, [readCacheSize]);
+
+  // Re-read on focus rather than on mount: this screen is what you come back
+  // to after turning sync on, and a stale "Off" here would be a lie.
+  useFocusEffect(
+    useCallback(() => {
+      void readSyncSettings().then(({ url, code }) => setSyncOn(!!url && !!code));
+    }, []),
+  );
 
   const clearCache = async () => {
     const db = await getDb();
@@ -239,6 +249,13 @@ export default function SettingsScreen() {
           onPress={() => void chooseRestore()}
         />
         <SettingsRow
+          icon="git-compare-outline"
+          label="Sync with another device"
+          sub={syncOn ? 'On' : 'Off — a backup file does the same job by hand'}
+          value={syncOn ? 'On' : undefined}
+          onPress={() => router.push('/sync')}
+        />
+        <SettingsRow
           icon="trash-outline"
           label="Delete all data"
           danger
@@ -249,7 +266,11 @@ export default function SettingsScreen() {
       <Notice
         tone="info"
         icon="lock-closed-outline"
-        body="Waypoint 1.0.0 — everything is stored on this device. No account, no sync."
+        body={
+          syncOn
+            ? 'Waypoint 1.0.0 — your trips live on this device, and on any device sharing your sync code. There is still no account.'
+            : 'Waypoint 1.0.0 — everything is stored on this device. No account, and nothing leaves it unless you turn on sync.'
+        }
       />
       <Text style={styles.footer}>
         Uninstalling the app deletes your trips. Back up first.

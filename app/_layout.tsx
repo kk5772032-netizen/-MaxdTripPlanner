@@ -144,6 +144,7 @@ function RootLayoutInner() {
               options={{ title: 'Where the money went' }}
             />
             <Stack.Screen name="settings" options={{ title: 'Settings' }} />
+            <Stack.Screen name="sync" options={{ title: 'Sync' }} />
             <Stack.Screen
               name="notification-settings"
               options={{ title: 'Notifications' }}
