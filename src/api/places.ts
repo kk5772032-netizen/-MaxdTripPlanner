@@ -399,21 +399,62 @@ export interface NearbyResult {
 }
 
 /**
- * Restaurants near a stop.
+ * What a nearby search is looking for.
  *
- * Keyed on the *stop's* place id, so this is only ever called on the first
- * visit to a stop's food tab or an explicit refresh — never on render. That is
+ * Two kinds because they answer different questions and people ask them at
+ * different moments — "where do we eat" on the food tab, "what else is around"
+ * while planning a day. They are cached separately so one does not evict the
+ * other.
+ */
+export type NearbyKind = 'food' | 'things';
+
+/**
+ * Google's type taxonomy is enormous; this is the part of it a traveller means
+ * by "things to do". Deliberately not exhaustive — a list that includes every
+ * park bench and place of worship returns noise, and the useful answer is the
+ * dozen places somebody would actually cross a city for.
+ */
+const NEARBY_TYPES: Record<NearbyKind, string[]> = {
+  food: ['restaurant'],
+  things: [
+    'tourist_attraction',
+    'museum',
+    'art_gallery',
+    'historical_landmark',
+    'park',
+    'market',
+  ],
+};
+
+/** Widened for attractions: you would travel further for a fort than a meal. */
+const NEARBY_RADIUS_BY_KIND: Record<NearbyKind, number> = {
+  food: NEARBY_RADIUS_M,
+  things: 5_000,
+};
+
+/**
+ * Places near a stop.
+ *
+ * Keyed on the *stop's* place id and the kind, so this is only ever called on
+ * the first visit to a tab or an explicit refresh — never on render. That is
  * the single biggest lever on this app's Places bill.
  */
 export async function nearbyRestaurants(
   stopPlaceId: string,
   location: { lat: number; lng: number },
-  { forceRefresh = false }: { forceRefresh?: boolean } = {},
+  {
+    forceRefresh = false,
+    kind = 'food',
+  }: { forceRefresh?: boolean; kind?: NearbyKind } = {},
 ): Promise<NearbyResult> {
+  // 'food' keeps the bare place id so caches written before things-to-do
+  // existed are still hits rather than a round of free re-fetching.
+  const cacheKey = kind === 'food' ? stopPlaceId : `${stopPlaceId}:${kind}`;
+
   if (forceRefresh) {
-    await cache.invalidate('nearby', stopPlaceId);
+    await cache.invalidate('nearby', cacheKey);
   } else {
-    const hit = await cache.read<NearbyRestaurant[]>('nearby', stopPlaceId);
+    const hit = await cache.read<NearbyRestaurant[]>('nearby', cacheKey);
     if (hit) {
       return { restaurants: hit.value, fetchedAt: hit.fetchedAt, fromCache: true, stale: false };
     }
@@ -424,13 +465,13 @@ export async function nearbyRestaurants(
       method: 'POST',
       fieldMask: NEARBY_FIELD_MASK,
       body: {
-        includedTypes: ['restaurant'],
+        includedTypes: NEARBY_TYPES[kind],
         maxResultCount: NEARBY_MAX_RESULTS,
         rankPreference: 'POPULARITY',
         locationRestriction: {
           circle: {
             center: { latitude: location.lat, longitude: location.lng },
-            radius: NEARBY_RADIUS_M,
+            radius: NEARBY_RADIUS_BY_KIND[kind],
           },
         },
       },
@@ -441,10 +482,10 @@ export async function nearbyRestaurants(
       cuisine: toCuisine(raw),
     }));
 
-    await cache.write('nearby', stopPlaceId, restaurants);
+    await cache.write('nearby', cacheKey, restaurants);
     return { restaurants, fetchedAt: Date.now(), fromCache: false, stale: false };
   } catch (e) {
-    const stale = await cache.read<NearbyRestaurant[]>('nearby', stopPlaceId, {
+    const stale = await cache.read<NearbyRestaurant[]>('nearby', cacheKey, {
       allowStale: true,
     });
     if (stale) {

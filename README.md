@@ -179,7 +179,9 @@ already spent. Set both, and treat the cap as the one that matters.
   (`places_cache`). A landmark's address doesn't change, and the restaurants near
   it don't change hour to hour.
 - **Nearby Search never runs on render.** It runs on your first visit to a stop's
-  Food tab, or when you tap Refresh. Nothing else triggers it.
+  Food tab, when you tap "What else is nearby?", or when you tap Refresh.
+  Nothing else triggers it, and food and things-to-do are cached separately so
+  one never evicts the other.
 - **Travel times are one request per pair of places, ever.** The Routes API call
   asks for two numbers, the answer is cached for 30 days, and the coordinates
   are rounded to about eleven metres before they become a cache key so nudging a

@@ -11,6 +11,7 @@ import { AmountInput } from '../AmountInput';
 import { Checkbox } from '../Checkbox';
 import { Button, Card, EmptyState, IconButton, Input, notifySuccess } from '../ui';
 import { ActivityTiming } from './ActivityTiming';
+import { NearbyThings } from './NearbyThings';
 
 /** Checklist of things to do at a stop, each with an optional estimated cost. */
 export function ActivitiesTab({
@@ -59,6 +60,8 @@ export function ActivitiesTab({
 
   const remove = (activity: Activity) => void removeActivity(activity.id);
 
+  const titles = new Set(activities.map((a) => a.title.trim().toLowerCase()));
+
   return (
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Card style={styles.form}>
@@ -81,6 +84,21 @@ export function ActivitiesTab({
           <Button title="Add" onPress={add} disabled={!title.trim() || saving} />
         </View>
       </Card>
+
+      <NearbyThings
+        stop={stop}
+        existingTitles={titles}
+        onAdd={(place) => {
+          void addActivity({
+            stopId: stop.id,
+            title: place.name,
+            // Google has no idea what a ticket costs; the estimate is yours.
+            estimatedCostMinor: null,
+            done: false,
+          });
+          notifySuccess();
+        }}
+      />
 
       {activities.length === 0 ? (
         <EmptyState
