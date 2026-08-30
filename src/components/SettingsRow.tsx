@@ -51,6 +51,10 @@ export function SettingsRow({
 
       {isSwitch ? (
         <Switch
+          // Without this every toggle on the screen is an unlabelled switch:
+          // a screen reader announces "on" with no idea what is on.
+          accessibilityLabel={label}
+          accessibilityHint={sub}
           value={!!toggled}
           onValueChange={onToggle}
           disabled={disabled}

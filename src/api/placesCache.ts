@@ -12,7 +12,7 @@ import { getDb } from '../db/client';
  * when asked to, so a stale hit beats an empty screen when the network is gone.
  */
 
-export type RequestType = 'details' | 'nearby';
+export type RequestType = 'details' | 'nearby' | 'route';
 
 export const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -28,6 +28,12 @@ export interface CacheHit<T> {
   stale: boolean;
 }
 
+/**
+ * `placeId` is a stand-in for "whatever identifies this request". A route has
+ * no place id, so it uses a pair of rounded coordinates and a travel mode; the
+ * column name is a small lie the alternative to which is a migration that buys
+ * nothing.
+ */
 function key(type: RequestType, placeId: string): string {
   return `${type}:${placeId}`;
 }

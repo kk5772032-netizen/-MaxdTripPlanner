@@ -188,6 +188,13 @@ export default function SettingsScreen() {
           sub={hasApiKey() ? undefined : 'Stops can still be added by typing them'}
         />
         <SettingsRow
+          icon="navigate-circle-outline"
+          label="Travel times between stops"
+          sub="Cached for 30 days — one request per pair of places, on a paid API."
+          toggled={s.travelTimes}
+          onToggle={(next) => void s.set('travelTimes', next)}
+        />
+        <SettingsRow
           icon="server-outline"
           label="Cached place data"
           sub="Reused for 30 days to keep the Places bill down"

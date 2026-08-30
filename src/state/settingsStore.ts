@@ -30,6 +30,13 @@ export interface Settings {
   /** Suppress everything outside a running trip. */
   onlyWhileTravelling: boolean;
 
+  /**
+   * Whether to look up travel times between stops. On by default and cached
+   * for thirty days, so the bill is one request per pair of places ever — but
+   * it is a paid API and someone watching their quota should be able to say no.
+   */
+  travelTimes: boolean;
+
   /** 'system' follows the OS. */
   theme: 'system' | 'light' | 'dark';
 }
@@ -46,6 +53,7 @@ export const DEFAULTS: Settings = {
   dailyReminderTime: '20:00',
   tripStartingSoon: true,
   onlyWhileTravelling: true,
+  travelTimes: true,
   theme: 'system',
 };
 

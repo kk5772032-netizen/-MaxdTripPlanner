@@ -5,6 +5,14 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { photoUrl } from '../../api/places';
 import { directionsUrl, openInMaps } from '../../places/maps';
+import { useTravelLegs } from '../../places/useTravelLegs';
+import {
+  formatDistance,
+  formatTravel,
+  overrunSummary,
+  overruns,
+  pairId,
+} from '../../itinerary/travel';
 import { useTripStore } from '../../state/tripStore';
 import { DayJournal } from './DayJournal';
 import {
@@ -28,6 +36,7 @@ import {
   type,
   useTheme,
 } from '../../theme';
+import type { DayEntry } from '../../itinerary/schedule';
 import type { Activity, Booking, FoodPlan, Stop, Trip } from '../../types';
 import { IconButton, type IconName } from '../ui';
 
@@ -102,6 +111,8 @@ function DaySection({
   const t = useTheme();
   const allStops = useTripStore((s) => s.stops);
   const journal = useTripStore((s) => s.journal);
+  const travel = useTravelLegs(day.stops);
+  const tight = overrunSummary(overruns(day.stops, travel.legs));
   const reorderStops = useTripStore((s) => s.reorderStops);
   const [reordering, setReordering] = useState(false);
 
@@ -191,6 +202,13 @@ function DaySection({
         </Pressable>
       </View>
 
+      {tight && !reordering ? (
+        <View style={styles.tight}>
+          <Ionicons name="alert-circle-outline" size={14} color={t.nearText} />
+          <Text style={styles.tightText}>{tight}</Text>
+        </View>
+      ) : null}
+
       {reordering ? (
         <Text style={styles.reorderHint}>
           Anything with a time is held in place by the clock.
@@ -219,6 +237,7 @@ function DaySection({
               reordering={reordering && !entry.stop.startTime}
               position={positionOf(loose, entry.stop.id)}
               onMove={(delta) => move(entry.stop.id, delta)}
+              travel={travelAfter(entries, i, travel)}
             />
           ) : (
             <BookingRow
@@ -253,6 +272,28 @@ function today(): string {
   ).padStart(2, '0')}`;
 }
 
+/**
+ * What to say on the rail below this row, if anything.
+ *
+ * Only between two stops: there is no useful journey time from a hotel booking
+ * to a museum, because the booking is not a place you are travelling from.
+ */
+function travelAfter(
+  entries: DayEntry[],
+  index: number,
+  travel: ReturnType<typeof useTravelLegs>,
+): string | null {
+  const here = entries[index];
+  const next = entries[index + 1];
+  if (here?.kind !== 'stop' || next?.kind !== 'stop') return null;
+
+  const key = pairId(here.stop.id, next.stop.id);
+  // The real time when we have it, the straight-line distance when we don't.
+  return formatTravel(travel.legs.get(key) ?? null) ?? formatDistance(
+    travel.distances.get(key) ?? null,
+  );
+}
+
 /** Where a stop sits among the day's untimed ones, for the arrow states. */
 function positionOf(loose: Stop[], id: string): { index: number; total: number } {
   return { index: loose.findIndex((stop) => stop.id === id), total: loose.length };
@@ -267,6 +308,7 @@ function TimelineRow({
   reordering,
   position,
   onMove,
+  travel,
 }: {
   stop: Stop;
   last: boolean;
@@ -276,6 +318,7 @@ function TimelineRow({
   reordering: boolean;
   position: { index: number; total: number };
   onMove: (delta: -1 | 1) => void;
+  travel: string | null;
 }) {
   const styles = useStyles();
   const t = useTheme();
@@ -312,105 +355,115 @@ function TimelineRow({
         {!last ? <View style={styles.line} /> : null}
       </View>
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`${stop.name}${span ? `, ${span}` : ''}`}
-        onPress={onPress}
-        style={({ pressed }) => [styles.card, elevation.sm, pressed && styles.pressed]}
-      >
-        {thumb ? (
-          <Image
-            source={{ uri: thumb }}
-            style={styles.thumb}
-            contentFit="cover"
-            transition={150}
-          />
-        ) : null}
+      <View style={styles.rowBody}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${stop.name}${span ? `, ${span}` : ''}`}
+          onPress={onPress}
+          style={({ pressed }) => [styles.card, elevation.sm, pressed && styles.pressed]}
+        >
+          {thumb ? (
+            <Image
+              source={{ uri: thumb }}
+              style={styles.thumb}
+              contentFit="cover"
+              transition={150}
+            />
+          ) : null}
 
-        <View style={styles.cardText}>
-          <View style={styles.cardTop}>
-            <Text style={styles.stopName} numberOfLines={1}>
-              {stop.name}
-            </Text>
-            {stop.rating != null ? (
-              <View style={styles.rating}>
-                <Ionicons name="star" size={11} color={t.near} />
-                <Text style={styles.ratingText}>{stop.rating.toFixed(1)}</Text>
+          <View style={styles.cardText}>
+            <View style={styles.cardTop}>
+              <Text style={styles.stopName} numberOfLines={1}>
+                {stop.name}
+              </Text>
+              {stop.rating != null ? (
+                <View style={styles.rating}>
+                  <Ionicons name="star" size={11} color={t.near} />
+                  <Text style={styles.ratingText}>{stop.rating.toFixed(1)}</Text>
+                </View>
+              ) : null}
+            </View>
+
+            {stop.address ? (
+              <Text style={styles.address} numberOfLines={1}>
+                {stop.address}
+              </Text>
+            ) : null}
+
+            {span && stop.endTime ? <Text style={styles.span}>{span}</Text> : null}
+
+            {meta.length > 0 ? <Text style={styles.meta}>{meta.join(' · ')}</Text> : null}
+
+            {scheduled.length > 0 ? (
+              <View style={styles.schedule}>
+                {scheduled.map((activity) => (
+                  <View key={activity.id} style={styles.scheduleRow}>
+                    <Text style={styles.scheduleTime}>{formatTime(activity.startTime)}</Text>
+                    <Text
+                      style={[styles.scheduleTitle, activity.done && styles.scheduleDone]}
+                      numberOfLines={1}
+                    >
+                      {activity.title}
+                    </Text>
+                  </View>
+                ))}
               </View>
             ) : null}
           </View>
 
-          {stop.address ? (
-            <Text style={styles.address} numberOfLines={1}>
-              {stop.address}
-            </Text>
-          ) : null}
-
-          {span && stop.endTime ? <Text style={styles.span}>{span}</Text> : null}
-
-          {meta.length > 0 ? <Text style={styles.meta}>{meta.join(' · ')}</Text> : null}
-
-          {scheduled.length > 0 ? (
-            <View style={styles.schedule}>
-              {scheduled.map((activity) => (
-                <View key={activity.id} style={styles.scheduleRow}>
-                  <Text style={styles.scheduleTime}>{formatTime(activity.startTime)}</Text>
-                  <Text
-                    style={[styles.scheduleTitle, activity.done && styles.scheduleDone]}
-                    numberOfLines={1}
-                  >
-                    {activity.title}
-                  </Text>
-                </View>
-              ))}
+          {reordering ? (
+            // Arrows rather than a drag handle: this list is grouped, scrolls,
+            // and has rows the clock will not let you move. Buttons say which
+            // moves are possible, work under a screen reader, and cannot drop a
+            // stop somewhere it is not allowed to go.
+            <View style={styles.moveButtons}>
+              {/* An arrow at the end of the list is dimmed rather than removed:
+                  hiding it would shuffle the other one up and down the card every
+                  time something moved. */}
+              <View style={position.index > 0 ? undefined : styles.moveOff}>
+                <IconButton
+                  icon="chevron-up"
+                  label={`Move ${stop.name} earlier`}
+                  size={30}
+                  tone="primary"
+                  onPress={() => position.index > 0 && onMove(-1)}
+                />
+              </View>
+              <View
+                style={position.index < position.total - 1 ? undefined : styles.moveOff}
+              >
+                <IconButton
+                  icon="chevron-down"
+                  label={`Move ${stop.name} later`}
+                  size={30}
+                  tone="primary"
+                  onPress={() => position.index < position.total - 1 && onMove(1)}
+                />
+              </View>
             </View>
-          ) : null}
-        </View>
-
-        {reordering ? (
-          // Arrows rather than a drag handle: this list is grouped, scrolls,
-          // and has rows the clock will not let you move. Buttons say which
-          // moves are possible, work under a screen reader, and cannot drop a
-          // stop somewhere it is not allowed to go.
-          <View style={styles.moveButtons}>
-            {/* An arrow at the end of the list is dimmed rather than removed:
-                hiding it would shuffle the other one up and down the card every
-                time something moved. */}
-            <View style={position.index > 0 ? undefined : styles.moveOff}>
-              <IconButton
-                icon="chevron-up"
-                label={`Move ${stop.name} earlier`}
-                size={30}
-                tone="primary"
-                onPress={() => position.index > 0 && onMove(-1)}
-              />
-            </View>
-            <View
-              style={position.index < position.total - 1 ? undefined : styles.moveOff}
+          ) : (
+            /* The one thing worth doing from the plan without opening the stop:
+               you are standing somewhere and you need to get to the next place. */
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Directions to ${stop.name} in Google Maps`}
+              hitSlop={8}
+              onPress={() => void openInMaps(directionsUrl(stop))}
+              style={({ pressed }) => [styles.directions, pressed && styles.pressed]}
             >
-              <IconButton
-                icon="chevron-down"
-                label={`Move ${stop.name} later`}
-                size={30}
-                tone="primary"
-                onPress={() => position.index < position.total - 1 && onMove(1)}
-              />
-            </View>
+              <Ionicons name="navigate" size={16} color={t.primary} />
+            </Pressable>
+          )}
+        </Pressable>
+
+        {/* In the gap the rail already leaves: how you get to the next one. */}
+        {travel ? (
+          <View style={styles.travelRow}>
+            <Ionicons name="arrow-down" size={11} color={t.textFaint} />
+            <Text style={styles.travelText}>{travel}</Text>
           </View>
-        ) : (
-          /* The one thing worth doing from the plan without opening the stop:
-             you are standing somewhere and you need to get to the next place. */
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Directions to ${stop.name} in Google Maps`}
-            hitSlop={8}
-            onPress={() => void openInMaps(directionsUrl(stop))}
-            style={({ pressed }) => [styles.directions, pressed && styles.pressed]}
-          >
-            <Ionicons name="navigate" size={16} color={t.primary} />
-          </Pressable>
-        )}
-      </Pressable>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -549,8 +602,20 @@ const useStyles = makeStyles((t) => ({
   // Reaches past the card's bottom margin so the rail reads as continuous.
   line: { flex: 1, width: 2, backgroundColor: t.border, marginTop: 2, marginBottom: -spacing.sm },
 
+  rowBody: { flex: 1, marginBottom: spacing.sm },
+  travelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingTop: spacing.xs,
+    paddingLeft: 2,
+  },
+  travelText: { ...type.caption, color: t.textFaint },
+
+  tight: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  tightText: { flex: 1, ...type.caption, color: t.nearText },
+
   card: {
-    flex: 1,
     flexDirection: 'row',
     // Top, not centre: a card with an hour-by-hour list under it would
     // otherwise float the directions button beside the schedule rather than
@@ -562,7 +627,6 @@ const useStyles = makeStyles((t) => ({
     borderColor: t.border,
     borderRadius: radius.lg,
     padding: spacing.md,
-    marginBottom: spacing.sm,
   },
   cardText: { flex: 1, gap: 2 },
 

@@ -121,7 +121,7 @@ Two **separate** keys, both from the [Google Cloud Console](https://console.clou
 
 | `.env` variable | Google API to enable | Used for |
 |---|---|---|
-| `EXPO_PUBLIC_GOOGLE_PLACES_KEY` | **Places API (New)** | Autocomplete, Place Details, Nearby Search, Photos |
+| `EXPO_PUBLIC_GOOGLE_PLACES_KEY` | **Places API (New)** + **Routes API** | Autocomplete, Place Details, Nearby Search, Photos, travel times |
 | `EXPO_PUBLIC_GOOGLE_MAPS_KEY` | **Maps SDK for Android** (+ **Maps SDK for iOS**) | Rendering the map |
 
 Keeping them separate lets you restrict and cap each one independently. Restart
@@ -180,6 +180,13 @@ already spent. Set both, and treat the cap as the one that matters.
   it don't change hour to hour.
 - **Nearby Search never runs on render.** It runs on your first visit to a stop's
   Food tab, or when you tap Refresh. Nothing else triggers it.
+- **Travel times are one request per pair of places, ever.** The Routes API call
+  asks for two numbers, the answer is cached for 30 days, and the coordinates
+  are rounded to about eleven metres before they become a cache key so nudging a
+  pin doesn't buy the same answer twice. Whether to drive or walk is decided on
+  the device from the straight-line distance — asking Google for a driving time
+  between two museums 400 m apart spends money on an answer nobody wants. The
+  whole feature has an off switch in Settings.
 - **Offline falls back to the cache.** If a call fails and there's an expired
   entry, the app serves the stale copy and says so, rather than showing an error.
 - **Open or closed is computed locally.** Google's `openNow` is only true at the
@@ -244,6 +251,8 @@ src/
   packing/templates.ts      starter packing lists by trip type
   db/repositories/journal.ts  what happened on a day, and its photos
   itinerary/sharePlan.ts    printing and the share sheet
+  api/routes.ts             Routes API client — travel time between two stops
+  itinerary/travel.ts       which pairs to ask about, and whether a day fits
   places/hours.ts           open-or-shut from the clock, in the place's timezone
   places/maps.ts            Google Maps handoff — directions, place, whole route
   places/usePlaceContent.ts fetches a stop's photos, rating and hours
