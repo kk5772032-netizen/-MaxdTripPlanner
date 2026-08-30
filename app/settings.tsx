@@ -2,11 +2,11 @@ import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { pickBackup, restoreBackup, shareBackup } from '../src/backup/backup';
+import { mergeBackup, pickBackup, restoreBackup, shareBackup } from '../src/backup/backup';
 import type { Backup } from '../src/backup/format';
 import { SUPPORTED_CURRENCIES, currencySymbol } from '../src/budget/money';
 import { SettingsRow, SettingsSection } from '../src/components/SettingsRow';
-import { Button, Chip, Notice, SegmentedControl, Sheet } from '../src/components/ui';
+import { Chip, Notice, SegmentedControl, Sheet, SheetOption } from '../src/components/ui';
 import { confirmDestructive } from '../src/confirm';
 import { getDb } from '../src/db/client';
 import * as settingsRepo from '../src/db/repositories/settings';
@@ -96,18 +96,40 @@ export default function SettingsScreen() {
     }
   };
 
-  const confirmRestore = async () => {
+  const finish = async (message: string) => {
+    setPendingRestore(null);
+    await loadTrips();
+    await readCacheSize();
+    router.replace('/trips');
+    showToast({ message });
+  };
+
+  /** Combines the file with what is here. The safe one, and the default. */
+  const confirmMerge = async () => {
+    if (!pendingRestore) return;
+    setBusy(true);
+    try {
+      const stats = await mergeBackup(pendingRestore);
+      const added = stats.added + stats.incoming;
+      await finish(
+        added === 0 && stats.deleted === 0
+          ? 'Already up to date'
+          : `Merged ${added} ${added === 1 ? 'change' : 'changes'}`,
+      );
+    } catch (e) {
+      console.warn('[settings] merge failed', e);
+      showToast({ message: "That backup couldn't be merged. Nothing was changed." });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const confirmReplace = async () => {
     if (!pendingRestore) return;
     setBusy(true);
     try {
       const counts = await restoreBackup(pendingRestore);
-      setPendingRestore(null);
-      await loadTrips();
-      await readCacheSize();
-      router.replace('/trips');
-      showToast({
-        message: `Restored ${counts.trips} ${counts.trips === 1 ? 'trip' : 'trips'}`,
-      });
+      await finish(`Replaced with ${counts.trips} ${counts.trips === 1 ? 'trip' : 'trips'}`);
     } catch (e) {
       console.warn('[settings] restore failed', e);
       showToast({ message: "That backup couldn't be restored. Nothing was changed." });
@@ -212,7 +234,8 @@ export default function SettingsScreen() {
         />
         <SettingsRow
           icon="cloud-upload-outline"
-          label="Restore from a backup"
+          label="Open a backup file"
+          sub="Merge it with what's here, or replace everything"
           onPress={() => void chooseRestore()}
         />
         <SettingsRow
@@ -234,22 +257,26 @@ export default function SettingsScreen() {
 
       <Sheet
         visible={pendingRestore !== null}
-        title="Restore this backup?"
+        title="What should this file do?"
         subtitle={describe(pendingRestore)}
         onClose={() => setPendingRestore(null)}
       >
-        <Notice
-          tone="warning"
-          body="Everything currently on this device will be replaced by what is in the file."
+        {/* Merge first and by name, because replace is the one that can lose
+            something and nobody reads a warning under a button they wanted. */}
+        <SheetOption
+          icon="git-merge-outline"
+          title="Merge with what's here"
+          body="Keeps both. Newer edits win, and anything deleted stays deleted."
+          disabled={busy}
+          onPress={() => void confirmMerge()}
         />
-        <Button
+        <SheetOption
+          icon="swap-horizontal-outline"
           title="Replace everything"
-          icon="cloud-upload-outline"
-          variant="danger"
-          loading={busy}
-          onPress={() => void confirmRestore()}
+          body="Throws away what's on this device and uses the file instead."
+          disabled={busy}
+          onPress={() => void confirmReplace()}
         />
-        <Button title="Cancel" variant="secondary" onPress={() => setPendingRestore(null)} />
       </Sheet>
     </ScrollView>
   );

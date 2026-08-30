@@ -1,6 +1,7 @@
 import type { PackingItem } from '../../types';
 import { getDb, runInTransaction } from '../client';
 import { newId } from '../ids';
+import { stamp, tombstone, unTombstone } from '../../sync/stamping';
 
 interface PackingRow {
   id: string;
@@ -52,9 +53,11 @@ export async function createPackingItem(input: NewPackingItem): Promise<PackingI
     id: newId(),
   };
   await db.runAsync(
-    `INSERT INTO packing_items (id, trip_id, title, category, packed, sequence)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO packing_items
+       (id, trip_id, title, category, packed, sequence, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
     item.id, item.tripId, item.title, item.category, item.packed ? 1 : 0, item.sequence,
+    await stamp(),
   );
   return item;
 }
@@ -80,12 +83,18 @@ export async function addPackingItems(
   const fresh = titles.filter((t) => !existing.has(t.title.trim().toLowerCase()));
   if (fresh.length === 0) return 0;
 
+  // Minted before the transaction: `stamp()` writes to the settings table, and
+  // nesting that write inside this one deadlocks on some drivers.
+  const marks: string[] = [];
+  for (let i = 0; i < fresh.length; i++) marks.push(await stamp());
+
   await runInTransaction(db, async (tx) => {
     for (const [i, entry] of fresh.entries()) {
       await tx.runAsync(
-        `INSERT INTO packing_items (id, trip_id, title, category, packed, sequence)
-         VALUES (?, ?, ?, ?, 0, ?)`,
-        newId(), tripId, entry.title, entry.category, start + i,
+        `INSERT INTO packing_items
+           (id, trip_id, title, category, packed, sequence, updated_at)
+         VALUES (?, ?, ?, ?, 0, ?, ?)`,
+        newId(), tripId, entry.title, entry.category, start + i, marks[i],
       );
     }
   });
@@ -105,8 +114,10 @@ export async function updatePackingItem(
 
   const next: PackingItem = { ...toItem(row), ...patch };
   await db.runAsync(
-    `UPDATE packing_items SET title = ?, category = ?, packed = ?, sequence = ? WHERE id = ?`,
-    next.title, next.category, next.packed ? 1 : 0, next.sequence, id,
+    `UPDATE packing_items
+        SET title = ?, category = ?, packed = ?, sequence = ?, updated_at = ?
+      WHERE id = ?`,
+    next.title, next.category, next.packed ? 1 : 0, next.sequence, await stamp(), id,
   );
   return next;
 }
@@ -114,20 +125,28 @@ export async function updatePackingItem(
 export async function deletePackingItem(id: string): Promise<void> {
   const db = await getDb();
   await db.runAsync(`DELETE FROM packing_items WHERE id = ?`, id);
+  await tombstone('packing_items', id);
 }
 
 /** Re-inserts a deleted item with its original id, so undo restores the row. */
 export async function restorePackingItem(item: PackingItem): Promise<void> {
   const db = await getDb();
   await db.runAsync(
-    `INSERT OR REPLACE INTO packing_items (id, trip_id, title, category, packed, sequence)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+    `INSERT OR REPLACE INTO packing_items
+       (id, trip_id, title, category, packed, sequence, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
     item.id, item.tripId, item.title, item.category, item.packed ? 1 : 0, item.sequence,
+    await stamp(),
   );
+  await unTombstone('packing_items', item.id);
 }
 
 /** Clears the ticks without losing the list — the same trip, packed again. */
 export async function unpackAll(tripId: string): Promise<void> {
   const db = await getDb();
-  await db.runAsync(`UPDATE packing_items SET packed = 0 WHERE trip_id = ?`, tripId);
+  await db.runAsync(
+    `UPDATE packing_items SET packed = 0, updated_at = ? WHERE trip_id = ?`,
+    await stamp(),
+    tripId,
+  );
 }

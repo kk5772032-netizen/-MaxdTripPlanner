@@ -1,6 +1,7 @@
 import type { Expense, ExpenseCategory } from '../../types';
 import { getDb } from '../client';
 import { newId } from '../ids';
+import { stamp, tombstone, unTombstone } from '../../sync/stamping';
 
 interface ExpenseRow {
   id: string;
@@ -34,8 +35,9 @@ export async function createExpense(input: NewExpense): Promise<Expense> {
   const db = await getDb();
   const expense: Expense = { bookingId: null, ...input, id: newId() };
   await db.runAsync(
-    `INSERT INTO expenses (id, trip_id, stop_id, category, amount, note, spent_at, booking_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO expenses
+       (id, trip_id, stop_id, category, amount, note, spent_at, booking_id, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     expense.id,
     expense.tripId,
     expense.stopId,
@@ -44,6 +46,7 @@ export async function createExpense(input: NewExpense): Promise<Expense> {
     expense.note,
     expense.spentAt,
     expense.bookingId,
+    await stamp(),
   );
   return expense;
 }
@@ -56,11 +59,13 @@ export async function restoreExpense(expense: Expense): Promise<void> {
   const db = await getDb();
   await db.runAsync(
     `INSERT OR REPLACE INTO expenses
-       (id, trip_id, stop_id, category, amount, note, spent_at, booking_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, trip_id, stop_id, category, amount, note, spent_at, booking_id, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     expense.id, expense.tripId, expense.stopId, expense.category,
     expense.amountMinor, expense.note, expense.spentAt, expense.bookingId,
+    await stamp(),
   );
+  await unTombstone('expenses', expense.id);
 }
 
 export async function listExpenses(tripId: string): Promise<Expense[]> {
@@ -115,7 +120,8 @@ export async function updateExpense(
   const db = await getDb();
   await db.runAsync(
     `UPDATE expenses
-        SET stop_id = ?, category = ?, amount = ?, note = ?, spent_at = ?, booking_id = ?
+        SET stop_id = ?, category = ?, amount = ?, note = ?, spent_at = ?, booking_id = ?,
+            updated_at = ?
       WHERE id = ?`,
     next.stopId,
     next.category,
@@ -123,6 +129,7 @@ export async function updateExpense(
     next.note,
     next.spentAt,
     next.bookingId,
+    await stamp(),
     id,
   );
   return next;
@@ -131,4 +138,5 @@ export async function updateExpense(
 export async function deleteExpense(id: string): Promise<void> {
   const db = await getDb();
   await db.runAsync(`DELETE FROM expenses WHERE id = ?`, id);
+  await tombstone('expenses', id);
 }

@@ -1,6 +1,7 @@
 import type { Activity } from '../../types';
 import { getDb } from '../client';
 import { newId } from '../ids';
+import { stamp, tombstone, unTombstone } from '../../sync/stamping';
 
 interface ActivityRow {
   id: string;
@@ -43,8 +44,9 @@ export async function createActivity(input: NewActivity): Promise<Activity> {
     id: newId(),
   };
   await db.runAsync(
-    `INSERT INTO activities (id, stop_id, title, estimated_cost, done, start_time, duration_min, notes)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO activities
+       (id, stop_id, title, estimated_cost, done, start_time, duration_min, notes, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     activity.id,
     activity.stopId,
     activity.title,
@@ -53,6 +55,7 @@ export async function createActivity(input: NewActivity): Promise<Activity> {
     activity.startTime,
     activity.durationMin,
     activity.notes,
+    await stamp(),
   );
   return activity;
 }
@@ -61,11 +64,12 @@ export async function restoreActivity(a: Activity): Promise<void> {
   const db = await getDb();
   await db.runAsync(
     `INSERT OR REPLACE INTO activities
-       (id, stop_id, title, estimated_cost, done, start_time, duration_min, notes)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, stop_id, title, estimated_cost, done, start_time, duration_min, notes, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     a.id, a.stopId, a.title, a.estimatedCostMinor, a.done ? 1 : 0,
-    a.startTime, a.durationMin, a.notes,
+    a.startTime, a.durationMin, a.notes, await stamp(),
   );
+  await unTombstone('activities', a.id);
 }
 
 export async function listActivities(stopId: string): Promise<Activity[]> {
@@ -105,7 +109,8 @@ export async function updateActivity(
   const next: Activity = { ...toActivity(row), ...patch };
   await db.runAsync(
     `UPDATE activities
-        SET title = ?, estimated_cost = ?, done = ?, start_time = ?, duration_min = ?, notes = ?
+        SET title = ?, estimated_cost = ?, done = ?, start_time = ?, duration_min = ?,
+            notes = ?, updated_at = ?
       WHERE id = ?`,
     next.title,
     next.estimatedCostMinor,
@@ -113,6 +118,7 @@ export async function updateActivity(
     next.startTime,
     next.durationMin,
     next.notes,
+    await stamp(),
     id,
   );
   return next;
@@ -121,4 +127,5 @@ export async function updateActivity(
 export async function deleteActivity(id: string): Promise<void> {
   const db = await getDb();
   await db.runAsync(`DELETE FROM activities WHERE id = ?`, id);
+  await tombstone('activities', id);
 }

@@ -1,6 +1,10 @@
+import type { Tombstone } from '../sync/merge';
 import type {
   Activity, Booking, Expense, FoodPlan, JournalEntry, PackingItem, Stop, Trip,
 } from '../types';
+
+/** A row with the stamp that decides who wins a merge. See `src/sync/hlc.ts`. */
+export type Stamped<T> = T & { updatedAt: string };
 
 /**
  * What a backup file is.
@@ -14,7 +18,13 @@ import type {
  * preferences are already set the way that phone's owner likes them.
  */
 
-export const BACKUP_VERSION = 1;
+/**
+ * 2 added a stamp on every row and a list of deletions, which is what lets a
+ * restore merge instead of replace. Version 1 files still restore: their rows
+ * simply carry no stamp, and an unstamped row loses to a stamped one, which is
+ * the truthful ordering for a file written before stamps existed.
+ */
+export const BACKUP_VERSION = 2;
 export const BACKUP_KIND = 'waypoint.backup';
 
 export interface Backup {
@@ -22,20 +32,25 @@ export interface Backup {
   version: number;
   /** ISO instant, so a person can tell two files apart in a downloads folder. */
   exportedAt: string;
-  trips: Trip[];
-  stops: Stop[];
-  activities: Activity[];
-  foodPlans: FoodPlan[];
-  expenses: Expense[];
-  bookings: Booking[];
-  packing: PackingItem[];
+  trips: Stamped<Trip>[];
+  stops: Stamped<Stop>[];
+  activities: Stamped<Activity>[];
+  foodPlans: Stamped<FoodPlan>[];
+  expenses: Stamped<Expense>[];
+  bookings: Stamped<Booking>[];
+  packing: Stamped<PackingItem>[];
   /**
    * Notes travel; photos do not. The file paths point into the old phone's
    * storage and would restore as grey boxes, so entries come back with their
    * words and without their pictures. Saying so is better than a gallery of
    * missing files.
    */
-  journal: JournalEntry[];
+  journal: Stamped<JournalEntry>[];
+  /**
+   * Rows that were deleted, so a merge does not hand them back. Absent in
+   * version 1 files, where a delete simply could not travel.
+   */
+  tombstones: Tombstone[];
 }
 
 export interface BackupCounts {
@@ -104,7 +119,7 @@ export function parseBackup(text: string): ParseResult {
 
   const tables = [
     'trips', 'stops', 'activities', 'foodPlans', 'expenses', 'bookings', 'packing',
-    'journal',
+    'journal', 'tombstones',
   ] as const;
   for (const table of tables) {
     // A missing table is tolerated — an older file may predate bookings — but
@@ -114,7 +129,7 @@ export function parseBackup(text: string): ParseResult {
     }
   }
 
-  const trips = (obj.trips ?? []) as Trip[];
+  const trips = (obj.trips ?? []) as Stamped<Trip>[];
   if (trips.length === 0) {
     return { ok: false, reason: 'That backup has no trips in it.' };
   }
@@ -129,13 +144,14 @@ export function parseBackup(text: string): ParseResult {
       version: obj.version,
       exportedAt: typeof obj.exportedAt === 'string' ? obj.exportedAt : '',
       trips,
-      stops: (obj.stops ?? []) as Stop[],
-      activities: (obj.activities ?? []) as Activity[],
-      foodPlans: (obj.foodPlans ?? []) as FoodPlan[],
-      expenses: (obj.expenses ?? []) as Expense[],
-      bookings: (obj.bookings ?? []) as Booking[],
-      packing: (obj.packing ?? []) as PackingItem[],
-      journal: (obj.journal ?? []) as JournalEntry[],
+      stops: (obj.stops ?? []) as Stamped<Stop>[],
+      activities: (obj.activities ?? []) as Stamped<Activity>[],
+      foodPlans: (obj.foodPlans ?? []) as Stamped<FoodPlan>[],
+      expenses: (obj.expenses ?? []) as Stamped<Expense>[],
+      bookings: (obj.bookings ?? []) as Stamped<Booking>[],
+      packing: (obj.packing ?? []) as Stamped<PackingItem>[],
+      journal: (obj.journal ?? []) as Stamped<JournalEntry>[],
+      tombstones: (obj.tombstones ?? []) as Tombstone[],
     },
   };
 }

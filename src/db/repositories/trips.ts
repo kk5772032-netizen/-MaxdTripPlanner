@@ -1,6 +1,7 @@
 import type { Trip } from '../../types';
 import { getDb } from '../client';
 import { newId } from '../ids';
+import { stamp, tombstone, unTombstone } from '../../sync/stamping';
 
 interface TripRow {
   id: string;
@@ -44,8 +45,8 @@ export async function createTrip(input: NewTrip): Promise<Trip> {
   await db.runAsync(
     `INSERT INTO trips
        (id, name, start_date, end_date, currency, home_currency, rate_ppm,
-        total_budget, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        total_budget, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     trip.id,
     trip.name,
     trip.startDate,
@@ -55,6 +56,7 @@ export async function createTrip(input: NewTrip): Promise<Trip> {
     trip.ratePpm,
     trip.totalBudgetMinor,
     trip.createdAt,
+    await stamp(),
   );
   return trip;
 }
@@ -85,7 +87,7 @@ export async function updateTrip(
   await db.runAsync(
     `UPDATE trips
         SET name = ?, start_date = ?, end_date = ?, currency = ?, home_currency = ?,
-            rate_ppm = ?, total_budget = ?
+            rate_ppm = ?, total_budget = ?, updated_at = ?
       WHERE id = ?`,
     next.name,
     next.startDate,
@@ -94,6 +96,7 @@ export async function updateTrip(
     next.homeCurrency,
     next.ratePpm,
     next.totalBudgetMinor,
+    await stamp(),
     id,
   );
   return next;
@@ -103,4 +106,7 @@ export async function updateTrip(
 export async function deleteTrip(id: string): Promise<void> {
   const db = await getDb();
   await db.runAsync(`DELETE FROM trips WHERE id = ?`, id);
+  // Only the trip is tombstoned; its children cascade, and a merge that has
+  // lost the trip has nowhere to put them anyway.
+  await tombstone('trips', id);
 }

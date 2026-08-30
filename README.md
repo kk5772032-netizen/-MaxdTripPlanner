@@ -246,7 +246,11 @@ app/                        expo-router file-based routes
 src/
   api/places.ts             Places API (New) client — field masks, session tokens
   api/placesCache.ts        30-day SQLite response cache
-  backup/backup.ts          every trip as one file, and back again
+  backup/backup.ts          every trip as one file, and back again — or merged
+  sync/hlc.ts               hybrid logical clocks, so whose edit is newer is answerable
+  sync/merge.ts             merging two copies of the data, row by row
+  sync/clock.ts             this device's identity and its clock
+  sync/stamping.ts          stamps on writes, tombstones on deletes
   backup/format.ts          what a backup is, and what makes one invalid
   itinerary/calendar.ts     the trip as a standard .ics file
   itinerary/exportPlan.ts   the plan as shareable text and as a PDF-ready page
@@ -373,6 +377,12 @@ appearance and asserts on the colour actually painted.
 
 Everything is stored in a local SQLite database on the device. There is no
 account, no server, and no sync — uninstalling the app deletes your trips. The
-only data that leaves the device is what you type into place search, which goes
+There is no account and no server. Two devices can still be kept in step by
+passing a backup file between them — merging rather than replacing, so both
+sides keep what the other did and a deletion on one does not come back from
+the other. That is a manual sync, and it is deliberate: the alternative is an
+account, and the file works on a plane.
+
+The only data that leaves the device is what you type into place search, which goes
 to Google Places, and the place you tap Directions for, which goes to Google
 Maps in the URL that opens it.

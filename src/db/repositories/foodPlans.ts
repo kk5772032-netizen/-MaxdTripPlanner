@@ -1,6 +1,7 @@
 import type { FoodPlan } from '../../types';
 import { getDb } from '../client';
 import { newId } from '../ids';
+import { stamp, tombstone, unTombstone } from '../../sync/stamping';
 
 interface FoodPlanRow {
   id: string;
@@ -30,8 +31,9 @@ export async function createFoodPlan(input: NewFoodPlan): Promise<FoodPlan> {
   const db = await getDb();
   const plan: FoodPlan = { ...input, id: newId() };
   await db.runAsync(
-    `INSERT INTO food_plans (id, stop_id, google_place_id, name, cuisine, estimated_cost, notes)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO food_plans
+       (id, stop_id, google_place_id, name, cuisine, estimated_cost, notes, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     plan.id,
     plan.stopId,
     plan.googlePlaceId,
@@ -39,6 +41,7 @@ export async function createFoodPlan(input: NewFoodPlan): Promise<FoodPlan> {
     plan.cuisine,
     plan.estimatedCostMinor,
     plan.notes,
+    await stamp(),
   );
   return plan;
 }
@@ -46,10 +49,13 @@ export async function createFoodPlan(input: NewFoodPlan): Promise<FoodPlan> {
 export async function restoreFoodPlan(f: FoodPlan): Promise<void> {
   const db = await getDb();
   await db.runAsync(
-    `INSERT OR REPLACE INTO food_plans (id, stop_id, google_place_id, name, cuisine, estimated_cost, notes)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT OR REPLACE INTO food_plans
+       (id, stop_id, google_place_id, name, cuisine, estimated_cost, notes, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     f.id, f.stopId, f.googlePlaceId, f.name, f.cuisine, f.estimatedCostMinor, f.notes,
+    await stamp(),
   );
+  await unTombstone('food_plans', f.id);
 }
 
 export async function listFoodPlans(stopId: string): Promise<FoodPlan[]> {
@@ -88,13 +94,15 @@ export async function updateFoodPlan(
   const next: FoodPlan = { ...toFoodPlan(row), ...patch };
   await db.runAsync(
     `UPDATE food_plans
-        SET google_place_id = ?, name = ?, cuisine = ?, estimated_cost = ?, notes = ?
+        SET google_place_id = ?, name = ?, cuisine = ?, estimated_cost = ?, notes = ?,
+            updated_at = ?
       WHERE id = ?`,
     next.googlePlaceId,
     next.name,
     next.cuisine,
     next.estimatedCostMinor,
     next.notes,
+    await stamp(),
     id,
   );
   return next;
@@ -103,4 +111,5 @@ export async function updateFoodPlan(
 export async function deleteFoodPlan(id: string): Promise<void> {
   const db = await getDb();
   await db.runAsync(`DELETE FROM food_plans WHERE id = ?`, id);
+  await tombstone('food_plans', id);
 }

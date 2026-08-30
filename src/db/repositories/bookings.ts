@@ -1,6 +1,7 @@
 import type { Booking, BookingKind } from '../../types';
 import { getDb } from '../client';
 import { newId } from '../ids';
+import { stamp, tombstone, unTombstone } from '../../sync/stamping';
 
 interface BookingRow {
   id: string;
@@ -54,8 +55,8 @@ export async function createBooking(input: NewBooking): Promise<Booking> {
   await db.runAsync(
     `INSERT INTO bookings
        (id, trip_id, kind, title, confirmation, starts_at, ends_at, location, cost,
-        notes, attachment_uri, attachment_name, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        notes, attachment_uri, attachment_name, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     booking.id,
     booking.tripId,
     booking.kind,
@@ -69,6 +70,7 @@ export async function createBooking(input: NewBooking): Promise<Booking> {
     booking.attachmentUri,
     booking.attachmentName,
     booking.createdAt,
+    await stamp(),
   );
   return booking;
 }
@@ -109,7 +111,8 @@ export async function updateBooking(
   await db.runAsync(
     `UPDATE bookings
         SET kind = ?, title = ?, confirmation = ?, starts_at = ?, ends_at = ?,
-            location = ?, cost = ?, notes = ?, attachment_uri = ?, attachment_name = ?
+            location = ?, cost = ?, notes = ?, attachment_uri = ?, attachment_name = ?,
+            updated_at = ?
       WHERE id = ?`,
     next.kind,
     next.title,
@@ -121,6 +124,7 @@ export async function updateBooking(
     next.notes,
     next.attachmentUri,
     next.attachmentName,
+    await stamp(),
     id,
   );
   return next;
@@ -129,6 +133,7 @@ export async function updateBooking(
 export async function deleteBooking(id: string): Promise<void> {
   const db = await getDb();
   await db.runAsync(`DELETE FROM bookings WHERE id = ?`, id);
+  await tombstone('bookings', id);
 }
 
 /** Puts a deleted booking back with its original id, so undo restores links. */
@@ -137,11 +142,13 @@ export async function restoreBooking(b: Booking): Promise<void> {
   await db.runAsync(
     `INSERT OR REPLACE INTO bookings
        (id, trip_id, kind, title, confirmation, starts_at, ends_at, location, cost,
-        notes, attachment_uri, attachment_name, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        notes, attachment_uri, attachment_name, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     b.id, b.tripId, b.kind, b.title, b.confirmation, b.startsAt, b.endsAt,
     b.location, b.costMinor, b.notes, b.attachmentUri, b.attachmentName, b.createdAt,
+    await stamp(),
   );
+  await unTombstone('bookings', b.id);
 }
 
 /** Booking counts per trip, for the trip list. */

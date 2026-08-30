@@ -1,6 +1,7 @@
 import type { Stop } from '../../types';
 import { getDb, runInTransaction } from '../client';
 import { newId } from '../ids';
+import { stamp, tombstone, unTombstone } from '../../sync/stamping';
 
 interface StopRow {
   id: string;
@@ -64,9 +65,9 @@ export async function createStop(input: NewStop): Promise<Stop> {
   };
   await db.runAsync(
     `INSERT INTO stops
-       (id, trip_id, google_place_id, name, address, lat, lng, rating, photo_ref, sequence,
+       (id, trip_id, google_place_id, name, address, lat, lng, rating, photo_ref, updated_at, sequence,
         day_date, start_time, end_time, planned_budget, notes)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     stop.id,
     stop.tripId,
     stop.googlePlaceId,
@@ -76,6 +77,7 @@ export async function createStop(input: NewStop): Promise<Stop> {
     stop.lng,
     stop.rating,
     stop.photoRef,
+    await stamp(),
     stop.sequence,
     stop.dayDate,
     stop.startTime,
@@ -125,7 +127,7 @@ export async function updateStop(
     `UPDATE stops
         SET google_place_id = ?, name = ?, address = ?, lat = ?, lng = ?, rating = ?,
             photo_ref = ?, sequence = ?, day_date = ?, start_time = ?, end_time = ?,
-            planned_budget = ?, notes = ?
+            planned_budget = ?, notes = ?, updated_at = ?
       WHERE id = ?`,
     next.googlePlaceId,
     next.name,
@@ -140,6 +142,7 @@ export async function updateStop(
     next.endTime,
     next.plannedBudgetMinor,
     next.notes,
+    await stamp(),
     id,
   );
   return next;
@@ -150,6 +153,7 @@ export async function deleteStop(id: string): Promise<void> {
   const stop = await getStop(id);
   if (!stop) return;
   await db.runAsync(`DELETE FROM stops WHERE id = ?`, id);
+  await tombstone('stops', id);
   // Close the gap so sequence stays dense: 0,1,2,... with no holes.
   await db.runAsync(
     `UPDATE stops SET sequence = sequence - 1 WHERE trip_id = ? AND sequence > ?`,
@@ -167,6 +171,7 @@ export async function deleteStop(id: string): Promise<void> {
  */
 export async function restoreStop(stop: Stop): Promise<void> {
   const db = await getDb();
+  const mark = await stamp();
   await runInTransaction(db, async (tx) => {
     await tx.runAsync(
       `UPDATE stops SET sequence = sequence + 1 WHERE trip_id = ? AND sequence >= ?`,
@@ -175,13 +180,17 @@ export async function restoreStop(stop: Stop): Promise<void> {
     await tx.runAsync(
       `INSERT OR REPLACE INTO stops
          (id, trip_id, google_place_id, name, address, lat, lng, rating, photo_ref, sequence,
-          day_date, start_time, end_time, planned_budget, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          day_date, start_time, end_time, planned_budget, notes, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       stop.id, stop.tripId, stop.googlePlaceId, stop.name, stop.address, stop.lat,
       stop.lng, stop.rating, stop.photoRef, stop.sequence,
       stop.dayDate, stop.startTime, stop.endTime, stop.plannedBudgetMinor, stop.notes,
+      mark,
     );
   });
+  // The row is back, so its grave has to be filled in or the next merge would
+  // see a live row older than its own tombstone and delete it again.
+  await unTombstone('stops', stop.id);
 }
 
 /**
@@ -192,11 +201,16 @@ export async function restoreStop(stop: Stop): Promise<void> {
  */
 export async function reorderStops(tripId: string, orderedIds: string[]): Promise<void> {
   const db = await getDb();
+  // Stamps are minted before the transaction: `stamp()` writes to the settings
+  // table, and nesting that inside this one would deadlock on some drivers.
+  const marks: string[] = [];
+  for (let i = 0; i < orderedIds.length; i++) marks.push(await stamp());
   await runInTransaction(db, async (tx) => {
     for (let i = 0; i < orderedIds.length; i++) {
       await tx.runAsync(
-        `UPDATE stops SET sequence = ? WHERE id = ? AND trip_id = ?`,
+        `UPDATE stops SET sequence = ?, updated_at = ? WHERE id = ? AND trip_id = ?`,
         i,
+        marks[i],
         orderedIds[i],
         tripId,
       );

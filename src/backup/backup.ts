@@ -7,10 +7,14 @@ import { getDb, runInTransaction } from '../db/client';
 import type {
   Activity, Booking, Expense, FoodPlan, JournalEntry, PackingItem, Stop, Trip,
 } from '../types';
+import { observe } from '../sync/clock';
+import { merge, type MergeStats, type Snapshot, type SyncRow } from '../sync/merge';
+import { allTombstones } from '../sync/stamping';
 import {
   BACKUP_KIND,
   BACKUP_VERSION,
   type Backup,
+  type Stamped,
   type BackupCounts,
   backupFileName,
   countsOf,
@@ -35,6 +39,7 @@ interface TripRow {
   id: string; name: string; start_date: string | null; end_date: string | null;
   currency: string; home_currency: string | null; rate_ppm: number | null;
   total_budget: number | null; created_at: string;
+  updated_at: string;
 }
 interface StopRow {
   id: string; trip_id: string; google_place_id: string | null; name: string;
@@ -42,22 +47,27 @@ interface StopRow {
   photo_ref: string | null; sequence: number; day_date: string | null;
   start_time: string | null; end_time: string | null; planned_budget: number | null;
   notes: string | null;
+  updated_at: string;
 }
 interface ActivityRow {
   id: string; stop_id: string; title: string; estimated_cost: number | null;
   done: number; start_time: string | null; duration_min: number | null; notes: string | null;
+  updated_at: string;
 }
 interface FoodRow {
   id: string; stop_id: string; google_place_id: string | null; name: string;
   cuisine: string | null; estimated_cost: number | null; notes: string | null;
+  updated_at: string;
 }
 interface ExpenseRow {
   id: string; trip_id: string; stop_id: string | null; category: string;
   amount: number; note: string | null; spent_at: string; booking_id: string | null;
+  updated_at: string;
 }
 interface PackingRow {
   id: string; trip_id: string; title: string; category: string | null;
   packed: number; sequence: number;
+  updated_at: string;
 }
 interface JournalRow {
   id: string; trip_id: string; day_date: string; note: string | null; updated_at: string;
@@ -67,6 +77,7 @@ interface BookingRow {
   starts_at: string | null; ends_at: string | null; location: string | null;
   cost: number | null; notes: string | null; attachment_uri: string | null;
   attachment_name: string | null; created_at: string;
+  updated_at: string;
 }
 
 export async function buildBackup(now = new Date()): Promise<Backup> {
@@ -88,15 +99,16 @@ export async function buildBackup(now = new Date()): Promise<Backup> {
     version: BACKUP_VERSION,
     exportedAt: now.toISOString(),
     trips: trips.map(
-      (r): Trip => ({
+      (r): Stamped<Trip> => ({
         id: r.id, name: r.name, startDate: r.start_date, endDate: r.end_date,
-        currency: r.currency, homeCurrency: r.home_currency ?? null,
+        updatedAt: r.updated_at, currency: r.currency, homeCurrency: r.home_currency ?? null,
         ratePpm: r.rate_ppm ?? null,
         totalBudgetMinor: r.total_budget, createdAt: r.created_at,
       }),
     ),
     stops: stops.map(
-      (r): Stop => ({
+      (r): Stamped<Stop> => ({
+        updatedAt: r.updated_at,
         id: r.id, tripId: r.trip_id, googlePlaceId: r.google_place_id, name: r.name,
         address: r.address, lat: r.lat, lng: r.lng, rating: r.rating, photoRef: r.photo_ref,
         sequence: r.sequence, dayDate: r.day_date, startTime: r.start_time,
@@ -104,27 +116,31 @@ export async function buildBackup(now = new Date()): Promise<Backup> {
       }),
     ),
     activities: activities.map(
-      (r): Activity => ({
+      (r): Stamped<Activity> => ({
+        updatedAt: r.updated_at,
         id: r.id, stopId: r.stop_id, title: r.title, estimatedCostMinor: r.estimated_cost,
         done: r.done === 1, startTime: r.start_time, durationMin: r.duration_min,
         notes: r.notes,
       }),
     ),
     foodPlans: foods.map(
-      (r): FoodPlan => ({
+      (r): Stamped<FoodPlan> => ({
+        updatedAt: r.updated_at,
         id: r.id, stopId: r.stop_id, googlePlaceId: r.google_place_id, name: r.name,
         cuisine: r.cuisine, estimatedCostMinor: r.estimated_cost, notes: r.notes,
       }),
     ),
     expenses: expenses.map(
-      (r): Expense => ({
+      (r): Stamped<Expense> => ({
+        updatedAt: r.updated_at,
         id: r.id, tripId: r.trip_id, stopId: r.stop_id,
         category: r.category as Expense['category'], amountMinor: r.amount,
         note: r.note, spentAt: r.spent_at, bookingId: r.booking_id ?? null,
       }),
     ),
     bookings: bookings.map(
-      (r): Booking => ({
+      (r): Stamped<Booking> => ({
+        updatedAt: r.updated_at,
         id: r.id, tripId: r.trip_id, kind: r.kind as Booking['kind'], title: r.title,
         confirmation: r.confirmation, startsAt: r.starts_at, endsAt: r.ends_at,
         location: r.location, costMinor: r.cost, notes: r.notes,
@@ -135,13 +151,15 @@ export async function buildBackup(now = new Date()): Promise<Backup> {
       }),
     ),
     packing: packing.map(
-      (r): PackingItem => ({
+      (r): Stamped<PackingItem> => ({
+        updatedAt: r.updated_at,
         id: r.id, tripId: r.trip_id, title: r.title, category: r.category,
         packed: r.packed === 1, sequence: r.sequence,
       }),
     ),
+    tombstones: await allTombstones(),
     journal: journal.map(
-      (r): JournalEntry => ({
+      (r): Stamped<JournalEntry> => ({
         id: r.id, tripId: r.trip_id, dayDate: r.day_date, note: r.note,
         updatedAt: r.updated_at,
         // Photos live on the phone that took them; the words are what travels.
@@ -169,7 +187,7 @@ export async function restoreBackup(backup: Backup): Promise<BackupCounts> {
     // explicit means this still works if a future table forgets to cascade.
     for (const table of [
       'expenses', 'bookings', 'packing_items', 'journal_entries', 'activities',
-      'food_plans', 'stops', 'trips',
+      'food_plans', 'stops', 'trips', 'deletions',
     ]) {
       await tx.runAsync(`DELETE FROM ${table}`);
     }
@@ -177,45 +195,49 @@ export async function restoreBackup(backup: Backup): Promise<BackupCounts> {
     for (const t of backup.trips) {
       await tx.runAsync(
         `INSERT INTO trips (id, name, start_date, end_date, currency, home_currency,
-           rate_ppm, total_budget, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           rate_ppm, total_budget, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         t.id, t.name, t.startDate, t.endDate, t.currency, t.homeCurrency ?? null,
-        t.ratePpm ?? null, t.totalBudgetMinor, t.createdAt,
+        t.ratePpm ?? null, t.totalBudgetMinor, t.createdAt, t.updatedAt ?? '',
       );
     }
     for (const s of backup.stops) {
       await tx.runAsync(
         `INSERT INTO stops (id, trip_id, google_place_id, name, address, lat, lng, rating,
-           photo_ref, sequence, day_date, start_time, end_time, planned_budget, notes)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           photo_ref, sequence, day_date, start_time, end_time, planned_budget, notes,
+           updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         s.id, s.tripId, s.googlePlaceId, s.name, s.address, s.lat, s.lng, s.rating,
         s.photoRef, s.sequence, s.dayDate ?? null, s.startTime ?? null, s.endTime ?? null,
-        s.plannedBudgetMinor, s.notes,
+        s.plannedBudgetMinor, s.notes, s.updatedAt ?? '',
       );
     }
     for (const a of backup.activities) {
       await tx.runAsync(
         `INSERT INTO activities (id, stop_id, title, estimated_cost, done, start_time,
-           duration_min, notes)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+           duration_min, notes, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         a.id, a.stopId, a.title, a.estimatedCostMinor, a.done ? 1 : 0,
-        a.startTime ?? null, a.durationMin ?? null, a.notes ?? null,
+        a.startTime ?? null, a.durationMin ?? null, a.notes ?? null, a.updatedAt ?? '',
       );
     }
     for (const f of backup.foodPlans) {
       await tx.runAsync(
-        `INSERT INTO food_plans (id, stop_id, google_place_id, name, cuisine, estimated_cost, notes)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO food_plans
+           (id, stop_id, google_place_id, name, cuisine, estimated_cost, notes, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         f.id, f.stopId, f.googlePlaceId, f.name, f.cuisine, f.estimatedCostMinor, f.notes,
+        f.updatedAt ?? '',
       );
     }
     for (const b of backup.bookings) {
       await tx.runAsync(
         `INSERT INTO bookings (id, trip_id, kind, title, confirmation, starts_at, ends_at,
-           location, cost, notes, attachment_uri, attachment_name, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           location, cost, notes, attachment_uri, attachment_name, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         b.id, b.tripId, b.kind, b.title, b.confirmation, b.startsAt, b.endsAt,
         b.location, b.costMinor, b.notes, b.attachmentUri, b.attachmentName, b.createdAt,
+        b.updatedAt ?? '',
       );
     }
     // After bookings: an expense can carry a booking_id, and the foreign key
@@ -223,17 +245,19 @@ export async function restoreBackup(backup: Backup): Promise<BackupCounts> {
     for (const e of backup.expenses) {
       await tx.runAsync(
         `INSERT INTO expenses
-           (id, trip_id, stop_id, category, amount, note, spent_at, booking_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+           (id, trip_id, stop_id, category, amount, note, spent_at, booking_id, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         e.id, e.tripId, e.stopId, e.category, e.amountMinor, e.note, e.spentAt,
-        e.bookingId ?? null,
+        e.bookingId ?? null, e.updatedAt ?? '',
       );
     }
     for (const i of backup.packing ?? []) {
       await tx.runAsync(
-        `INSERT INTO packing_items (id, trip_id, title, category, packed, sequence)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO packing_items
+           (id, trip_id, title, category, packed, sequence, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
         i.id, i.tripId, i.title, i.category ?? null, i.packed ? 1 : 0, i.sequence ?? 0,
+        i.updatedAt ?? '',
       );
     }
     for (const e of backup.journal ?? []) {
@@ -243,9 +267,79 @@ export async function restoreBackup(backup: Backup): Promise<BackupCounts> {
         e.id, e.tripId, e.dayDate, e.note ?? null, e.updatedAt,
       );
     }
+    for (const t of backup.tombstones ?? []) {
+      await tx.runAsync(
+        `INSERT OR REPLACE INTO deletions (table_name, row_id, deleted_at) VALUES (?, ?, ?)`,
+        t.table, t.id, t.deletedAt,
+      );
+    }
   });
 
   return countsOf(backup);
+}
+
+/**
+ * Combines a backup with what is already here, rather than replacing it.
+ *
+ * This is the whole reason the stamps exist. Restore-as-replace forces a
+ * choice between two phones; merge does not, and two devices passing a file
+ * back and forth is a real if manual sync, with no account and no server.
+ *
+ * The incoming clock is observed first, so anything written here afterwards
+ * sorts after what the other device did — without that, two phones can
+ * ping-pong edits forever, each convinced its own are newer.
+ */
+export async function mergeBackup(backup: Backup): Promise<MergeStats> {
+  const mine = await buildBackup();
+
+  await observe(collectStamps(backup));
+
+  const { merged, stats } = merge(toSnapshot(mine), toSnapshot(backup));
+  await restoreBackup(fromSnapshot(merged, backup));
+  return stats;
+}
+
+/** Table names as the merge sees them, mapped to the backup's own field names. */
+const TABLE_FIELDS = {
+  trips: 'trips',
+  stops: 'stops',
+  activities: 'activities',
+  food_plans: 'foodPlans',
+  expenses: 'expenses',
+  bookings: 'bookings',
+  packing_items: 'packing',
+  journal_entries: 'journal',
+} as const;
+
+function toSnapshot(backup: Backup): Snapshot {
+  const tables: Snapshot['tables'] = {};
+  for (const [table, field] of Object.entries(TABLE_FIELDS)) {
+    tables[table] = (backup[field as keyof Backup] as unknown as SyncRow[]) ?? [];
+  }
+  return { tables, tombstones: backup.tombstones ?? [] };
+}
+
+/** Back to a Backup, borrowing the shape of whichever one we were handed. */
+function fromSnapshot(snapshot: Snapshot, like: Backup): Backup {
+  const out = { ...like, tombstones: snapshot.tombstones } as unknown as Record<
+    string,
+    unknown
+  >;
+  for (const [table, field] of Object.entries(TABLE_FIELDS)) {
+    out[field] = snapshot.tables[table] ?? [];
+  }
+  return out as unknown as Backup;
+}
+
+function collectStamps(backup: Backup): string[] {
+  const stamps: string[] = [];
+  for (const field of Object.values(TABLE_FIELDS)) {
+    for (const row of (backup[field as keyof Backup] as unknown as SyncRow[]) ?? []) {
+      if (row.updatedAt) stamps.push(row.updatedAt);
+    }
+  }
+  for (const t of backup.tombstones ?? []) stamps.push(t.deletedAt);
+  return stamps;
 }
 
 /* -------------------------------------------------------------------------- */

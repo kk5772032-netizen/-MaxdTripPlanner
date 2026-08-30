@@ -1,6 +1,7 @@
 import type { JournalEntry, JournalPhoto } from '../../types';
 import { getDb, runInTransaction } from '../client';
 import { newId } from '../ids';
+import { stamp, tombstone, unTombstone } from '../../sync/stamping';
 
 interface EntryRow {
   id: string;
@@ -70,7 +71,7 @@ export async function entryForDay(tripId: string, dayDate: string): Promise<Jour
     `INSERT INTO journal_entries (id, trip_id, day_date, note, updated_at)
      VALUES (?, ?, ?, NULL, ?)
      ON CONFLICT (trip_id, day_date) DO NOTHING`,
-    newId(), tripId, dayDate, new Date().toISOString(),
+    newId(), tripId, dayDate, await stamp(),
   );
   const row = await db.getFirstAsync<EntryRow>(
     `SELECT * FROM journal_entries WHERE trip_id = ? AND day_date = ?`,
@@ -100,7 +101,7 @@ export async function setNote(
   await db.runAsync(
     `UPDATE journal_entries SET note = ?, updated_at = ? WHERE id = ?`,
     note && note.trim() ? note : null,
-    new Date().toISOString(),
+    await stamp(),
     entry.id,
   );
   await pruneEmpty(entry.id);
@@ -116,16 +117,21 @@ export async function addPhotos(
   const db = await getDb();
   const start = entry.photos.length;
 
+  // Minted outside the transaction: `stamp()` writes to the settings table.
+  const marks: string[] = [];
+  for (let i = 0; i <= uris.length; i++) marks.push(await stamp());
+
   await runInTransaction(db, async (tx) => {
     for (const [i, uri] of uris.entries()) {
       await tx.runAsync(
-        `INSERT INTO journal_photos (id, entry_id, uri, sequence) VALUES (?, ?, ?, ?)`,
-        newId(), entry.id, uri, start + i,
+        `INSERT INTO journal_photos (id, entry_id, uri, sequence, updated_at)
+         VALUES (?, ?, ?, ?, ?)`,
+        newId(), entry.id, uri, start + i, marks[i],
       );
     }
     await tx.runAsync(
       `UPDATE journal_entries SET updated_at = ? WHERE id = ?`,
-      new Date().toISOString(), entry.id,
+      marks[uris.length], entry.id,
     );
   });
   return uris.length;
@@ -140,6 +146,7 @@ export async function removePhoto(photoId: string): Promise<string | null> {
   );
   if (!row) return null;
   await db.runAsync(`DELETE FROM journal_photos WHERE id = ?`, photoId);
+  await tombstone('journal_photos', photoId);
   await pruneEmpty(row.entry_id);
   return row.uri;
 }
@@ -150,11 +157,14 @@ export async function removePhoto(photoId: string): Promise<string | null> {
  */
 async function pruneEmpty(entryId: string): Promise<void> {
   const db = await getDb();
-  await db.runAsync(
+  const { changes } = await db.runAsync(
     `DELETE FROM journal_entries
       WHERE id = ?
         AND (note IS NULL OR TRIM(note) = '')
         AND NOT EXISTS (SELECT 1 FROM journal_photos WHERE entry_id = ?)`,
     entryId, entryId,
   );
+  // Only tombstone if a row actually went, or emptying a note would leave a
+  // grave for an entry that is still there.
+  if (changes > 0) await tombstone('journal_entries', entryId);
 }
