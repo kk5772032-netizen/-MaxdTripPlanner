@@ -206,13 +206,13 @@ already spent. Set both, and treat the cap as the one that matters.
 
 | Route | What it is |
 |---|---|
+| `(tabs)/index` | Today: the trip you're on, what's next, what's left to do. |
 | `(tabs)/trips` | Trip list. Each card shows dates and a budget-used ring. Long-press to delete. |
 | `new-trip` | Create or edit a trip (`?tripId=` switches it to edit). |
 | `trip/[tripId]` | Itinerary or map, per-stop budget bars, sticky trip total. |
 | `trip/[tripId]/new-place` | Add a stop: Places autocomplete, or type it by hand. |
 | `trip/[tripId]/place/[placeId]` | One stop: Activities, Food, Budget. |
 | `trip/[tripId]/expenses` | The whole trip's expense log, filterable by stop and category. |
-| `trip/[tripId]/dashboard` | Planned vs actual per stop, spend by category. |
 
 ### Money
 
@@ -344,7 +344,7 @@ npm test
 
 Beyond Jest, the app is driven end to end in a real browser (`npm run web` plus
 Playwright): 23 checks covering trip CRUD, stops, reordering, activities, food
-plans, stop caps, expense add/edit/filter, the roll-ups, the dashboard, the map
+plans, stop caps, expense add/edit/filter, the roll-ups, the breakdown, the map
 and the delete cascades, plus a theme pass that walks all seven screens in each
 appearance and asserts on the colour actually painted.
 
@@ -356,7 +356,7 @@ appearance and asserts on the colour actually painted.
   200 lines of marks.
 - **The expense category palette is validated, not eyeballed** — every pair
   clears colourblind-separation and contrast checks, and the hues stay clear of
-  the red/amber/green budget-status colours so that red on the dashboard only
+  the red/amber/green budget-status colours so that red on the breakdown only
   ever means "over budget".
 - **No location permission is requested.** The core flow doesn't need it, so the
   app doesn't ask. If you add "use my current location", that's when
