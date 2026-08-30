@@ -362,9 +362,24 @@ function ManualFoodForm({
 
   return (
     <Card style={styles.form}>
-      <Input value={name} onChangeText={setName} placeholder="Karim's" />
-      <Input value={cuisine} onChangeText={setCuisine} placeholder="Cuisine (optional)" />
-      <Input value={notes} onChangeText={setNotes} placeholder="Note (optional)" />
+      <Input
+        value={name}
+        onChangeText={setName}
+        placeholder="Karim's"
+        accessibilityLabel="Where to eat"
+      />
+      <Input
+        value={cuisine}
+        onChangeText={setCuisine}
+        placeholder="Cuisine (optional)"
+        accessibilityLabel="Cuisine, optional"
+      />
+      <Input
+        value={notes}
+        onChangeText={setNotes}
+        placeholder="Note (optional)"
+        accessibilityLabel="Note about this meal, optional"
+      />
       <View style={styles.formRow}>
         <AmountInput
           value={costText}

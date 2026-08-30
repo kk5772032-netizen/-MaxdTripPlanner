@@ -6,7 +6,13 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { formatDateRange } from '../../src/dates';
 import { Checkbox } from '../../src/components/Checkbox';
 import { Button, Card, EmptyState, SkeletonList } from '../../src/components/ui';
-import { countdown, currentTrip, planForNow, tripPhase } from '../../src/itinerary/now';
+import {
+  countdown,
+  currentTrip,
+  gettingReady,
+  planForNow,
+  tripPhase,
+} from '../../src/itinerary/now';
 import { formatDayLabel, formatTime, type DayEntry } from '../../src/itinerary/schedule';
 import { directionsUrl, openInMaps } from '../../src/places/maps';
 import { useTripStore } from '../../src/state/tripStore';
@@ -90,7 +96,7 @@ export default function TodayScreen() {
   const loaded = ready && trip?.id === target.id;
   const plan = loaded ? planForNow(target, stops, bookings, activities, today, nowTime) : null;
 
-  const packed = packing.filter((i) => i.packed).length;
+  const beforeYouGo = loaded ? gettingReady(stops, packing) : [];
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
@@ -148,22 +154,35 @@ export default function TodayScreen() {
         </Card>
       ) : null}
 
-      {/* Before a trip, the useful thing is not a timeline — it's the bag. */}
-      {loaded && phase.kind === 'upcoming' && packing.length > 0 ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Packing: ${packed} of ${packing.length} packed`}
-          onPress={() => router.push(`/trip/${target.id}`)}
-          style={({ pressed }) => [styles.packing, pressed && styles.pressed]}
-        >
-          <Ionicons name="briefcase-outline" size={18} color={t.primary} />
-          <Text style={styles.packingText}>
-            {packed === packing.length
-              ? 'Everything is packed'
-              : `${packing.length - packed} still to pack`}
-          </Text>
-          <Ionicons name="chevron-forward" size={16} color={t.textFaint} />
-        </Pressable>
+      {/* Before a trip there is no "next", so the question this screen answers
+          changes: not what happens now, but what is left to do first. */}
+      {loaded && phase.kind === 'upcoming' ? (
+        beforeYouGo.length > 0 ? (
+          <Section title="Before you go">
+            {beforeYouGo.map((item) => (
+              <Pressable
+                key={item.key}
+                accessibilityRole="button"
+                accessibilityLabel={item.label}
+                onPress={() => router.push(`/trip/${target.id}`)}
+                style={({ pressed }) => [styles.packing, pressed && styles.pressed]}
+              >
+                <Ionicons name={item.icon} size={18} color={t.primary} />
+                <Text style={styles.packingText}>{item.label}</Text>
+                <Ionicons name="chevron-forward" size={16} color={t.textFaint} />
+              </Pressable>
+            ))}
+          </Section>
+        ) : (
+          <Card style={styles.doneCard}>
+            <Ionicons name="checkmark-circle-outline" size={20} color={t.underText} />
+            <Text style={styles.doneText}>
+              {packing.length > 0
+                ? 'Packed and planned. Nothing left to do.'
+                : 'Planned. Nothing left to do.'}
+            </Text>
+          </Card>
+        )
       ) : null}
     </ScrollView>
   );

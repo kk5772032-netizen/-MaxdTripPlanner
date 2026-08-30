@@ -1,6 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import {
   Animated,
   ActivityIndicator,
@@ -112,6 +119,17 @@ export function Button({
   );
 }
 
+/**
+ * A Field's label, for the input inside it.
+ *
+ * React Native has no `<label for>`, so a visible label and the field it names
+ * are unrelated as far as a screen reader is concerned: without this, an input
+ * announces its *placeholder* as its name, and the moment you type it
+ * announces your own text instead. Passing the label down means the two can't
+ * drift apart, and nobody has to remember.
+ */
+const FieldLabel = createContext<string | undefined>(undefined);
+
 export function Field({
   label,
   hint,
@@ -125,7 +143,7 @@ export function Field({
   return (
     <View style={styles.field}>
       <Text style={styles.fieldLabel}>{label}</Text>
-      {children}
+      <FieldLabel.Provider value={label}>{children}</FieldLabel.Provider>
       {hint ? <Text style={styles.fieldHint}>{hint}</Text> : null}
     </View>
   );
@@ -134,10 +152,15 @@ export function Field({
 export function Input(props: TextInputProps) {
   const styles = useStyles();
   const t = useTheme();
+  const fieldLabel = useContext(FieldLabel);
   return (
     <TextInput
       placeholderTextColor={t.textFaint}
       {...props}
+      // After the spread, so the fallback really is a fallback: an explicit
+      // label still wins, and some fields want to say more than their visible
+      // label does.
+      accessibilityLabel={props.accessibilityLabel ?? fieldLabel}
       style={[styles.input, props.style]}
     />
   );
@@ -295,6 +318,10 @@ export function SegmentedControl<T extends string>({
 
   return (
     <View
+      // The segments below are tabs, and a tab has to be owned by a tablist:
+      // orphaned, a screen reader reads five unrelated controls instead of
+      // "Booked, tab 3 of 5".
+      accessibilityRole="tablist"
       style={[styles.segmented, style]}
       onLayout={(e) => setWidth(e.nativeEvent.layout.width - SEGMENT_PADDING * 2)}
     >

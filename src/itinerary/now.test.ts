@@ -1,4 +1,11 @@
-import { countdown, currentTrip, daysBetween, planForNow, tripPhase } from './now';
+import {
+  countdown,
+  currentTrip,
+  daysBetween,
+  gettingReady,
+  planForNow,
+  tripPhase,
+} from './now';
 import type { Booking, Stop, Trip } from '../types';
 
 let n = 0;
@@ -164,5 +171,58 @@ describe('daysBetween', () => {
 
   it('crosses a month without drifting', () => {
     expect(daysBetween('2026-10-30', '2026-11-02')).toBe(3);
+  });
+});
+
+describe('gettingReady', () => {
+  const packed = (n: number, done = 0) =>
+    Array.from({ length: n }, (_, i) => ({ packed: i < done }));
+
+  const keysFor = (stops: Stop[], packing: { packed: boolean }[]) =>
+    gettingReady(stops, packing).map((i) => i.key);
+
+  it('says nothing at all when the trip is ready', () => {
+    // The point of the list: silence means ready, so it must be capable of
+    // being silent. A block that always finds something to nag about is one
+    // people stop reading.
+    expect(gettingReady([stop({ dayDate: '2026-11-09' })], packed(3, 3))).toEqual([]);
+  });
+
+  it('asks for places before anything else on an empty trip', () => {
+    expect(keysFor([], [])).toEqual(['stops-none', 'packing-none']);
+  });
+
+  it('does not ask for days on a trip that has no places', () => {
+    // "0 places have no day yet" is true and useless.
+    expect(keysFor([], packed(2, 2))).toEqual(['stops-none']);
+  });
+
+  it('counts the places with no day', () => {
+    const stops = [
+      stop({ id: 'a', dayDate: '2026-11-09' }),
+      stop({ id: 'b', dayDate: null }),
+      stop({ id: 'c', dayDate: null }),
+    ];
+    expect(gettingReady(stops, packed(1, 1))[0]).toEqual({
+      key: 'stops-undated',
+      label: '2 places have no day yet',
+      icon: 'calendar-outline',
+    });
+  });
+
+  it('reads as English for one place', () => {
+    const stops = [stop({ id: 'a', dayDate: null })];
+    expect(gettingReady(stops, packed(1, 1))[0].label).toBe('1 place has no day yet');
+  });
+
+  it('offers a packing list when there is none, and progress when there is', () => {
+    expect(keysFor([stop({ dayDate: '2026-11-09' })], [])).toEqual(['packing-none']);
+    const withList = gettingReady([stop({ dayDate: '2026-11-09' })], packed(5, 2));
+    expect(withList).toHaveLength(1);
+    expect(withList[0].label).toBe('3 still to pack');
+  });
+
+  it('drops the packing line once the bag is done', () => {
+    expect(keysFor([stop({ dayDate: '2026-11-09' })], packed(4, 4))).toEqual([]);
   });
 });

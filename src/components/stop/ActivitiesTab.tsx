@@ -71,6 +71,7 @@ export function ActivitiesTab({
           placeholder="Walk to the war memorial"
           returnKeyType="done"
           onSubmitEditing={add}
+          accessibilityLabel="Something to do here"
         />
         <View style={styles.formRow}>
           <AmountInput

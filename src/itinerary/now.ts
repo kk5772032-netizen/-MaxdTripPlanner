@@ -140,3 +140,68 @@ export function countdown(daysAway: number): string {
   const weeks = Math.round(daysAway / 7);
   return weeks < 9 ? `in ${weeks} weeks` : `in ${Math.round(daysAway / 30)} months`;
 }
+
+/* -------------------------------------------------------------------------- */
+
+/**
+ * What is left to get ready, before a trip starts.
+ *
+ * `planForNow` answers "what's next", which is the right question during a
+ * trip and the wrong one five weeks before it: there is no next, so the screen
+ * had nothing to say and showed the trip's name over an empty page.
+ *
+ * This is the question that does have an answer beforehand — what still needs
+ * doing — and it only speaks when something actually does. An empty list means
+ * the trip is ready, which is worth saying too; a list of reassurances about
+ * things nobody asked for is not.
+ */
+export interface ReadyItem {
+  key: 'packing-none' | 'packing-left' | 'stops-none' | 'stops-undated';
+  label: string;
+  icon: 'briefcase-outline' | 'location-outline' | 'calendar-outline';
+}
+
+export function gettingReady(
+  stops: Stop[],
+  packing: { packed: boolean }[],
+): ReadyItem[] {
+  const items: ReadyItem[] = [];
+
+  if (stops.length === 0) {
+    items.push({
+      key: 'stops-none',
+      label: 'No places yet — plan where this trip goes',
+      icon: 'location-outline',
+    });
+  } else {
+    // Only worth raising once there are days to put them on; a trip with no
+    // dates has nothing for a stop to be missing.
+    const undated = stops.filter((s) => !s.dayDate).length;
+    if (undated > 0) {
+      items.push({
+        key: 'stops-undated',
+        label: `${undated} ${undated === 1 ? 'place has' : 'places have'} no day yet`,
+        icon: 'calendar-outline',
+      });
+    }
+  }
+
+  if (packing.length === 0) {
+    items.push({
+      key: 'packing-none',
+      label: 'No packing list yet',
+      icon: 'briefcase-outline',
+    });
+  } else {
+    const left = packing.filter((i) => !i.packed).length;
+    if (left > 0) {
+      items.push({
+        key: 'packing-left',
+        label: `${left} still to pack`,
+        icon: 'briefcase-outline',
+      });
+    }
+  }
+
+  return items;
+}
